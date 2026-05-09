@@ -1,0 +1,8 @@
+[mcp_servers.civ6]
+args = [
+    "run",
+    "--directory",
+    ".",
+    "civ-mcp",
+]
+command = "uv"
