@@ -1,6 +1,6 @@
 # CivBench Save Files
 
-This directory holds Civilization VI save files (`.Civ6Save`) used as starting positions for benchmark scenarios. Save files are **gitignored** due to size (~500KB each).
+This directory holds Civilization VI save files (`.Civ6Save`) used as starting positions for benchmark scenarios. Benchmark save files in this directory are tracked with the repository.
 
 ## Required Saves
 
@@ -33,7 +33,17 @@ Naming convention: `0{LETTER}_{SCENARIO_NAME}.Civ6Save` — the `0` prefix ensur
 **Victory:** All types enabled
 **Opponents:** Korea (Seondeok), Brazil (Pedro II), Canada (Wilfrid Laurier)
 
-## Common Settings (All Scenarios)
+### D: Low-Random Hotseat Science
+
+| File | Settings |
+|------|----------|
+| `0D_LOW_RANDOM_HOTSEAT_SCIENCE.Civ6Save` | Hotseat, Pangaea Standard, Online speed, 2 humans, 6 AI, blank civilizations, fixed seeds 11111111/11111111 |
+
+**Victory:** Science only
+**Players:** P1 Xiaohan (Human, Prince), P2 Codex (Human, Prince), P3 Warlord AI, P4 Prince AI, P5 King AI, P6 Emperor AI, P7 Immortal AI, P8 Deity AI
+**Game Mode:** Monopolies and Corporations enabled; other optional modes disabled
+
+## Common Settings (A-C)
 
 | Parameter | Value |
 |-----------|-------|
@@ -85,6 +95,24 @@ Naming convention: `0{LETTER}_{SCENARIO_NAME}.Civ6Save` — the `0` prefix ensur
 8. **Victory Conditions:** All enabled (default)
 9. Start game. **Save immediately on Turn 1** before any actions.
 10. Copy save to this directory as `0C_CRY_HAVOC.Civ6Save`
+
+### D: Low-Random Hotseat Science
+
+See `docs/low-random-science-benchmark.md` for the full benchmark definition.
+
+1. Create a Hotseat game with Gathering Storm rules.
+2. **Players:** 8 total: P1 Xiaohan (human), P2 Codex (human), P3-P8 AI.
+3. **Civilizations:** all players use distinct blank civilizations from the blank civilization mod.
+4. **Difficulties:** P1/P2 Prince; AI difficulties Warlord, Prince, King, Emperor, Immortal, Deity.
+5. **Game Speed:** Online.
+6. **Map Type:** Pangaea.
+7. **Map Size:** Standard.
+8. **Seeds:** map seed `11111111`, game seed `11111111`.
+9. **Victory Conditions:** Science only.
+10. **Game Modes:** Monopolies and Corporations enabled; other optional modes disabled.
+11. **City-States:** 18.
+12. Start game. Save immediately on Turn 1 before any actions.
+13. Copy save to this directory as `0D_LOW_RANDOM_HOTSEAT_SCIENCE.Civ6Save`.
 
 ### Save file location
 

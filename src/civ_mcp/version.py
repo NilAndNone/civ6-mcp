@@ -13,7 +13,7 @@ def _get_version() -> str:
     # Fallback: read from pyproject.toml (uv run doesn't install metadata)
     pyproject = Path(__file__).resolve().parent.parent.parent / "pyproject.toml"
     if pyproject.exists():
-        for line in pyproject.read_text().splitlines():
+        for line in pyproject.read_text(encoding="utf-8").splitlines():
             if line.strip().startswith("version =") or line.strip().startswith(
                 "version="
             ):

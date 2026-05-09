@@ -660,28 +660,51 @@ def _find_game_window_win32() -> WindowInfo | None:
     except Exception:
         pass
 
-    results: list[WindowInfo] = []
+    process_matches: list[WindowInfo] = []
+    title_matches: list[WindowInfo] = []
+
+    def _process_name(pid: int) -> str:
+        try:
+            import win32api
+            import win32con
+
+            handle = win32api.OpenProcess(
+                win32con.PROCESS_QUERY_INFORMATION | win32con.PROCESS_VM_READ,
+                False,
+                pid,
+            )
+            try:
+                path = win32process.GetModuleFileNameEx(handle, 0)
+            finally:
+                handle.Close()
+            return os.path.basename(path)
+        except Exception:
+            return ""
 
     def callback(hwnd: int, _: None) -> bool:
         if not win32gui.IsWindowVisible(hwnd):
             return True
         title = win32gui.GetWindowText(hwnd)
-        if any(p in title for p in _APP_NAME_PATTERNS):
-            # Use client rect (not window rect) to match PW_CLIENTONLY capture
+        _, pid = win32process.GetWindowThreadProcessId(hwnd)
+        proc_name = _process_name(pid)
+        is_process_match = proc_name in _PROCESS_NAMES
+        is_title_match = any(p in title for p in _APP_NAME_PATTERNS)
+        if is_process_match or is_title_match:
+            # Use client rect (not window rect) to match PW_CLIENTONLY capture.
             cl, ct, cr, cb = win32gui.GetClientRect(hwnd)
-            # ClientToScreen maps client (0,0) to screen coordinates
             screen_x, screen_y = win32gui.ClientToScreen(hwnd, (cl, ct))
-            _, pid = win32process.GetWindowThreadProcessId(hwnd)
-            results.append(
-                WindowInfo(
-                    window_id=hwnd,
-                    x=screen_x,
-                    y=screen_y,
-                    w=cr - cl,
-                    h=cb - ct,
-                    pid=pid,
-                )
+            info = WindowInfo(
+                window_id=hwnd,
+                x=screen_x,
+                y=screen_y,
+                w=cr - cl,
+                h=cb - ct,
+                pid=pid,
             )
+            if is_process_match:
+                process_matches.append(info)
+            else:
+                title_matches.append(info)
         return True
 
     win32gui.EnumWindows(callback, None)
@@ -689,6 +712,7 @@ def _find_game_window_win32() -> WindowInfo | None:
     if old_ctx:
         user32.SetThreadDpiAwarenessContext(ctypes.c_ssize_t(old_ctx))
 
+    results = process_matches or title_matches
     if results:
         w = results[0]
         log.info(
