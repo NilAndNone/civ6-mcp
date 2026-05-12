@@ -1521,9 +1521,14 @@ def _normalize(s: str) -> str:
     import re
 
     s = s.lower().strip().replace("_", " ").replace("0", "o")
-    # Strip leading/trailing non-alphanumeric chars (OCR artifacts)
-    s = re.sub(r"^[^a-z0-9]+", "", s)
-    s = re.sub(r"[^a-z0-9]+$", "", s)
+    # Strip leading/trailing non-word chars (OCR artifacts). Use Unicode \w
+    # so localized Civ 6 menus such as Chinese "单 人 模 式" survive.
+    s = re.sub(r"^[^\w]+", "", s, flags=re.UNICODE)
+    s = re.sub(r"[^\w]+$", "", s, flags=re.UNICODE)
+    # OCR often inserts spaces between CJK characters and save-name fragments.
+    # Removing whitespace still preserves English menu matching because both
+    # target and OCR text are normalized through this function.
+    s = re.sub(r"\s+", "", s)
     return s
 
 
@@ -2139,6 +2144,29 @@ def _navigate_to_save_sync(save_name: str, tab: str | None = "Autosaves") -> str
     nav_start = time.time()
     steps = []
 
+    def click_any_text(
+        labels: list[str],
+        *,
+        timeout: int,
+        exact: bool = False,
+        post_delay: float = 1,
+        prefer_bottom: bool = False,
+        min_y_fraction: float = 0.0,
+        y_offset: int = 0,
+    ) -> str | None:
+        for label in labels:
+            if _click_text(
+                label,
+                timeout=timeout,
+                exact=exact,
+                post_delay=post_delay,
+                prefer_bottom=prefer_bottom,
+                min_y_fraction=min_y_fraction,
+                y_offset=y_offset,
+            ):
+                return label
+        return None
+
     # Launch the game if it's not running
     if not is_game_running():
         log.info("Game not running — launching before OCR navigation")
@@ -2152,16 +2180,29 @@ def _navigate_to_save_sync(save_name: str, tab: str | None = "Autosaves") -> str
         _click_aspyr_launcher_sync()
 
     log.info("[1/7] Waiting for main menu (Single Player)...")
-    if not _click_text("Single Player", timeout=90, exact=True, post_delay=0.5):
-        return "FAILED: Could not find 'Single Player' on main menu. Is the game at the main menu?"
-    steps.append("Clicked Single Player")
+    clicked = click_any_text(
+        ["Single Player", "单人模式"],
+        timeout=90,
+        exact=True,
+        post_delay=0.5,
+    )
+    if not clicked:
+        return "FAILED: Could not find 'Single Player' / '单人模式' on main menu. Is the game at the main menu?"
+    steps.append(f"Clicked {clicked}")
 
     log.info("[2/7] Clicking 'Load Game'...")
     # y_offset nudges the click down from bbox center to avoid hitting
     # "Resume Game" directly above in the tightly-packed single player menu.
-    if not _click_text("Load Game", timeout=5, exact=True, post_delay=0.5, y_offset=15):
-        return "FAILED: Could not find 'Load Game' button."
-    steps.append("Clicked Load Game")
+    clicked = click_any_text(
+        ["Load Game", "加载游戏", "读取游戏"],
+        timeout=5,
+        exact=True,
+        post_delay=0.5,
+        y_offset=15,
+    )
+    if not clicked:
+        return "FAILED: Could not find 'Load Game' / '加载游戏' button."
+    steps.append(f"Clicked {clicked}")
 
     if tab is not None:
         log.info("[3/6] Clicking '%s' filter...", tab)
@@ -2184,12 +2225,17 @@ def _navigate_to_save_sync(save_name: str, tab: str | None = "Autosaves") -> str
     log.info("[5/6] Clicking 'Load Game' button (bottom, not title)...")
     # prefer_bottom picks the button over the page title. If the only match
     # is the title (y < 50% of screen), skip it — the button wasn't detected.
-    if not _click_text(
-        "Load Game", timeout=10, post_delay=1, prefer_bottom=True, min_y_fraction=0.7
-    ):
+    clicked = click_any_text(
+        ["Load Game", "加载游戏", "读取游戏"],
+        timeout=10,
+        post_delay=1,
+        prefer_bottom=True,
+        min_y_fraction=0.7,
+    )
+    if not clicked:
         steps.append("Load Game button not found (may have loaded from double-click)")
     else:
-        steps.append("Clicked Load Game button")
+        steps.append(f"Clicked {clicked} button")
 
     # Wait for save to load, then click through the leader intro screen.
     #
@@ -2218,7 +2264,7 @@ def _navigate_to_save_sync(save_name: str, tab: str | None = "Autosaves") -> str
             results = _ocr_fullscreen()
 
         # Check for CONTINUE (leader screen — good)
-        match = _find_text(results, "CONTINUE")
+        match = _find_text(results, "CONTINUE") or _find_text(results, "继续")
         if match:
             text, x, y, w, h = match
             log.info(
@@ -2236,7 +2282,9 @@ def _navigate_to_save_sync(save_name: str, tab: str | None = "Autosaves") -> str
             break
 
         # Check for main menu (wrong screen — save load failed)
-        menu_match = _find_text(results, "Single Player")
+        menu_match = _find_text(results, "Single Player") or _find_text(
+            results, "单人模式"
+        )
         if menu_match and elapsed > 20:  # give 20s grace for loading transition
             log.warning(
                 "CONTINUE wait: ABORT — detected main menu ('Single Player' visible) "
@@ -2258,12 +2306,17 @@ def _navigate_to_save_sync(save_name: str, tab: str | None = "Autosaves") -> str
     if main_menu_detected:
         # Save load failed — we're back at main menu. Redo from step 1.
         log.warning("Restarting save navigation from main menu")
-        if _click_text("Single Player", timeout=15, post_delay=2):
-            _click_text("Load Game", timeout=10, post_delay=1, prefer_bottom=False)
+        if click_any_text(["Single Player", "单人模式"], timeout=15, post_delay=2):
+            click_any_text(
+                ["Load Game", "加载游戏", "读取游戏"],
+                timeout=10,
+                post_delay=1,
+                prefer_bottom=False,
+            )
             time.sleep(1)
             if _click_text(save_name, timeout=15, post_delay=0.5):
-                _click_text(
-                    "Load Game",
+                click_any_text(
+                    ["Load Game", "加载游戏", "读取游戏"],
                     timeout=10,
                     post_delay=1,
                     prefer_bottom=True,
@@ -2271,7 +2324,9 @@ def _navigate_to_save_sync(save_name: str, tab: str | None = "Autosaves") -> str
                 )
                 time.sleep(15)
                 # One more attempt at CONTINUE
-                retry_match = _wait_for_text("CONTINUE", timeout=60, interval=2.5)
+                retry_match = _wait_for_text("CONTINUE", timeout=30, interval=2.5)
+                if not retry_match:
+                    retry_match = _wait_for_text("继续", timeout=30, interval=2.5)
                 if retry_match:
                     text, x, y, w, h = retry_match
                     log.info("Retry: found CONTINUE at (%d,%d) — clicking", x, y)

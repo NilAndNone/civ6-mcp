@@ -14,6 +14,7 @@
 
 ## Evaluation & Benchmarks
 
+- [Codex HL Phase 1 Observation](codex-hl-phase1-observation.md) - Reusable observation-only workflow for real `test 1` short-runs and review reports
 - [Benchmark Scenarios](paper/scenario-spec.md) — Three eval scenarios (Ground Control, Snowflake, Cry Havoc)
 - [Game Reports](devlog/) — 12 full game logs with strategic post-mortems
 - [Cross-Game Analysis](cross-game-analysis.md) — Recurring failure patterns across games 1–4

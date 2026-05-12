@@ -1,0 +1,4 @@
+interface:
+  display_name: "Civ6 Phase 1 Observation"
+  short_description: "Reproduce Codex HL Phase 1 observation runs for Civ6 test 1."
+  default_prompt: "Run a Codex HL Phase 1 observation short-run on the real Civ6 test 1 save, generate human and agent audit reports, and stop before T50."
