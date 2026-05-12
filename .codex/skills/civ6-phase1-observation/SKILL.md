@@ -43,13 +43,40 @@ Use this skill to run the Codex HL Phase 1 observation workflow on the real `tes
    - every turn has a state snapshot covering empire, cities, units, notifications, threats, research/civic, production, or explicit gaps
    - decision records include `available_actions`, rationale, `why_not_alternatives`, execution, outcome, `related_*_ids`, plus compatibility aliases `alternatives` and `evidence_ids`
    - save index links saves to episode, turn, decision or event
-5. Present the human report path and pause for human acceptance.
+5. Confirm `phase1_short_run_report.html` satisfies the Human HTML Contract below. The runner performs this check automatically; if it fails, fix the report renderer before asking for human acceptance.
+6. Present the human report path and pause for human acceptance.
 
 ## Report Roles
 
-- `phase1_short_run_report.html` is the human review report. It must be readable prose, especially the decision flow: observed situation, candidate actions, chosen action, why not alternatives, execution result, and review meaning.
-- `phase1_agent_audit_report.html` is the machine/agent audit report. It may be large and table-heavy, but it must preserve raw JSON evidence and expandable details.
-- If the human report reads like raw JSON or field dumps, regenerate or improve the report before asking for acceptance.
+- `phase1_short_run_report.html` is the only human review entrypoint. It must preserve the accepted Chinese HTML shape from `phase1_test1_short_20260512_130155`, not a newly invented engineering summary.
+- `phase1_agent_audit_report.html` is the machine/agent audit report. It may be HTML or another agent-facing format in future revisions, but it must preserve raw JSON evidence and expandable details. It is never a substitute for the human HTML.
+- If the human report reads like raw JSON, field dumps, or a table-only audit, regenerate or improve the report before asking for acceptance.
+
+## Human HTML Contract
+
+The human report must be a polished Chinese HTML review document with this section flow:
+
+1. `Codex HL Phase 1 人类验收报告`
+2. `验收结论`
+3. `我实际观测到的局面变化`, including `起点 T...` and `终点 T...`
+4. `回合叙事`
+5. `重点：决策流程`
+6. `证据边界和你需要判断的点`
+7. `存档和决策关联`
+8. `缺口清单`
+9. `面向 Agent 的报告`, linking to the agent audit artifact
+
+Each decision in the human report must be rendered as prose with these labels:
+
+- `当时看到的问题：`
+- `候选动作：`
+- `我选择了：`
+- `为什么这样选：`
+- `为什么没选其他动作：`
+- `执行后结果：`
+- `对 review 的意义：`
+
+Do not put raw JSON blocks, `<details>`, or `<pre>` audit dumps in `phase1_short_run_report.html`. Raw evidence belongs in `phase1_agent_audit_report.html` and the episode `raw/` files.
 
 ## Rebuild Existing Reports
 

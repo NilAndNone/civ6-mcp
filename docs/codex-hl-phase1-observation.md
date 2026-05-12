@@ -19,6 +19,38 @@ Each episode contains:
 
 The human report is intentionally not a JSON dump. It should explain the decision flow in Chinese prose so a reviewer can understand what the agent saw, what it considered, what it chose, why alternatives were rejected, what happened after execution, and what that means for later review.
 
+## Human HTML Contract
+
+The human-facing artifact is always:
+
+```text
+episodes/<episode_id>/outcome/phase1_short_run_report.html
+```
+
+That file must preserve the accepted review shape from `phase1_test1_short_20260512_130155`. The agent-facing artifact can be large and audit-oriented, but the human HTML must remain a polished Chinese review document with this section flow:
+
+1. `Codex HL Phase 1 人类验收报告`
+2. `验收结论`
+3. `我实际观测到的局面变化`, including `起点 T...` and `终点 T...`
+4. `回合叙事`
+5. `重点：决策流程`
+6. `证据边界和你需要判断的点`
+7. `存档和决策关联`
+8. `缺口清单`
+9. `面向 Agent 的报告`, linking to `phase1_agent_audit_report.html`
+
+The decision-flow section is the most important part for human review. Each decision must be rendered as readable prose with these labels:
+
+- `当时看到的问题：`
+- `候选动作：`
+- `我选择了：`
+- `为什么这样选：`
+- `为什么没选其他动作：`
+- `执行后结果：`
+- `对 review 的意义：`
+
+Do not replace this report with an engineering assembly, raw JSON block, field dump, or audit table. The runner validates this contract after writing the human HTML and fails fast if the shape regresses. Raw evidence belongs in `phase1_agent_audit_report.html`, `raw/*.jsonl`, `raw/civ6_states/*.json`, and `derived/decision_atoms.jsonl`.
+
 ## Fresh Session Procedure
 
 Start in the repo root on Windows:
@@ -69,17 +101,19 @@ A short-run is acceptable only when all four evidence classes are present:
 3. Decisions: each important decision records trigger, background, current goal, `available_actions`, selected action, rationale, why alternatives were not chosen, execution, outcome, and related evidence IDs. The canonical fields are `why_not_alternatives`, `related_tool_call_ids`, `related_state_snapshot_ids`, and `related_save_ids`; `alternatives` and `evidence_ids` are also emitted as compatibility aliases for validators.
 4. Saves: at least the starting save and key checkpoints are indexed with episode, turn, decision id or event, path, size, and SHA256.
 
-The human report must prioritize decision readability. Raw JSON belongs in the Agent audit report, not as the main human narrative.
+The human report must prioritize decision readability and must satisfy the Human HTML Contract above. Raw JSON belongs in the Agent audit report, not as the main human narrative.
 
 ## Validation
 
 Before committing workflow changes, run:
 
 ```powershell
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run python -m py_compile scripts\codex_phase1_observe.py
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run python 'C:\Users\leftv0id\.codex\skills\.system\skill-creator\scripts\quick_validate.py' .codex\skills\civ6-phase1-observation
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run python scripts\codex_phase1_observe.py --report-only phase1_test1_short_20260512_130155
+$env:PYTHONUTF8='1'; $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run python -m py_compile scripts\codex_phase1_observe.py
+$env:PYTHONUTF8='1'; $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run python 'C:\Users\leftv0id\.codex\skills\.system\skill-creator\scripts\quick_validate.py' .codex\skills\civ6-phase1-observation
+$env:PYTHONUTF8='1'; $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run python scripts\codex_phase1_observe.py --report-only phase1_test1_short_20260512_130155
 ```
+
+The final command is a regression check against the previously accepted human report shape. It should rebuild both reports and fail if `phase1_short_run_report.html` no longer matches the Human HTML Contract.
 
 For fresh-session validation, use a separate agent with this prompt:
 

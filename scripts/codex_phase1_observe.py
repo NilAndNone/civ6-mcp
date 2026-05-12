@@ -2815,6 +2815,45 @@ def build_human_report(
 """
 
 
+def validate_human_report_contract(path: Path) -> None:
+    """Keep the human-facing report compatible with the accepted Phase 1 review HTML."""
+    text = path.read_text(encoding="utf-8")
+    lower_text = text.lower()
+    required_fragments = [
+        '<html lang="zh-CN">',
+        "Codex HL Phase 1 人类验收报告",
+        "验收结论",
+        "我实际观测到的局面变化",
+        "起点 T",
+        "终点 T",
+        "回合叙事",
+        "重点：决策流程",
+        "当时看到的问题：",
+        "候选动作：",
+        "我选择了：",
+        "为什么这样选：",
+        "为什么没选其他动作：",
+        "执行后结果：",
+        "对 review 的意义：",
+        "证据边界和你需要判断的点",
+        "存档和决策关联",
+        "缺口清单",
+        "面向 Agent 的报告",
+        "phase1_agent_audit_report.html",
+    ]
+    missing = [fragment for fragment in required_fragments if fragment not in text]
+    forbidden_tags = [tag for tag in ("<details", "<pre") if tag in lower_text]
+    problems = []
+    if missing:
+        problems.append("missing required human-report fragments: " + ", ".join(missing))
+    if forbidden_tags:
+        problems.append("human report contains raw-audit tags: " + ", ".join(forbidden_tags))
+    if problems:
+        raise RuntimeError(
+            f"Human report contract failed for {path}: " + "; ".join(problems)
+        )
+
+
 def generate_report(recorder: Any) -> None:
     tool_rows = load_jsonl(recorder.tool_calls_path)
     lua_rows = load_jsonl(recorder.mcp_path)
@@ -3228,6 +3267,7 @@ def generate_reports(recorder: Any) -> None:
         agent_report_name=agent_report_path.name,
     )
     recorder.report_path.write_text(human_report, encoding="utf-8")
+    validate_human_report_contract(recorder.report_path)
 
 
 async def run_short(args: argparse.Namespace) -> int:
@@ -3362,7 +3402,7 @@ async def run_short(args: argparse.Namespace) -> int:
         except Exception:
             pass
 
-    generate_report(recorder)
+    generate_reports(recorder)
     recorder.write_manifest()
     print(json.dumps({"episode_id": episode_id, "report_path": str(recorder.report_path)}, ensure_ascii=False))
     return 0
