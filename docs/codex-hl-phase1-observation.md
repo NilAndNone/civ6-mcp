@@ -1,20 +1,20 @@
-# Codex HL Phase 1 Observation Workflow
+# Codex HL Phase 1 观测流程
 
-This document is the development contract for the Phase 1 workflow inside the `codex-hl-civ6` plugin. Plugin usage instructions live in `plugin/AGENTS.md` and `plugin/skills/civ6-phase1-observation/SKILL.md`.
+这个文档是 `codex-hl-civ6` 插件内 Phase 1 流程的开发和验收契约。插件安装后的使用说明在 `plugin/AGENTS.md` 和 `plugin/skills/civ6-phase1-observation/SKILL.md`。
 
-Phase 1 means observation only: record a real Civ6 game, produce reviewable evidence, and stop before any T50 continuation.
+Phase 1 只做观测：记录一局真实 Civ6 发生了什么，产出可审阅证据，并在任何 T50 继续流程前暂停。
 
-## What The Plugin Produces
+## 插件会产出什么
 
-The entrypoint `codex-hl-civ6-phase1-observe` runs the real `test 1` single-player save for 3-5 turns and writes an episode under `episodes/<episode_id>/`.
+入口命令 `codex-hl-civ6-phase1-observe` 会加载真实 `test 1` 单人存档，跑 3-5 回合，并在 `episodes/<episode_id>/` 下写入一个 episode。
 
-Each episode contains:
+每个 episode 至少包含：
 
 - `header.json`
 - `raw/tool_calls.jsonl`
 - `raw/mcp.jsonl`
 - `raw/civ6_states/*.json`
-- `raw/saves/save_index.jsonl` plus checkpoint `.Civ6Save` files
+- `raw/saves/save_index.jsonl` 和对应的 `.Civ6Save` 检查点存档
 - `derived/decision_atoms.jsonl`
 - `derived/report_pack.json`
 - `outcome/phase1_short_run_report.draft.html`
@@ -22,31 +22,31 @@ Each episode contains:
 - `outcome/phase1_agent_report.md`
 - `outcome/phase1_agent_audit_report.html`
 
-The human report must explain the decision flow in Chinese prose. It must not become a JSON dump or audit table.
+中文人工报告必须用自然语言解释决策流程，不能变成 JSON 堆叠或审计表格。
 
-## Human HTML Contract
+## 中文人工 HTML 契约
 
-The human-facing artifact is always:
+人类审阅入口固定是：
 
 ```text
 episodes/<episode_id>/outcome/phase1_short_run_report.html
 ```
 
-The report must keep this section flow:
+报告必须保持这个章节顺序：
 
 1. `Codex HL Phase 1 人类验收报告`
 2. `验收结论`
-3. `我实际观测到的局面变化`, including `起点 T...` and `终点 T...`
+3. `我实际观测到的局面变化`，其中包含 `起点 T...` 和 `终点 T...`
 4. `回合叙事`
 5. `重点：决策流程`
 6. `证据边界和你需要判断的点`
 7. `存档和决策关联`
 8. `缺口清单`
-9. `面向 Agent 的报告`, linking to both `phase1_agent_report.md` and `phase1_agent_audit_report.html`
+9. `面向 Agent 的报告`，并链接到 `phase1_agent_report.md` 和 `phase1_agent_audit_report.html`
 
-It must include the current readability floor: `先读这份报告的顺序`, `快速定位`, `关键数字变化`, card-based turn narrative, structured decision cards, compact save rows, and separate quick handoff / full audit tiles.
+报告还必须满足当前可读性底线：包含 `先读这份报告的顺序`、`快速定位`、`关键数字变化`、卡片式回合叙事、结构化决策卡片、紧凑存档行，以及区分 `快速接手` 和 `完整审计` 的两个入口。
 
-Each decision must render these labels:
+每条决策必须展示这些中文标签：
 
 - `当时看到的问题：`
 - `候选动作：`
@@ -56,65 +56,65 @@ Each decision must render these labels:
 - `执行后结果：`
 - `对 review 的意义：`
 
-Raw evidence belongs in `phase1_agent_audit_report.html`, `derived/report_pack.json`, `raw/*.jsonl`, `raw/civ6_states/*.json`, and `derived/decision_atoms.jsonl`.
+原始证据放在 `phase1_agent_audit_report.html`、`derived/report_pack.json`、`raw/*.jsonl`、`raw/civ6_states/*.json` 和 `derived/decision_atoms.jsonl`。
 
-The contract fixture lives in `plugin/fixtures/phase1_human_report_contract/`.
+报告契约夹具在 `plugin/fixtures/phase1_human_report_contract/`。
 
-## Fresh Session Procedure
+## 新会话执行流程
 
-Start in the plugin development checkout on Windows:
+在 Windows 的插件开发目录开始：
 
 ```powershell
 Set-Location O:\civ6\codex-hl-civ6
 & 'C:\Program Files\Git\cmd\git.exe' status --short --branch --untracked-files=all
 ```
 
-Read the plugin skill:
+先读插件技能：
 
 ```text
 plugin/skills/civ6-phase1-observation/SKILL.md
 ```
 
-Run a short validation episode:
+然后跑一次短验收：
 
 ```powershell
 $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-phase1-observe --save-name "test 1" --turns 3
 ```
 
-Do not start a separate `civ6-connector` server for this flow. The runner talks directly to FireTuner and stops stale repo-local connector processes by default.
+这个流程不要单独启动 `civ6-connector` 服务。运行器会直接连接 FireTuner，并默认停止本仓库残留的旧连接器进程。
 
-The command prints the `episode_id` and report path. Open:
+命令会打印 `episode_id` 和报告路径。打开：
 
 ```text
 episodes/<episode_id>/outcome/phase1_short_run_report.html
 ```
 
-Do not continue to T50 until a human accepts that report.
+人工验收这份报告前，不要继续到 T50。
 
-## Report-Only Regeneration
+## 只重建报告
 
-Use report-only mode to rebuild reports for an existing episode without advancing Civ6:
+已有 episode、且不应该推进 Civ6 时，使用报告重建模式：
 
 ```powershell
 $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-phase1-observe --report-only <episode_id>
 ```
 
-Report-only mode must not launch the game, load a save, or run turns.
+报告重建模式不能启动游戏、加载存档或推进回合。
 
-## Acceptance Criteria
+## 验收标准
 
-A short-run is acceptable only when all four evidence classes are present:
+一次短跑只有在四类证据都存在时才算可验收：
 
-1. Tool and connector calls include timestamps, params, raw return content, and raw errors when errors occur.
-2. Turn state snapshots cover empire, cities, units, notifications, threats, research/civic, and production, or include explicit gaps.
-3. Decision records include trigger, background, current goal, `available_actions`, selected action, rationale, why alternatives were not chosen, execution, outcome, and related evidence IDs.
-4. Saves link to episode, turn, decision id or event, path, size, and SHA256.
+1. 工具和连接器调用记录包含时间、参数、原始返回内容，以及出错时的原始错误。
+2. 每回合状态快照覆盖帝国、城市、单位、通知、威胁、科技/市政和生产；缺失项必须明确写出。
+3. 决策记录包含触发原因、背景、当前目标、可选动作、最终选择、理由、为什么没选其他动作、执行过程、结果和相关证据 ID。
+4. 存档记录能关联 episode、回合、决策或事件、路径、文件大小和 SHA256。
 
-The short-run must stop after the human report. It must not proceed to T50 automatically.
+短跑结束后必须停在中文人工报告，不允许自动进入 T50。
 
-## Local Validation
+## 本地验证
 
-Before reporting local development complete, run:
+报告本地开发完成前，至少运行：
 
 ```bash
 uv run python -m py_compile plugin/src/codex_hl/phase1/observer.py plugin/src/civ6_connector/server.py
@@ -122,20 +122,20 @@ uv run pytest tests/test_plugin_structure.py tests/test_phase1_human_report_cont
 uv run pytest tests -q
 ```
 
-On Windows, additionally run the real 3-turn short-run command above. The Mac checkout can validate packaging and report contracts, but it cannot replace the Windows Civ6 run.
+在 Windows 上还要额外跑真实 3 回合短跑。Mac 检查只能证明打包和报告契约，不能替代 Windows Civ6 真机运行。
 
-## Common Failures
+## 常见问题
 
-| Symptom | Action |
+| 现象 | 处理方式 |
 | --- | --- |
-| FireTuner cannot reconnect after loading | Confirm `EnableTuner=1`, close stale Civ6/connector processes, rerun the short-run, and inspect `raw/tool_calls.jsonl`. |
-| A previous validation left a connector server running | Rerun without `--keep-existing-mcp-server`; default preflight stops repo-local connector server processes. |
-| A previous validation left Civ6 at the game screen or main menu | Rerun without `--reuse-running-game`; default preflight resets Civ6 before loading `test 1`. |
-| Human report is raw JSON | Fix the report renderer, then rerun report-only. |
-| Human HTML contract fails | Compare against `plugin/fixtures/phase1_human_report_contract/contract.json` and `golden_skeleton.html`, then rerun report-only. |
+| 加载后 FireTuner 连不上 | 确认 `EnableTuner=1`，关闭残留 Civ6/连接器进程，重新跑短跑，并检查 `raw/tool_calls.jsonl`。 |
+| 上一次验证留下连接器服务 | 不要加 `--keep-existing-mcp-server`，默认预检会停止本仓库的旧连接器服务。 |
+| 上一次验证让 Civ6 停在游戏画面或主菜单 | 不要加 `--reuse-running-game`，默认预检会重置 Civ6 后重新加载 `test 1`。 |
+| 中文人工报告像原始 JSON | 修报告渲染器，然后用报告重建模式重新生成。 |
+| 中文 HTML 契约测试失败 | 对照 `plugin/fixtures/phase1_human_report_contract/contract.json` 和 `golden_skeleton.html`，修好后重建报告。 |
 
-## Commit Hygiene
+## 提交边界
 
-- Keep `episodes/` untracked unless the user asks for a specific artifact.
-- Keep active changes in `plugin/`, `docs/`, `tests/`, `pyproject.toml`, `.github/`, and root development docs.
-- Keep old CivBench/web/eval assets in `archive/legacy/`.
+- `episodes/` 默认不提交，除非用户点名要某个产物。
+- 主线改动应集中在 `plugin/`、`docs/`、`tests/`、`pyproject.toml`、`.github/` 和根目录开发文档。
+- 旧 CivBench、网页和评测资产继续留在 `archive/legacy/`。

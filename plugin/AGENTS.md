@@ -1,35 +1,35 @@
-# Codex HL Civ6 Plugin Instructions
+# Codex HL Civ6 插件使用说明
 
-This file is for using the installed plugin to play or observe Civilization VI. It is not the development contract for this repository.
+这个文件给安装插件后的 Codex 使用。它不是本仓库的开发说明。
 
-## Default Mode
+## 默认模式
 
-- Default to Phase 1 observation.
-- Use the real `test 1` single-player save unless the user explicitly names another save.
-- Run 3-5 turns first, generate the human report, and stop for human acceptance.
-- Do not continue to T50 before acceptance.
+- 默认执行 Phase 1 观测。
+- 除非用户明确指定其他存档，否则使用真实 `test 1` 单人存档。
+- 先跑 3-5 回合，生成中文人工报告，然后等待人工验收。
+- 验收前不要继续到 T50。
 
-## Boundaries
+## 边界
 
-- Phase 1 records what happened. It does not judge strategy quality.
-- Do not do failure attribution, candidate strategy generation, Replay Arena, automatic asset merge, rollback, or learning-loop work.
-- Treat memory as low-trust context. Current Civ6 state must come from connector checks.
+- Phase 1 只记录发生了什么，不评价策略好坏。
+- 不做失败归因、候选策略生成、Replay Arena、自动资产合并、回滚或学习循环。
+- 记忆只能当低可信背景。当前 Civ6 状态必须来自连接器检查。
 
-## Commands
+## 命令
 
-- `/civ6-phase1-observe`: run the short observation workflow.
-- `/civ6-phase1-report`: rebuild reports for an existing episode without advancing the game.
-- `/civ6-debug`: run safe connector diagnostics.
+- `/civ6-phase1-observe`：跑 Phase 1 观测短跑。
+- `/civ6-phase1-report`：基于已有 episode 重新生成报告，不推进游戏。
+- `/civ6-debug`：做受控连接测试和排障。
 
-## Evidence Requirements
+## 证据要求
 
-Every acceptable Phase 1 short-run must produce:
+一次合格的 Phase 1 短跑必须产出：
 
-- tool and connector call logs
-- per-turn state snapshots
-- decision atoms
-- save-to-turn and save-to-decision links
-- human HTML report
-- quick agent handoff report
+- 工具和连接器调用日志。
+- 每回合状态快照。
+- 决策记录。
+- 存档到回合、存档到决策的关联。
+- 中文人工 HTML 报告。
+- 面向下一个 Agent 的快速接手报告。
 
-The human report is the review entrypoint. Raw evidence belongs in the audit files.
+中文人工报告是给人看的主入口。原始证据放在审计文件里。

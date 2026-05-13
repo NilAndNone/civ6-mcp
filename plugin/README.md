@@ -1,10 +1,10 @@
-# Codex HL Civ6 Plugin
+# Codex HL Civ6 插件
 
-This directory is the installable Codex plugin.
+这个目录是可安装的 Codex 插件成品。
 
-Use it for Phase 0/1 Civilization VI observation work:
+它只服务 Phase 0/1 Civ6 观测工作：
 
-- Phase 0: shared vocabulary and boundary checklist.
-- Phase 1: real `test 1` short-run, evidence capture, human report, and stop before T50.
+- Phase 0：统一术语、边界和检查清单。
+- Phase 1：加载真实 `test 1` 存档，跑短回合，记录证据，生成中文人工报告，并在 T50 前暂停。
 
-The repository root is for developing this plugin. Plugin usage instructions live in `AGENTS.md` inside this directory.
+仓库根目录用于开发这个插件。插件安装后的使用说明在本目录的 `AGENTS.md`。

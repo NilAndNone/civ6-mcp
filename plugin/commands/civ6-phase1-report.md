@@ -1,17 +1,15 @@
 # /civ6-phase1-report
 
-Regenerate Phase 1 reports for an existing episode without advancing Civilization VI.
+基于已有 episode 重新生成 Phase 1 报告，不推进 Civilization VI。
 
-## Arguments
+## 参数
 
-- `episode_id`: required
+- `episode_id`：必填，目标 episode 名称。
 
-## Workflow
-
-Run:
+## 使用方式
 
 ```powershell
 $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-phase1-observe --report-only <episode_id>
 ```
 
-Report-only mode must not launch Civ6 or move the live game forward.
+报告重建模式不能启动 Civ6，也不能推进当前游戏。

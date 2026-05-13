@@ -1,50 +1,52 @@
 # codex-hl-civ6
 
-This repository develops the `codex-hl-civ6` Codex plugin.
+这个仓库用于开发 `codex-hl-civ6` Codex 插件。
 
-The plugin is an observation-first Civilization VI harness for Codex HL. Its current scope is Phase 0/1: align vocabulary, run real Civ6 short observations, record evidence, produce a human report, and stop before longer runs.
+插件的目标是让 Codex 以“先观测、再验收”的方式玩 Civilization VI。当前只保证 Phase 0/1：统一术语，跑真实 Civ6 短跑，记录证据，生成中文人工报告，然后在进入更长流程前停下来。
 
-## Active Layout
+## 当前主线目录
 
-- `plugin/` - the self-contained Codex plugin users install.
-- `plugin/AGENTS.md` - runtime instructions for using the plugin.
-- `plugin/src/codex_hl/` - Phase 0/1 plugin logic.
-- `plugin/src/civ6_connector/` - lowest-level Civ6 connector.
-- `docs/` - development roadmap and validation contracts.
-- `tests/` - development tests for the plugin and connector.
-- `archive/legacy/` - old CivBench, web, eval, devlog, publish, Hotseat, and generic MCP assets.
+- `plugin/`：可安装的 Codex 插件成品目录。
+- `plugin/AGENTS.md`：插件安装后给 Codex 看的 Civ6 使用说明。
+- `plugin/src/codex_hl/`：Phase 0/1 主线逻辑。
+- `plugin/src/civ6_connector/`：最底层 Civ6 连接器。
+- `docs/`：开发路线图、架构说明和验收约束。
+- `tests/`：插件结构、连接器和报告契约测试。
+- `archive/legacy/`：旧 CivBench、网页、评测、开发日志、发布脚本、Hotseat 和通用 MCP 资产。
 
-## Development Setup
+## 本地开发检查
+
+首次进入仓库后：
 
 ```bash
 uv sync
 uv run pytest tests -q
 ```
 
-The main local checks are:
+常用检查命令：
 
 ```bash
-uv run python -m py_compile plugin/src/codex_hl/phase1/observer.py
+uv run python -m py_compile plugin/src/codex_hl/phase1/observer.py plugin/src/civ6_connector/server.py
 uv run pytest tests/test_plugin_structure.py tests/test_phase1_human_report_contract.py -q
 uv run pytest tests -q
 ```
 
-## Plugin Entry Points
+## 插件使用入口
 
-The installed plugin exposes a small set of strong commands:
+安装后的插件只暴露少量强命令：
 
-- `/civ6-phase1-observe`
-- `/civ6-phase1-report`
-- `/civ6-debug`
+- `/civ6-phase1-observe`：跑 Phase 1 观测短跑。
+- `/civ6-phase1-report`：基于已有 episode 重新生成报告。
+- `/civ6-debug`：做受控连接测试和排障。
 
-The matching command documents live in `plugin/commands/`.
+对应说明在 `plugin/commands/`。
 
-## End-To-End Acceptance
+## 完整验收
 
-Local tests prove the plugin package, imports, and report contract. Full acceptance still requires Windows Civ6 validation:
+本地测试只能证明插件结构、导入和报告契约没坏。真正验收还需要在 Windows Civ6 机器上完成：
 
-1. Install/use the plugin from the Civ6 machine.
-2. Load the real `test 1` single-player save.
-3. Run a 3-turn Phase 1 observation short-run.
-4. Confirm the episode evidence and human HTML report are generated.
-5. Stop before T50 until human acceptance.
+1. 在 Civ6 机器上安装或使用 `plugin/`。
+2. 加载真实 `test 1` 单人存档。
+3. 跑 3 回合 Phase 1 观测短跑。
+4. 确认生成 episode、四类证据、中文人工 HTML 报告和 Agent 接手报告。
+5. 在人工验收前停止，不能自动继续到 T50。

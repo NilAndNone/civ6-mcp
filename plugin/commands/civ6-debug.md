@@ -1,13 +1,11 @@
 # /civ6-debug
 
-Run safe connector diagnostics for Codex HL Civ6.
+运行受控的 Civ6 连接测试和排障。
 
-## Workflow
-
-Run:
+## 使用方式
 
 ```powershell
 $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-debug
 ```
 
-Use this only for setup checks and FireTuner troubleshooting. It is not a normal gameplay command.
+这个命令只用于安装检查、FireTuner 排障和连接诊断，不是普通自动游玩入口。

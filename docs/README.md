@@ -1,22 +1,22 @@
-# Development Documentation
+# 开发文档
 
-These documents are for developing `codex-hl-civ6`, not for using the installed plugin.
+这里的文档只服务 `codex-hl-civ6` 的开发、设计和验收，不是插件安装后的使用说明。
 
-## Active Docs
+## 当前主线文档
 
-- [Codex HL Evolution Roadmap](codex-hl-evolution-roadmap.md) - roadmap source of truth.
-- [Codex HL Evolution Roadmap HTML](codex-hl-evolution-roadmap.html) - human review companion for the roadmap.
-- [Plugin Architecture](plugin-architecture.md) - current development/runtime separation.
-- [Phase 1 Observation Workflow](codex-hl-phase1-observation.md) - development and validation contract for the current workflow.
+- [Codex HL Evolution Roadmap](codex-hl-evolution-roadmap.md)：路线图唯一权威来源。
+- [Codex HL Evolution Roadmap HTML](codex-hl-evolution-roadmap.html)：路线图的人类审阅对照版本。
+- [插件架构说明](plugin-architecture.md)：当前开发侧和插件使用侧如何隔离。
+- [Phase 1 观测流程](codex-hl-phase1-observation.md)：当前 Phase 1 的开发和验收契约。
 
-## Runtime Docs
+## 插件使用说明
 
-Installed-plugin usage belongs in:
+插件安装后的使用说明放在：
 
 - `plugin/AGENTS.md`
 - `plugin/commands/`
 - `plugin/skills/`
 
-## Legacy Docs
+## 旧文档
 
-Old CivBench, web, eval, devlog, generic MCP, research, and Hotseat documents are archived under `archive/legacy/docs/`.
+旧 CivBench、网页、评测、开发日志、通用 MCP、研究和 Hotseat 文档都已归档到 `archive/legacy/docs/`。

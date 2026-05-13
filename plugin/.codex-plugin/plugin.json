@@ -1,7 +1,7 @@
 {
   "name": "codex-hl-civ6",
   "version": "0.1.0",
-  "description": "Codex HL Civ6 plugin for Phase 0/1 observation-first Civilization VI play.",
+  "description": "用于 Phase 0/1 观测优先 Civ6 游玩的 Codex HL 插件。",
   "author": {
     "name": "Xiaohan Lu"
   },
@@ -16,8 +16,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Codex HL Civ6",
-    "shortDescription": "Run observation-first Codex HL Civ6 episodes",
-    "longDescription": "Codex HL Civ6 installs a self-contained Phase 0/1 harness for Civilization VI. It records real Civ6 turns, decision atoms, state snapshots, saves, and human review reports before any long-run continuation.",
+    "shortDescription": "运行观测优先的 Codex HL Civ6 episode",
+    "longDescription": "Codex HL Civ6 提供一个自包含的 Phase 0/1 Civilization VI 插件。它会在任何长跑继续前，记录真实 Civ6 回合、决策记录、状态快照、存档和中文人工验收报告。",
     "developerName": "Xiaohan Lu",
     "category": "Engineering",
     "capabilities": [
@@ -25,7 +25,7 @@
       "Write"
     ],
     "defaultPrompt": [
-      "Run a 3-turn Phase 1 observation short-run on the test 1 Civ6 save"
+      "在 test 1 Civ6 存档上运行 3 回合 Phase 1 观测短跑"
     ],
     "brandColor": "#2B5C8A",
     "screenshots": []

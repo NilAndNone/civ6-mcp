@@ -1,20 +1,20 @@
 # /civ6-phase1-observe
 
-Run a Codex HL Phase 1 observation short-run.
+运行 Codex HL Phase 1 观测短跑。
 
-## Arguments
+## 参数
 
-- `save_name`: optional, defaults to `test 1`
-- `turns`: optional, defaults to `3`; must stay between 3 and 10 for short-run validation
-- `episode_id`: optional stable episode id
+- `save_name`：可选，默认是 `test 1`。
+- `turns`：可选，默认是 `3`；短跑验收时必须保持在 3 到 10 回合之间。
+- `episode_id`：可选，用于指定稳定的 episode 名称。
 
-## Workflow
+## 流程
 
-1. Read `plugin/AGENTS.md`.
-2. Use `plugin/skills/civ6-phase1-observation/SKILL.md`.
-3. Run:
+1. 阅读 `plugin/AGENTS.md`。
+2. 使用 `plugin/skills/civ6-phase1-observation/SKILL.md`。
+3. 运行：
    ```powershell
    $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-phase1-observe --save-name "test 1" --turns 3
    ```
-4. Open the generated `phase1_short_run_report.html` path for review.
-5. Stop before T50.
+4. 打开生成的 `phase1_short_run_report.html` 做人工验收。
+5. 在验收前停止，不要继续到 T50。
