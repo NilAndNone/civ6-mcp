@@ -39,6 +39,8 @@ from civ_mcp.game_state import GameState  # noqa: E402
 PHASE_LABEL = "Phase 1 Observation Only"
 SAVE_DIR = Path(game_launcher.SINGLE_SAVE_DIR)
 DEFAULT_SAVE_NAME = "test 1"
+MIN_SHORT_RUN_TURNS = 3
+MAX_SHORT_RUN_TURNS = 10
 ACCEPTED_HUMAN_REPORT_EPISODE = "phase1_test1_short_20260512_130155"
 HUMAN_REPORT_CONTRACT_PATH = (
     ROOT / "tests" / "fixtures" / "phase1_human_report_contract" / "contract.json"
@@ -1578,7 +1580,7 @@ async def end_turn_with_record(
             "current_goal": "Advance exactly one real Civ6 turn after mandatory blockers have been handled.",
             "available_actions": actions,
             "selected_action": "end turn now",
-            "rationale": "The short run needs 3-5 real turns; all prior choices and tool calls have been logged.",
+            "rationale": "The short run needs 3-10 real turns; all prior choices and tool calls have been logged.",
             "why_not_alternatives": {
                 "query more state": "The required per-turn state snapshot was already captured.",
                 "make additional changes": "Would move beyond observation and blocker handling.",
@@ -1976,7 +1978,7 @@ def generate_report_legacy(recorder: Any) -> None:
 </head>
 <body>
   <h1>Codex HL Phase 1 短跑验收报告</h1>
-  <p><strong>Phase:</strong> {PHASE_LABEL}. 本报告只用于 3-5 回合短跑验收；人类确认前不继续 T50。</p>
+  <p><strong>Phase:</strong> {PHASE_LABEL}. 本报告只用于 3-10 回合短跑验收；人类确认前不继续 T50。</p>
 
   <h2>Episode 基本信息</h2>
   <div class="grid">
@@ -2473,7 +2475,7 @@ REASON_TRANSLATIONS = {
     "A civic target is already active; Phase 1 records the state instead of changing policy.": "当前已经有市政目标。Phase 1 的职责是记录状态，不主动改写市政路线。",
     "With zero cities, founding immediately is the least speculative action and resolves the main opening blocker.": "当前没有城市；原地建城是最少引入猜测的动作，也能解除开局无法生产、成长和稳定产出的主要阻塞。",
     "No specific recorded tactical target justified movement; fortify/hold avoids speculative exploration in the short validation run.": "快照里没有足够明确的战术目标、敌人或指定探索路线；选择驻守可以避免把推测性探索混进短跑验收。",
-    "The short run needs 3-5 real turns; all prior choices and tool calls have been logged.": "短跑需要推进 3-5 个真实回合；本回合前面的选择、工具调用和状态记录已经落盘。",
+    "The short run needs 3-10 real turns; all prior choices and tool calls have been logged.": "短跑需要推进 3-10 个真实回合；本回合前面的选择、工具调用和状态记录已经落盘。",
     "A research target is already active; Phase 1 should observe rather than rewrite the plan.": "当前已经有科技目标。Phase 1 应该观察并记录，而不是无阻塞地重写路线。",
     "Use repair first if needed, otherwise a static conservative priority list. This does not update the main strategy.": "如果有修理项先修理，否则按固定保守优先级选择。这个选择只用于解除生产阻塞，不更新主策略。",
     "The city has an active queue; changing it would be a strategy intervention.": "城市已经有生产队列。主动切换生产会变成策略干预，不符合本次只观测的边界。",
@@ -2926,7 +2928,7 @@ def build_report_pack(
             "final_turn": recorder.final_turn,
             "actual_turns": actual_turns,
             "route_map": header.get("route_map", PHASE_LABEL),
-            "stop_boundary": "Stop after the 3-5 turn short-run. Do not continue to T50 until human acceptance.",
+            "stop_boundary": "Stop after the 3-10 turn short-run. Do not continue to T50 until human acceptance.",
         },
         "paths": paths,
         "counts": {
@@ -2974,7 +2976,7 @@ def build_report_pack(
             "html_contract_failed": "Fix the human renderer or Codex refinement, then rerun --report-only <episode_id>; raw evidence must remain unchanged.",
         },
         "commands": {
-            "short_run": "$env:PYTHONIOENCODING='utf-8'; & 'O:\\civ6\\.tools\\uv\\uv.exe' run python scripts\\codex_phase1_observe.py --save-name \"test 1\" --turns 3",
+            "short_run": f"$env:PYTHONIOENCODING='utf-8'; & 'O:\\civ6\\.tools\\uv\\uv.exe' run python scripts\\codex_phase1_observe.py --save-name \"test 1\" --turns {actual_turns}",
             "report_only": "$env:PYTHONIOENCODING='utf-8'; & 'O:\\civ6\\.tools\\uv\\uv.exe' run python scripts\\codex_phase1_observe.py --report-only "
             + str(recorder.episode_id),
         },
@@ -3496,7 +3498,7 @@ def generate_report(recorder: Any) -> None:
 <body>
   <h1>Codex HL Phase 1 短跑观测报告</h1>
   <p class="muted">本报告是中文审计入口。页面内直接列出工具调用、MCP/Lua 原始交互、每回合状态、关键决策、存档索引；原始 JSON 仍以 <code>details</code> 折叠块完整保留。</p>
-  <p><strong>Phase:</strong> {html.escape(PHASE_LABEL)}。本次只做 3-5 回合短跑验收；人工确认前不继续 T50。</p>
+  <p><strong>Phase:</strong> {html.escape(PHASE_LABEL)}。本次只做 3-10 回合短跑验收；人工确认前不继续 T50。</p>
 
   <nav class="toc">
     <a href="#review">Codex review 导读</a>
@@ -3956,8 +3958,12 @@ def parse_args() -> argparse.Namespace:
         help="Reuse the current Civ6 process instead of resetting to the front end before loading the save.",
     )
     args = parser.parse_args()
-    if not args.report_only and (args.turns < 3 or args.turns > 5):
-        parser.error("--turns must be between 3 and 5 for Phase 1 short-run validation")
+    if not args.report_only and (
+        args.turns < MIN_SHORT_RUN_TURNS or args.turns > MAX_SHORT_RUN_TURNS
+    ):
+        parser.error(
+            f"--turns must be between {MIN_SHORT_RUN_TURNS} and {MAX_SHORT_RUN_TURNS} for Phase 1 short-run validation"
+        )
     return args
 
 

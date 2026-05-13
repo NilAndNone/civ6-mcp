@@ -368,8 +368,7 @@ if isRanged then
         print("OK:RANGE_ATTACK|target:" .. enemyName .. " at ({target_x},{target_y})|pre_hp:" .. enemyHP .. "/" .. enemyMaxHP .. "|your HP:" .. myHP .. "|range:" .. rng .. " dist:" .. dist)
         print("{SENTINEL}"); return
     elseif dist <= 1 then
-        -- Ranged failed at melee range: fall through to melee attack below
-        isRanged = false
+        {_bail_lua('"ERR:RANGED_MELEE_AVOIDED|Ranged attack failed at melee range; refusing to fall through to melee for ranged unit."')}
     else
         {_bail_lua(f'"ERR:NO_LOS|Cannot ranged-attack target at ({target_x},{target_y}) from (" .. ux .. "," .. uy .. "). LOS blocked or unit already attacked this turn."')}
     end
