@@ -21,16 +21,32 @@
     "缺口清单",
     "面向 Agent 的报告",
     "phase1_agent_report.md",
-    "phase1_agent_audit_report.html"
+    "phase1_agent_audit_report.html",
+    "先读这份报告的顺序",
+    "快速定位",
+    "关键数字变化",
+    "证据线索",
+    "快速接手",
+    "完整审计"
   ],
   "required_css_fragments": [
     ".summary",
+    ".read-path",
+    ".report-nav",
     ".verdict",
     ".tile",
+    ".metric-grid",
+    ".metric-chip",
+    ".turn-timeline",
+    ".turn-card",
     ".turn-flow",
     ".decision-card",
+    ".decision-header",
+    ".decision-grid",
+    ".review-note",
     ".evidence",
-    ".two-col"
+    ".two-col",
+    ".agent-links"
   ],
   "forbidden_fragments": [
     "<details",

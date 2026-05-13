@@ -6,45 +6,68 @@
   <style>
     body { font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif; }
     .summary { border-left: 5px solid #2563eb; }
+    .read-path { padding-left: 24px; }
+    .report-nav { display: flex; }
     .verdict { display: grid; }
     .tile { border: 1px solid #d1d5db; }
+    .metric-grid { display: grid; }
+    .metric-chip { border: 1px solid #dbe3ef; }
+    .turn-timeline { display: grid; }
+    .turn-card { border-left: 4px solid #64748b; }
     .turn-flow { margin: 20px 0 30px; }
     .decision-card { border-left: 4px solid #2563eb; }
+    .decision-header { display: grid; }
+    .decision-grid { display: grid; }
+    .review-note { background: #ecfdf5; }
     .evidence { color: #475569; }
     .two-col { display: grid; }
+    .agent-links { display: grid; }
   </style>
 </head>
 <body>
+<main>
   <h1>Codex HL Phase 1 人类验收报告</h1>
   <section class="summary">
     <h2>验收结论</h2>
     <p>给下一轮 agent 快速接手的摘要在 <a href="phase1_agent_report.md">Agent handoff</a>；完整机器证据另存为 <a href="phase1_agent_audit_report.html">Agent 审计报告</a>。</p>
+    <h3>先读这份报告的顺序</h3>
+    <ol class="read-path"><li>先看四个 PASS 卡片。</li></ol>
   </section>
+  <nav class="report-nav" aria-label="快速定位"><a href="#changes">局面变化</a></nav>
   <div class="verdict"><div class="tile">PASS</div></div>
   <h2>我实际观测到的局面变化</h2>
   <div class="two-col">
     <div class="tile"><h3>起点 T{{ start_turn }}</h3></div>
     <div class="tile"><h3>终点 T{{ final_turn }}</h3></div>
   </div>
+  <h3>关键数字变化</h3>
+  <div class="metric-grid"><div class="metric-chip">城市数</div></div>
   <h2>回合叙事</h2>
+  <div class="turn-timeline"><article class="turn-card">T1</article></div>
   <h2>重点：决策流程</h2>
   <section class="turn-flow">
     <article class="decision-card">
-      <p><strong>当时看到的问题：</strong>{{ observed }}</p>
-      <p><strong>候选动作：</strong>{{ actions }}</p>
-      <p><strong>我选择了：</strong>{{ selected }}</p>
-      <p><strong>为什么这样选：</strong>{{ rationale }}</p>
-      <p><strong>为什么没选其他动作：</strong>{{ alternatives }}</p>
-      <p><strong>执行后结果：</strong>{{ outcome }}</p>
-      <p><strong>对 review 的意义：</strong>{{ meaning }}</p>
-      <p class="evidence">证据：state={{ state_id }}；tool={{ tool_id }}；save={{ save_id }}</p>
+      <header class="decision-header"><h4>{{ selected }}</h4></header>
+      <div class="decision-grid">
+        <p><strong>当时看到的问题：</strong>{{ observed }}</p>
+        <p><strong>候选动作：</strong>{{ actions }}</p>
+        <p><strong>我选择了：</strong>{{ selected }}</p>
+        <p><strong>为什么这样选：</strong>{{ rationale }}</p>
+        <p><strong>为什么没选其他动作：</strong>{{ alternatives }}</p>
+        <p><strong>执行后结果：</strong>{{ outcome }}</p>
+      </div>
+      <p class="review-note"><strong>对 review 的意义：</strong>{{ meaning }}</p>
+      <p class="evidence">证据线索：state={{ state_id }}；tool={{ tool_id }}；save={{ save_id }}</p>
     </article>
   </section>
   <h2>证据边界和你需要判断的点</h2>
   <h2>存档和决策关联</h2>
   <h2>缺口清单</h2>
   <h2>面向 Agent 的报告</h2>
-  <p><a href="phase1_agent_report.md">phase1_agent_report.md</a></p>
-  <p><a href="phase1_agent_audit_report.html">phase1_agent_audit_report.html</a></p>
+  <div class="agent-links">
+    <div class="tile"><h3>快速接手</h3><p><a href="phase1_agent_report.md">phase1_agent_report.md</a></p></div>
+    <div class="tile"><h3>完整审计</h3><p><a href="phase1_agent_audit_report.html">phase1_agent_audit_report.html</a></p></div>
+  </div>
+</main>
 </body>
 </html>

@@ -30,7 +30,7 @@ The human-facing artifact is always:
 episodes/<episode_id>/outcome/phase1_short_run_report.html
 ```
 
-That file must preserve the accepted review shape from `phase1_test1_short_20260512_130155`. The agent-facing artifacts can be large and audit-oriented, but the human HTML must remain a polished Chinese review document with this section flow:
+That file must preserve the accepted review shape from `phase1_test1_short_20260512_130155` while raising the scanability floor. The agent-facing artifacts can be large and audit-oriented, but the human HTML must remain a polished Chinese review document with this section flow:
 
 1. `Codex HL Phase 1 人类验收报告`
 2. `验收结论`
@@ -41,6 +41,8 @@ That file must preserve the accepted review shape from `phase1_test1_short_20260
 7. `存档和决策关联`
 8. `缺口清单`
 9. `面向 Agent 的报告`, linking to both `phase1_agent_report.md` and `phase1_agent_audit_report.html`
+
+The current readability floor is higher than the accepted baseline HTML. A reusable report must include a top-level read path (`先读这份报告的顺序`), quick section anchors (`快速定位`), metric chips for `关键数字变化`, card-based `回合叙事`, structured decision cards (`decision-header`, `decision-grid`, `review-note`), compact save rows that show checkpoint filenames before full paths, and two agent-report tiles for `快速接手` and `完整审计`.
 
 The decision-flow section is the most important part for human review. Each decision must be rendered as readable prose with these labels:
 
@@ -111,7 +113,7 @@ A short-run is acceptable only when all four evidence classes are present:
 3. Decisions: each important decision records trigger, background, current goal, `available_actions`, selected action, rationale, why alternatives were not chosen, execution, outcome, and related evidence IDs. The canonical fields are `why_not_alternatives`, `related_tool_call_ids`, `related_state_snapshot_ids`, and `related_save_ids`; `alternatives` and `evidence_ids` are also emitted as compatibility aliases for validators.
 4. Saves: at least the starting save and key checkpoints are indexed with episode, turn, decision id or event, path, size, and SHA256.
 
-The human report must prioritize decision readability and must satisfy the Human HTML Contract above. It must link both the quick agent handoff and the full audit report. Raw JSON belongs in the Agent audit report and `report_pack.json`, not as the main human narrative.
+The human report must prioritize decision readability and must satisfy the Human HTML Contract above. It should be easier to scan than the accepted baseline report: a reviewer should be able to follow the read path, compare the key numbers, skim each turn card, and inspect each decision card without opening raw evidence. It must link both the quick agent handoff and the full audit report. Raw JSON belongs in the Agent audit report and `report_pack.json`, not as the main human narrative.
 
 ## Validation
 

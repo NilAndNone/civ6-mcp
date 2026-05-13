@@ -68,15 +68,31 @@ DEFAULT_HUMAN_REPORT_CONTRACT = {
         "面向 Agent 的报告",
         "phase1_agent_report.md",
         "phase1_agent_audit_report.html",
+        "先读这份报告的顺序",
+        "快速定位",
+        "关键数字变化",
+        "证据线索",
+        "快速接手",
+        "完整审计",
     ],
     "required_css_fragments": [
         ".summary",
+        ".read-path",
+        ".report-nav",
         ".verdict",
         ".tile",
+        ".metric-grid",
+        ".metric-chip",
+        ".turn-timeline",
+        ".turn-card",
         ".turn-flow",
         ".decision-card",
+        ".decision-header",
+        ".decision-grid",
+        ".review-note",
         ".evidence",
         ".two-col",
+        ".agent-links",
     ],
     "forbidden_fragments": ["<details", "<pre", "{&quot;turn&quot;"],
 }
@@ -2600,6 +2616,57 @@ def unit_sentence(state: dict[str, Any]) -> str:
     return "；".join(parts) + "。"
 
 
+def emptyish(value: Any) -> bool:
+    return value is None or str(value).strip().lower() in {"", "none", "null", "nothing"}
+
+
+def overview_sentence(state: dict[str, Any]) -> str:
+    overview = state.get("overview") or {}
+    threats = state.get("threats") or []
+    notifications = state.get("notifications") or []
+    research = "科技为空" if emptyish(overview.get("current_research")) else f"科技为{humanize(overview.get('current_research'))}"
+    civic = "市政为空" if emptyish(overview.get("current_civic")) else f"市政为《{humanize(overview.get('current_civic'))}》"
+    return (
+        f"城市 {overview.get('num_cities', 0)}，单位 {overview.get('num_units', 0)}；"
+        f"金币 {fmt_num(overview.get('gold', 0))}（每回合 {fmt_num(overview.get('gold_per_turn', 0))}），"
+        f"科研 {fmt_num(overview.get('science_yield', 0))}，文化 {fmt_num(overview.get('culture_yield', 0))}；"
+        f"{research}，{civic}；通知 {len(notifications)} 条，威胁 {len(threats)} 条。"
+    )
+
+
+def metric_chip(label: str, start: Any, end: Any, suffix: str = "") -> str:
+    delta_class = "neutral"
+    try:
+        delta = end - start
+        delta_text = f"{'+' if delta > 0 else ''}{fmt_num(delta)}{suffix}"
+        if delta > 0:
+            delta_class = "positive"
+        elif delta < 0:
+            delta_class = "negative"
+    except Exception:
+        delta_text = "n/a"
+    return (
+        "<div class=\"metric-chip\">"
+        f"<span>{html.escape(label)}</span>"
+        f"<strong>{html.escape(fmt_num(start))} → {html.escape(fmt_num(end))}</strong>"
+        f"<em class=\"{delta_class}\">{html.escape(delta_text)}</em>"
+        "</div>"
+    )
+
+
+def code_badges(values: Any) -> str:
+    if not values:
+        return "<span>无</span>"
+    if not isinstance(values, list):
+        values = [values]
+    return "".join(f"<code>{html.escape(str(value))}</code>" for value in values)
+
+
+def basename_text(value: Any) -> str:
+    text = str(value or "")
+    return text.replace("\\", "/").rsplit("/", 1)[-1]
+
+
 def decision_flow_narrative(decision: dict[str, Any]) -> dict[str, str]:
     trigger = str(decision.get("trigger", ""))
     selected = humanize(decision.get("selected_action"))
@@ -2664,17 +2731,25 @@ def build_human_decision_flow(decisions: list[dict[str, Any]]) -> str:
             flow = decision_flow_narrative(decision)
             rows.append(
                 "<article class=\"decision-card\">"
-                f"<h4>{html.escape(str(decision.get('decision_id')))} - {html.escape(flow['selected'])}</h4>"
-                f"<p><strong>当时看到的问题：</strong>{html.escape(flow['observed'])}</p>"
-                f"<p><strong>候选动作：</strong>{html.escape(flow['actions'])}</p>"
-                f"<p><strong>我选择了：</strong>{html.escape(flow['selected'])}</p>"
-                f"<p><strong>为什么这样选：</strong>{html.escape(flow['rationale'])}</p>"
-                f"<p><strong>为什么没选其他动作：</strong>{html.escape(flow['why_not'])}</p>"
-                f"<p><strong>执行后结果：</strong>{html.escape(flow['outcome'])}</p>"
-                f"<p><strong>对 review 的意义：</strong>{html.escape(flow['meaning'])}</p>"
-                f"<p class=\"evidence\">证据：state={html.escape(joined_ids(decision.get('related_state_snapshot_ids')) or '无')}；"
-                f"tool={html.escape(joined_ids(decision.get('related_tool_call_ids')) or '无')}；"
-                f"save={html.escape(joined_ids(decision.get('related_save_ids')) or '无')}</p>"
+                "<header class=\"decision-header\">"
+                f"<span class=\"decision-id\">{html.escape(str(decision.get('decision_id')))}</span>"
+                f"<h4>{html.escape(flow['selected'])}</h4>"
+                f"<span class=\"turn-badge\">T{html.escape(str(turn))}</span>"
+                "</header>"
+                "<div class=\"decision-grid\">"
+                f"<p><strong>当时看到的问题：</strong><span>{html.escape(flow['observed'])}</span></p>"
+                f"<p><strong>候选动作：</strong><span>{html.escape(flow['actions'])}</span></p>"
+                f"<p><strong>我选择了：</strong><span>{html.escape(flow['selected'])}</span></p>"
+                f"<p><strong>为什么这样选：</strong><span>{html.escape(flow['rationale'])}</span></p>"
+                f"<p><strong>为什么没选其他动作：</strong><span>{html.escape(flow['why_not'])}</span></p>"
+                f"<p><strong>执行后结果：</strong><span>{html.escape(flow['outcome'])}</span></p>"
+                "</div>"
+                f"<p class=\"review-note\"><strong>对 review 的意义：</strong>{html.escape(flow['meaning'])}</p>"
+                "<p class=\"evidence\">证据线索："
+                f"state {code_badges(decision.get('related_state_snapshot_ids'))}"
+                f" tool {code_badges(decision.get('related_tool_call_ids'))}"
+                f" save {code_badges(decision.get('related_save_ids'))}"
+                "</p>"
                 "</article>"
             )
         blocks.append(
@@ -2865,6 +2940,15 @@ def build_report_pack(
         "human_html_contract": load_human_report_contract(),
         "human_report_guidance": {
             "role": "Polished Chinese review HTML for a human. It should be agent-refined prose, not a raw evidence dump.",
+            "readability_floor": [
+                "top read path for reviewer order",
+                "quick nav anchors",
+                "metric chips for key numeric changes",
+                "card-based turn narrative",
+                "structured decision cards with review notes",
+                "compact save filenames before full paths",
+                "separate quick handoff and full audit tiles",
+            ],
             "allowed_to_change": [
                 "episode id",
                 "counts",
@@ -2874,7 +2958,7 @@ def build_report_pack(
             ],
             "must_preserve": [
                 "accepted section order",
-                "CSS skeleton and card layout",
+                "CSS skeleton and improved card layout",
                 "decision-flow labels",
                 "links to both agent handoff and audit report",
                 "no raw JSON/details/pre blocks",
@@ -2929,8 +3013,9 @@ def build_agent_handoff(report_pack: dict[str, Any]) -> str:
 {status_rows}
 
 ## Human HTML Contract
-- Preserve the accepted `phase1_test1_short_20260512_130155` structure, style skeleton, sections, and decision-flow labels.
-- The final human HTML must be Chinese, readable, and decision-focused.
+- Preserve the accepted `phase1_test1_short_20260512_130155` structure, sections, and decision-flow labels while keeping the newer scan-friendly layout.
+- The final human HTML must be Chinese, readable, decision-focused, and easier to skim than the accepted baseline.
+- It must include the read path, quick nav, metric chips, turn cards, structured decision cards, compact save rows, and the quick handoff/full audit tiles.
 - Raw JSON, `<details>`, and `<pre>` belong only in the audit HTML, never in the human HTML.
 - Human HTML must link both `phase1_agent_report.md` and `phase1_agent_audit_report.html`.
 
@@ -2979,15 +3064,15 @@ def build_human_report(
     start_turn = first_state.get("turn", "?")
     final_turn = final_state.get("turn", "?")
 
-    changes = [
-        delta_line("城市数", start.get("num_cities", 0), end.get("num_cities", 0)),
-        delta_line("单位数", start.get("num_units", 0), end.get("num_units", 0)),
-        delta_line("金币", start.get("gold", 0), end.get("gold", 0)),
-        delta_line("每回合金币", start.get("gold_per_turn", 0), end.get("gold_per_turn", 0)),
-        delta_line("科技产出", start.get("science_yield", 0), end.get("science_yield", 0)),
-        delta_line("文化产出", start.get("culture_yield", 0), end.get("culture_yield", 0)),
-        delta_line("分数", start.get("score", 0), end.get("score", 0)),
-        delta_line("已探索陆地", start.get("explored_land", 0), end.get("explored_land", 0)),
+    change_chips = [
+        metric_chip("城市数", start.get("num_cities", 0), end.get("num_cities", 0)),
+        metric_chip("单位数", start.get("num_units", 0), end.get("num_units", 0)),
+        metric_chip("金币", start.get("gold", 0), end.get("gold", 0)),
+        metric_chip("每回合金币", start.get("gold_per_turn", 0), end.get("gold_per_turn", 0)),
+        metric_chip("科技产出", start.get("science_yield", 0), end.get("science_yield", 0)),
+        metric_chip("文化产出", start.get("culture_yield", 0), end.get("culture_yield", 0)),
+        metric_chip("分数", start.get("score", 0), end.get("score", 0)),
+        metric_chip("已探索陆地", start.get("explored_land", 0), end.get("explored_land", 0)),
     ]
 
     saves_by_turn: dict[int, list[dict[str, Any]]] = {}
@@ -3002,11 +3087,18 @@ def build_human_report(
             for save in saves_by_turn.get(turn, [])
         ) or "无"
         turn_story.append(
-            "<tr>"
-            f"<td>T{html.escape(str(turn))}</td>"
-            f"<td>{html.escape(city_sentence(state))}<br>{html.escape(production_sentence(state))}<br>{html.escape(unit_sentence(state))}</td>"
-            f"<td>{html.escape(saves_text)}</td>"
-            "</tr>"
+            "<article class=\"turn-card\">"
+            "<header>"
+            f"<strong>T{html.escape(str(turn))}</strong>"
+            f"<span>关联存档：{html.escape(saves_text)}</span>"
+            "</header>"
+            "<ul>"
+            f"<li>{html.escape(overview_sentence(state))}</li>"
+            f"<li>{html.escape(city_sentence(state))}</li>"
+            f"<li>{html.escape(production_sentence(state))}</li>"
+            f"<li>{html.escape(unit_sentence(state))}</li>"
+            "</ul>"
+            "</article>"
         )
 
     gap_rows = "\n".join(
@@ -3025,7 +3117,7 @@ def build_human_report(
         f"<td>{html.escape(str(save.get('decision_id') or '关键事件'))}</td>"
         f"<td>{html.escape(str(save.get('label', '')))}</td>"
         f"<td>{html.escape(str(save.get('event', '')))}</td>"
-        f"<td><code>{html.escape(str(save.get('episode_path', '')))}</code></td>"
+        f"<td><strong>{html.escape(basename_text(save.get('episode_path', '')))}</strong><br><code class=\"path-mini\">{html.escape(str(save.get('episode_path', '')))}</code></td>"
         "</tr>"
         for save in saves
     )
@@ -3039,41 +3131,82 @@ def build_human_report(
   <meta charset="utf-8">
   <title>Codex HL Phase 1 人类验收报告 - {html.escape(recorder.episode_id)}</title>
   <style>
-    body {{ font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif; color: #1f2937; margin: 34px; line-height: 1.68; max-width: 1180px; }}
+    body {{ font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif; color: #1f2937; margin: 0; line-height: 1.68; background: #f8fafc; }}
+    main {{ max-width: 1120px; margin: 0 auto; padding: 34px 28px 52px; background: #ffffff; }}
     h1, h2, h3, h4 {{ color: #111827; line-height: 1.25; }}
-    h1 {{ margin-bottom: 6px; }}
-    h2 {{ border-top: 2px solid #e5e7eb; padding-top: 22px; margin-top: 34px; }}
-    .subtitle, .muted {{ color: #6b7280; }}
-    .summary {{ background: #f8fafc; border: 1px solid #cbd5e1; border-left: 5px solid #2563eb; border-radius: 6px; padding: 16px 18px; }}
+    h1 {{ margin: 0 0 6px; font-size: 30px; }}
+    h2 {{ border-top: 2px solid #e5e7eb; padding-top: 24px; margin-top: 34px; }}
+    h3 {{ margin-bottom: 10px; }}
+    .subtitle, .muted {{ color: #64748b; }}
+    .summary {{ background: #f8fafc; border: 1px solid #cbd5e1; border-left: 5px solid #2563eb; border-radius: 6px; padding: 16px 18px; margin-top: 18px; }}
+    .summary h2 {{ border: 0; margin-top: 0; padding-top: 0; }}
+    .read-path {{ margin: 12px 0 0; padding-left: 24px; }}
+    .report-nav {{ display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0; }}
+    .report-nav a {{ color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 999px; padding: 5px 10px; text-decoration: none; }}
     .verdict {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 18px 0; }}
     .tile {{ border: 1px solid #d1d5db; border-radius: 6px; padding: 12px; background: #fff; }}
     .pass {{ color: #047857; font-weight: 700; }}
     .fail {{ color: #b91c1c; font-weight: 700; }}
+    .metric-grid {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 14px 0 4px; }}
+    .metric-chip {{ border: 1px solid #dbe3ef; border-radius: 6px; padding: 10px 12px; background: #ffffff; }}
+    .metric-chip span {{ display: block; color: #64748b; font-size: 13px; }}
+    .metric-chip strong {{ display: block; margin-top: 3px; font-size: 16px; }}
+    .metric-chip em {{ font-style: normal; font-weight: 700; }}
+    .metric-chip em.positive {{ color: #047857; }}
+    .metric-chip em.negative {{ color: #b45309; }}
+    .metric-chip em.neutral {{ color: #64748b; }}
     table {{ border-collapse: collapse; width: 100%; margin: 12px 0 22px; }}
     th, td {{ border: 1px solid #d1d5db; padding: 9px; text-align: left; vertical-align: top; }}
     th {{ background: #f3f4f6; }}
-    code {{ background: #eef2ff; padding: 1px 4px; border-radius: 4px; }}
+    code {{ background: #eef2ff; padding: 1px 4px; border-radius: 4px; word-break: break-word; }}
+    .path-mini {{ color: #64748b; font-size: 12px; }}
+    .turn-timeline {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }}
+    .turn-card {{ border: 1px solid #d1d5db; border-left: 4px solid #64748b; border-radius: 6px; background: #ffffff; padding: 12px; }}
+    .turn-card header {{ display: flex; justify-content: space-between; gap: 12px; color: #475569; }}
+    .turn-card ul {{ margin: 8px 0 0; padding-left: 18px; }}
     .turn-flow {{ margin: 20px 0 30px; }}
-    .decision-card {{ border: 1px solid #bfdbfe; border-left: 4px solid #2563eb; background: #eff6ff; border-radius: 6px; padding: 14px; margin: 12px 0; }}
-    .decision-card h4 {{ margin: 0 0 8px; }}
-    .decision-card p {{ margin: 7px 0; }}
+    .decision-card {{ border: 1px solid #bfdbfe; border-left: 4px solid #2563eb; background: #f8fbff; border-radius: 6px; padding: 14px; margin: 12px 0; }}
+    .decision-header {{ display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; margin-bottom: 10px; }}
+    .decision-header h4 {{ margin: 0; }}
+    .decision-id, .turn-badge {{ color: #1d4ed8; background: #dbeafe; border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 700; }}
+    .decision-grid {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }}
+    .decision-grid p {{ background: #ffffff; border: 1px solid #dbe3ef; border-radius: 6px; padding: 10px; margin: 0; }}
+    .decision-grid strong {{ display: block; margin-bottom: 4px; color: #334155; }}
+    .review-note {{ background: #ecfdf5; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px; margin: 10px 0 8px; }}
     .evidence {{ color: #475569; font-size: 13px; }}
-    details {{ margin-top: 8px; }}
-    summary {{ cursor: pointer; color: #1d4ed8; }}
-    pre {{ white-space: pre-wrap; word-break: break-word; background: #111827; color: #f9fafb; padding: 10px; border-radius: 6px; max-height: 460px; overflow: auto; }}
     .two-col {{ display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }}
+    .agent-links {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }}
+    .agent-links a {{ color: #1d4ed8; font-weight: 700; }}
     ul {{ padding-left: 22px; }}
+    @media (max-width: 860px) {{ .verdict, .metric-grid, .two-col, .turn-timeline, .decision-grid, .agent-links {{ grid-template-columns: 1fr; }} main {{ padding: 24px 16px; }} }}
   </style>
 </head>
 <body>
+<main>
   <h1>Codex HL Phase 1 人类验收报告</h1>
   <p class="subtitle">episode: <code>{html.escape(recorder.episode_id)}</code>；存档：<code>{html.escape(str(recorder.save_name))}</code>；路线：{html.escape(str(header.get('route_map', PHASE_LABEL)))}。</p>
 
   <section class="summary">
-    <h2 style="border:0; margin-top:0; padding-top:0;">验收结论</h2>
+    <h2 id="verdict">验收结论</h2>
     <p>本次短跑从 T{html.escape(str(start_turn))} 推进到 T{html.escape(str(final_turn))}，实际推进 {actual_turns} 回合。我的操作只用于解除短跑中的必要阻塞并验证记录链路，没有继续 T50，没有做策略学习、失败归因、Replay Arena 或资产 promote/reject。</p>
     <p>人类版重点解释“为什么这样决策”。给下一轮 agent 快速接手的摘要在 <a href="{html.escape(agent_handoff_name)}">Agent handoff</a>；完整机器证据另存为 <a href="{html.escape(agent_report_name)}">Agent 审计报告</a>，原始 JSONL 和存档仍保留在 episode 目录下。</p>
+    <h3>先读这份报告的顺序</h3>
+    <ol class="read-path">
+      <li>先看四个 PASS 卡片，确认这次短跑有没有达到 Phase 1 的最低证据门槛。</li>
+      <li>再看局面变化和回合叙事，建立 T1 到 T{html.escape(str(final_turn))} 的整体画面。</li>
+      <li>重点 review 决策流程，判断我看到的信息、候选项、选择理由和未选理由是否足够清楚。</li>
+      <li>最后看证据边界、存档关联和缺口清单，决定是否允许同一套机制继续 T50。</li>
+    </ol>
   </section>
+
+  <nav class="report-nav" aria-label="快速定位">
+    <a href="#changes">局面变化</a>
+    <a href="#turn-story">回合叙事</a>
+    <a href="#decision-flow">决策流程</a>
+    <a href="#evidence-boundary">证据边界</a>
+    <a href="#saves">存档关联</a>
+    <a href="#agent-reports">Agent 报告</a>
+  </nav>
 
   <div class="verdict">
     <div class="tile"><strong>工具/MCP 原始记录</strong><br><span class="{ 'pass' if tool_complete and mcp_complete else 'fail' }">{yes_no(tool_complete and mcp_complete)}</span><br>{len(tool_rows)} tool calls，{len(lua_rows)} Lua/MCP exchanges</div>
@@ -3082,34 +3215,35 @@ def build_human_report(
     <div class="tile"><strong>存档关联</strong><br><span class="{ 'pass' if save_complete else 'fail' }">{yes_no(save_complete)}</span><br>{len(saves)} 个索引存档</div>
   </div>
 
-  <h2>我实际观测到的局面变化</h2>
+  <h2 id="changes">我实际观测到的局面变化</h2>
   <div class="two-col">
     <div class="tile">
       <h3>起点 T{html.escape(str(start_turn))}</h3>
-      <p>还没有城市。地图上只有开拓者和勇士两个单位；科技为空，市政已经是《法典》；金币 5，每回合金币 0，科技和文化产出都是 0。没有发现威胁，但有“指挥单位”的行动提示。</p>
+      <p>{html.escape(overview_sentence(first_state))}</p>
       <p>{html.escape(unit_sentence(first_state))}</p>
     </div>
     <div class="tile">
       <h3>终点 T{html.escape(str(final_turn))}</h3>
-      <p>已经建立城市西安，人口 1；金币到 20，每回合金币 5，科技 2.5，文化 1.3；当前科技为采矿业，市政仍是《法典》。城市正在生产建造者，预计还需 4 回合。地图上保留 1 个勇士，没有记录到威胁。</p>
+      <p>{html.escape(overview_sentence(final_state))}</p>
       <p>{html.escape(city_sentence(final_state))}</p>
+      <p>{html.escape(production_sentence(final_state))}</p>
     </div>
   </div>
-  <ul>
-    {''.join(f'<li>{html.escape(line)}</li>' for line in changes)}
-  </ul>
+  <h3>关键数字变化</h3>
+  <div class="metric-grid">
+    {''.join(change_chips)}
+  </div>
 
-  <h2>回合叙事</h2>
-  <table>
-    <tr><th>回合</th><th>人类可读状态</th><th>关联存档</th></tr>
+  <h2 id="turn-story">回合叙事</h2>
+  <div class="turn-timeline">
     {''.join(turn_story)}
-  </table>
+  </div>
 
-  <h2>重点：决策流程</h2>
+  <h2 id="decision-flow">重点：决策流程</h2>
   <p>下面是我对每条关键决策的人工化复述。每条都按“看到什么 -> 候选动作 -> 选择 -> 为什么没选其他 -> 执行结果 -> review 意义”展开，避免把 JSON 直接丢给人看。</p>
   {build_human_decision_flow(decisions)}
 
-  <h2>证据边界和你需要判断的点</h2>
+  <h2 id="evidence-boundary">证据边界和你需要判断的点</h2>
   <ul>
     <li>这次短跑证明记录链路可用，但并不证明这些开局选择是最优策略。</li>
     <li>每回合开始都有状态快照；非 end-turn 决策后主要依赖 tool 返回、decision outcome 和后续回合快照来确认结果。如果你要求 T50 更严格，应增加“每个关键决策后的 after-decision 快照”。</li>
@@ -3117,21 +3251,32 @@ def build_human_report(
     <li>工具错误和 Lua 错误没有隐藏：tool error={tool_error_count}，lua error={lua_error_count}。详见 Agent 审计报告。</li>
   </ul>
 
-  <h2>存档和决策关联</h2>
+  <h2 id="saves">存档和决策关联</h2>
   <table>
     <tr><th>存档</th><th>回合</th><th>关联决策/事件</th><th>label</th><th>event</th><th>路径</th></tr>
     {save_rows}
   </table>
 
-  <h2>缺口清单</h2>
+  <h2 id="gaps">缺口清单</h2>
   <table>
     <tr><th>字段</th><th>为什么拿不到/缺失</th><th>下一步建议</th></tr>
     {gap_rows}
   </table>
 
-  <h2>面向 Agent 的报告</h2>
-  <p>下一轮 agent 先读快速 handoff：<a href="{html.escape(agent_handoff_name)}">{html.escape(agent_handoff_name)}</a>。</p>
-  <p>机器可审计版保留完整 tool/MCP/state/decision/save 表格和可展开 JSON：<a href="{html.escape(agent_report_name)}">{html.escape(agent_report_name)}</a>。</p>
+  <h2 id="agent-reports">面向 Agent 的报告</h2>
+  <div class="agent-links">
+    <div class="tile">
+      <h3>快速接手</h3>
+      <p>下一轮 agent 先读这份 handoff，避免从大体积审计 HTML 里重新摸索流程。</p>
+      <p><a href="{html.escape(agent_handoff_name)}">{html.escape(agent_handoff_name)}</a></p>
+    </div>
+    <div class="tile">
+      <h3>完整审计</h3>
+      <p>机器可审计版保留完整 tool/MCP/state/decision/save 表格和可展开 JSON。</p>
+      <p><a href="{html.escape(agent_report_name)}">{html.escape(agent_report_name)}</a></p>
+    </div>
+  </div>
+</main>
 </body>
 </html>
 """

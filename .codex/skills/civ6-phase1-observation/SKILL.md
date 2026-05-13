@@ -54,7 +54,7 @@ Use this skill to run the Codex HL Phase 1 observation workflow on the real `tes
 
 ## Report Roles
 
-- `phase1_short_run_report.html` is the only human review entrypoint. It must preserve the accepted Chinese HTML shape from `phase1_test1_short_20260512_130155`, not a newly invented engineering summary.
+- `phase1_short_run_report.html` is the only human review entrypoint. It must preserve the accepted Chinese HTML shape from `phase1_test1_short_20260512_130155` while improving scanability, not collapse into a newly invented engineering summary.
 - `phase1_short_run_report.draft.html` is runner-produced draft material. It is useful for renderer debugging, but it is not the human acceptance entrypoint if it fails the final contract.
 - `phase1_agent_report.md` is the quick handoff for the next agent/session. Read this first when resuming.
 - `phase1_agent_audit_report.html` is the complete machine/agent audit report with raw JSON evidence and expandable details. It is never a substitute for the human HTML.
@@ -73,6 +73,16 @@ The human report must be a polished Chinese HTML review document with this secti
 7. `存档和决策关联`
 8. `缺口清单`
 9. `面向 Agent 的报告`, linking to both `phase1_agent_report.md` and the agent audit artifact
+
+The readability floor is higher than the accepted baseline HTML. A reusable report must include:
+
+- a short `先读这份报告的顺序` block near the top, so a reviewer knows what to inspect first
+- a `快速定位` nav with anchors to the major sections
+- `关键数字变化` metric chips instead of only a dense prose/list comparison
+- per-turn narrative rendered as `turn-card` cards, not a wide audit table
+- decision records rendered as `decision-header` + `decision-grid` + `review-note`
+- compact save rows that show the checkpoint filename first and the full path second
+- `快速接手` and `完整审计` tiles for the two agent-facing artifacts
 
 Each decision in the human report must be rendered as prose with these labels:
 
