@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Codex HL Evolution Harness Roadmap</title>
+<style>
+:root {
+  --bg: #f7f8f5;
+  --paper: #ffffff;
+  --ink: #1f2933;
+  --muted: #5f6b7a;
+  --line: #d8ddd2;
+  --green: #2f7d62;
+  --blue: #2d6cdf;
+  --amber: #b7791f;
+  --red: #b94a48;
+  --purple: #6b57a8;
+  --soft-green: #e7f3ee;
+  --soft-blue: #eaf1ff;
+  --soft-amber: #fff5dd;
+  --soft-purple: #f1edff;
+  --soft-red: #fdeceb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.58;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-bottom: 1px solid var(--line);
+  background: rgba(247, 248, 245, 0.94);
+  backdrop-filter: blur(10px);
+}
+
+.topbar-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 12px 22px;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
+  font-weight: 750;
+  color: var(--ink);
+}
+
+.topbar span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 34px 22px 72px;
+}
+
+.hero {
+  padding: 28px 0 22px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+  gap: 28px;
+  align-items: end;
+}
+
+.eyebrow {
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 10px 0 14px;
+  font-size: 40px;
+  line-height: 1.08;
+  font-weight: 820;
+  letter-spacing: 0;
+}
+
+.hero p {
+  margin: 0;
+  max-width: 760px;
+  font-size: 18px;
+  color: var(--muted);
+}
+
+.focus-box {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+}
+
+.focus-box strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--green);
+}
+
+.focus-box p {
+  font-size: 15px;
+}
+
+.section {
+  margin-top: 38px;
+}
+
+h2 {
+  margin: 0 0 16px;
+  font-size: 26px;
+  line-height: 1.22;
+  letter-spacing: 0;
+}
+
+h3 {
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+
+p {
+  margin: 0 0 10px;
+}
+
+.phase-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.phase {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-height: 146px;
+  padding: 14px;
+}
+
+.phase .label {
+  display: inline-block;
+  margin-bottom: 10px;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.label.now {
+  color: var(--green);
+  background: var(--soft-green);
+}
+
+.label.mid {
+  color: var(--blue);
+  background: var(--soft-blue);
+}
+
+.label.future {
+  color: var(--purple);
+  background: var(--soft-purple);
+}
+
+.phase p {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.lane-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.lane-table th,
+.lane-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 13px 14px;
+  vertical-align: top;
+  text-align: left;
+}
+
+.lane-table th {
+  background: #eef1ea;
+  font-size: 13px;
+  color: #374151;
+}
+
+.lane-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.lane-table td {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.lane-table b {
+  color: var(--ink);
+}
+
+.swimlanes {
+  display: grid;
+  gap: 12px;
+}
+
+.swimlane {
+  display: grid;
+  grid-template-columns: 130px repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  align-items: stretch;
+}
+
+.lane-name,
+.lane-step {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--paper);
+  min-height: 96px;
+}
+
+.lane-name {
+  display: flex;
+  align-items: center;
+  font-weight: 780;
+}
+
+.lane-step {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.lane-step strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink);
+}
+
+.record {
+  border-left: 4px solid var(--green);
+}
+
+.asset {
+  border-left: 4px solid var(--blue);
+}
+
+.verify {
+  border-left: 4px solid var(--amber);
+}
+
+.capability-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.capability {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  padding: 16px;
+  min-height: 142px;
+}
+
+.capability .tag {
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #eef1ea;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.capability p {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.flow {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+}
+
+.flow-row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  align-items: stretch;
+}
+
+.flow-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  min-height: 98px;
+  background: #fbfcf9;
+  position: relative;
+}
+
+.flow-item:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -8px;
+  width: 8px;
+  height: 1px;
+  background: var(--line);
+}
+
+.flow-item strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.flow-item p {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.warning {
+  margin-top: 14px;
+  padding: 13px 14px;
+  border-radius: 8px;
+  background: var(--soft-red);
+  border: 1px solid #f3c3c1;
+  color: #7b2e2d;
+  font-size: 14px;
+}
+
+.now-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.8fr);
+  gap: 14px;
+}
+
+.checklist,
+.metrics {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+}
+
+ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+li {
+  margin: 6px 0;
+  color: var(--muted);
+}
+
+.metric-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.metric {
+  background: var(--soft-amber);
+  border: 1px solid #ead7a8;
+  border-radius: 8px;
+  padding: 12px;
+  font-weight: 740;
+  color: #6f4b12;
+  text-align: center;
+}
+
+.footer {
+  margin-top: 48px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+@media (max-width: 980px) {
+  .hero,
+  .now-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .phase-grid,
+  .capability-grid,
+  .metric-list {
+    grid-template-columns: 1fr;
+  }
+
+  .swimlane {
+    grid-template-columns: 1fr;
+  }
+
+  .flow-row {
+    grid-template-columns: 1fr;
+  }
+
+  .flow-item:not(:last-child)::after {
+    display: none;
+  }
+
+  h1 {
+    font-size: 32px;
+  }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">Codex HL Evolution Harness</div>
+    <span>Roadmap: observation first, automation later</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div>
+      <div class="eyebrow">Roadmap v1</div>
+      <h1>先记录真实对局，<br>再沉淀资产和验证集，最终自动合并。</h1>
+      <p>这份路线图把系统拆成记录系统、资产系统、验证系统三条线。近期只做 Phase 1 观测，远期目标是不设人类 merge 闸门，由系统自动合并、自动回滚、自动审计。</p>
+    </div>
+    <div class="focus-box">
+      <strong>当前优先级：Phase 1</strong>
+      <p>先用真实 test 1 单人存档跑 3-5 回合，证明工具调用、回合状态、关键决策、存档关联都能完整落盘，再进入 T50。</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>阶段总览</h2>
+    <div class="phase-grid">
+      <div class="phase">
+        <span class="label now">Phase 0</span>
+        <h3>边界和词汇</h3>
+        <p>统一 episode、decision atom、asset、scenario、merge、rollback 等基础概念。</p>
+      </div>
+      <div class="phase">
+        <span class="label now">Phase 1</span>
+        <h3>完整观测</h3>
+        <p>记录一局真实对局。先短跑验收，再跑到 T50。此阶段不判断策略好坏。</p>
+      </div>
+      <div class="phase">
+        <span class="label mid">Phase 2</span>
+        <h3>失败标定</h3>
+        <p>从真实 episode 中标出失败，保留证据，并归入六类能力维度。</p>
+      </div>
+      <div class="phase">
+        <span class="label mid">Phase 3</span>
+        <h3>资产体系</h3>
+        <p>管理 prompt、playbook、tool policy、低信任 memory 的版本、来源、风险和回滚路径。</p>
+      </div>
+      <div class="phase">
+        <span class="label mid">Phase 4</span>
+        <h3>候选改进</h3>
+        <p>从失败中提出候选资产改动，跑沙盒验证，产出证据包，但不做自动合并。</p>
+      </div>
+      <div class="phase">
+        <span class="label future">Phase 5</span>
+        <h3>验证集沉淀</h3>
+        <p>每次事故、退化、误判都变成 regression 场景，验证系统不再依赖单点证明。</p>
+      </div>
+      <div class="phase">
+        <span class="label future">L4</span>
+        <h3>自动扩大验证</h3>
+        <p>系统能根据风险自动增加验证场景和轮次，减少人工调度。</p>
+      </div>
+      <div class="phase">
+        <span class="label future">L5</span>
+        <h3>自动合并和回滚</h3>
+        <p>不设人类 merge 闸门。系统自动合并、退化时自动回滚，并生成审计报告。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>三线并行演进</h2>
+    <div class="swimlanes">
+      <div class="swimlane">
+        <div class="lane-name record">记录系统</div>
+        <div class="lane-step record"><strong>Phase 0</strong>定义记录单位。</div>
+        <div class="lane-step record"><strong>Phase 1</strong>落盘工具调用、状态、决策、存档关联。</div>
+        <div class="lane-step record"><strong>Phase 2</strong>失败必须能回到证据。</div>
+        <div class="lane-step record"><strong>Phase 3</strong>记录资产变化来源。</div>
+        <div class="lane-step record"><strong>Phase 4</strong>记录候选改进链路。</div>
+        <div class="lane-step record"><strong>Phase 5+</strong>退化样例可复现。</div>
+      </div>
+      <div class="swimlane">
+        <div class="lane-name asset">资产系统</div>
+        <div class="lane-step asset"><strong>Phase 0</strong>定义 prompt、playbook、tool policy、memory。</div>
+        <div class="lane-step asset"><strong>Phase 1</strong>只记录资产版本，不改资产。</div>
+        <div class="lane-step asset"><strong>Phase 2</strong>失败按六类能力归因。</div>
+        <div class="lane-step asset"><strong>Phase 3</strong>资产版本化、可回滚。</div>
+        <div class="lane-step asset"><strong>Phase 4</strong>生成候选资产改动。</div>
+        <div class="lane-step asset"><strong>Phase 5+</strong>满足条件后进入自动合并。</div>
+      </div>
+      <div class="swimlane">
+        <div class="lane-name verify">验证系统</div>
+        <div class="lane-step verify"><strong>Phase 0</strong>确定 T50 主指标。</div>
+        <div class="lane-step verify"><strong>Phase 1</strong>只产出指标，不宣称变强。</div>
+        <div class="lane-step verify"><strong>Phase 2</strong>真实失败变成回归样例。</div>
+        <div class="lane-step verify"><strong>Phase 3</strong>检查资产改动是否改善指标。</div>
+        <div class="lane-step verify"><strong>Phase 4</strong>沙盒验证候选改进。</div>
+        <div class="lane-step verify"><strong>Phase 5+</strong>多场景验证和退化检查。</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>六类能力主轴</h2>
+    <div class="capability-grid">
+      <div class="capability">
+        <span class="tag">planning</span>
+        <h3>规划是否正确</h3>
+        <p>目标、顺序、阶段判断是否合理。对应 playbook 和 prompt 中的规划规则。</p>
+      </div>
+      <div class="capability">
+        <span class="tag">execution</span>
+        <h3>执行是否稳定</h3>
+        <p>计划是否被正确执行，动作是否漏掉，执行顺序是否可靠。</p>
+      </div>
+      <div class="capability">
+        <span class="tag">memory/state</span>
+        <h3>状态是否可信</h3>
+        <p>是否误用旧信息、错记历史、忽略当前状态。memory 只能低信任参考。</p>
+      </div>
+      <div class="capability">
+        <span class="tag">tool grounding</span>
+        <h3>工具证据是否足够</h3>
+        <p>关键决策前是否查了该查的状态，是否误读工具结果。</p>
+      </div>
+      <div class="capability">
+        <span class="tag">verification</span>
+        <h3>是否检查结果</h3>
+        <p>执行后是否验证结果，是否把失败误判成成功。</p>
+      </div>
+      <div class="capability">
+        <span class="tag">recovery</span>
+        <h3>失败后是否能恢复</h3>
+        <p>出现错误后是否能补救、回滚、保留证据并进入回归样例。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>自动 merge 的远期闭环</h2>
+    <div class="flow">
+      <div class="flow-row">
+        <div class="flow-item">
+          <strong>真实失败</strong>
+          <p>来自 episode、事故、退化、误判。</p>
+        </div>
+        <div class="flow-item">
+          <strong>候选改进</strong>
+          <p>映射到 prompt、playbook、tool policy 或低信任 memory。</p>
+        </div>
+        <div class="flow-item">
+          <strong>多场景验证</strong>
+          <p>验证 T50 主指标，并检查明显副作用。</p>
+        </div>
+        <div class="flow-item">
+          <strong>自动合并</strong>
+          <p>三条线成熟后，不设人类 merge 闸门。</p>
+        </div>
+        <div class="flow-item">
+          <strong>退化检测</strong>
+          <p>发现后续表现变差或违反安全条件。</p>
+        </div>
+        <div class="flow-item">
+          <strong>自动回滚</strong>
+          <p>先回滚，再生成审计报告和退化样例。</p>
+        </div>
+      </div>
+      <div class="warning">自动 merge 不是近期目标。只有记录系统、资产系统、验证系统都成熟后，才进入 L5。</div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Phase 1 当前入口</h2>
+    <div class="now-panel">
+      <div class="checklist">
+        <h3>Phase 1 合格标准</h3>
+        <ul>
+          <li>全部工具调用和返回结果落盘。</li>
+          <li>每回合状态快照落盘。</li>
+          <li>关键决策前后的背景、候选动作、选择理由、执行结果落盘。</li>
+          <li>存档文件和回合、决策、事件有关联。</li>
+          <li>先跑 3-5 回合并产出 HTML 验收报告，通过后再跑 T50。</li>
+        </ul>
+      </div>
+      <div class="metrics">
+        <h3>T50 第一版主指标</h3>
+        <p>早期用 T50，因为它足够快，适合暴露问题和比较改动。</p>
+        <div class="metric-list">
+          <div class="metric">城市数</div>
+          <div class="metric">科技进度</div>
+          <div class="metric">文化/市政进度</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>阶段细节</h2>
+    <table class="lane-table">
+      <thead>
+        <tr>
+          <th>阶段</th>
+          <th>记录系统</th>
+          <th>资产系统</th>
+          <th>验证系统</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Phase 0</b></td>
+          <td>定义 episode、turn snapshot、decision atom、save link。</td>
+          <td>定义 prompt、playbook、tool policy、低信任 memory。</td>
+          <td>定义 T50 和三项主指标。</td>
+        </tr>
+        <tr>
+          <td><b>Phase 1</b></td>
+          <td>完整记录真实对局，先短跑验收，再 T50。</td>
+          <td>只记录生效资产版本，不改资产。</td>
+          <td>只产出指标，不做策略好坏最终判断。</td>
+        </tr>
+        <tr>
+          <td><b>Phase 2</b></td>
+          <td>失败必须能回到具体证据。</td>
+          <td>失败按六类能力归因，不能映射的先保留。</td>
+          <td>真实失败开始沉淀成 regression 场景。</td>
+        </tr>
+        <tr>
+          <td><b>Phase 3</b></td>
+          <td>记录资产变化的证据来源。</td>
+          <td>资产有版本、来源、风险、适用范围、回滚路径。</td>
+          <td>检查资产改动是否改善 T50 主指标。</td>
+        </tr>
+        <tr>
+          <td><b>Phase 4</b></td>
+          <td>记录候选来源、改动、验证计划、结果。</td>
+          <td>生成候选资产改动，但不直接进主线。</td>
+          <td>沙盒验证候选改进，产出证据包。</td>
+        </tr>
+        <tr>
+          <td><b>Phase 5+</b></td>
+          <td>事故和退化都能复现。</td>
+          <td>资产改动声明覆盖的能力维度。</td>
+          <td>多场景验证，退化样例进入验证集。</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div class="footer">Codex HL Evolution Harness Roadmap · Markdown is the source of truth · HTML is the visual map</div>
+</main>
+</body>
+</html>
