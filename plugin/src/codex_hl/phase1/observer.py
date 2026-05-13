@@ -42,6 +42,7 @@ SAVE_DIR = Path(game_launcher.SINGLE_SAVE_DIR)
 DEFAULT_SAVE_NAME = "test 1"
 MIN_SHORT_RUN_TURNS = 3
 MAX_SHORT_RUN_TURNS = 10
+T50_OBSERVATION_TURNS = 50
 ACCEPTED_HUMAN_REPORT_EPISODE = "phase1_test1_short_20260512_130155"
 HUMAN_REPORT_CONTRACT_PATH = (
     PLUGIN_ROOT / "fixtures" / "phase1_human_report_contract" / "contract.json"
@@ -99,6 +100,32 @@ DEFAULT_HUMAN_REPORT_CONTRACT = {
     ],
     "forbidden_fragments": ["<details", "<pre", "{&quot;turn&quot;"],
 }
+
+
+def observation_mode(turns: int) -> str:
+    if turns == T50_OBSERVATION_TURNS:
+        return "t50_observation"
+    if MIN_SHORT_RUN_TURNS <= turns <= MAX_SHORT_RUN_TURNS:
+        return "short_validation"
+    return "unsupported"
+
+
+def observation_mode_zh(turns: int) -> str:
+    return "T50 完整观测" if observation_mode(turns) == "t50_observation" else "短跑验收"
+
+
+def observation_episode_prefix(turns: int) -> str:
+    return "phase1_test1_t50" if observation_mode(turns) == "t50_observation" else "phase1_test1_short"
+
+
+def observation_stop_boundary(turns: int) -> str:
+    if observation_mode(turns) == "t50_observation":
+        return "Stop after the 50-turn T50 observation. Do not continue to T51+ or Phase 2 without explicit user approval."
+    return "Stop after the 3-10 turn short-run. Do not continue to T50 until human acceptance."
+
+
+def valid_observation_turns(turns: int) -> bool:
+    return observation_mode(turns) != "unsupported"
 
 TECH_PRIORITY = [
     "TECH_MINING",
@@ -698,6 +725,47 @@ async def safe_tool(
         return None, None
 
 
+def is_transient_tool_error(exc: Exception) -> bool:
+    message = str(exc)
+    return any(
+        marker in message
+        for marker in [
+            "Empty overview response",
+            "Cannot connect to Civ 6",
+            "Connection changed",
+        ]
+    )
+
+
+async def required_tool_with_retries(
+    recorder: EpisodeRecorder,
+    name: str,
+    params: dict[str, Any],
+    fn: Callable[[], Awaitable[Any]],
+    *,
+    turn: int | None = None,
+    attempts: int = 3,
+    delay_seconds: float = 2.0,
+) -> tuple[str, Any]:
+    last_exc: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        call_params = dict(params)
+        if attempt > 1:
+            call_params["retry_attempt"] = attempt
+        try:
+            return await recorder.tool_call(name, call_params, fn, turn=turn)
+        except Exception as exc:  # noqa: BLE001 - retry preserves raw failed call.
+            last_exc = exc
+            if attempt >= attempts or not is_transient_tool_error(exc):
+                raise
+            recorder.timeline(
+                f"- Retrying required tool `{name}` after transient {type(exc).__name__}: {short_text(exc, 240)}."
+            )
+            await asyncio.sleep(delay_seconds * attempt)
+    assert last_exc is not None
+    raise last_exc
+
+
 async def capture_state(
     recorder: EpisodeRecorder,
     gs: GameState,
@@ -707,8 +775,8 @@ async def capture_state(
     related: list[str] = []
     captured: dict[str, Any] = {}
 
-    call_id, overview = await recorder.tool_call(
-        "get_game_overview", {}, gs.get_game_overview
+    call_id, overview = await required_tool_with_retries(
+        recorder, "get_game_overview", {}, gs.get_game_overview
     )
     related.append(call_id)
     turn = int(getattr(overview, "turn", 0))
@@ -1581,7 +1649,7 @@ async def end_turn_with_record(
             "current_goal": "Advance exactly one real Civ6 turn after mandatory blockers have been handled.",
             "available_actions": actions,
             "selected_action": "end turn now",
-            "rationale": "The short run needs 3-10 real turns; all prior choices and tool calls have been logged.",
+            "rationale": "The Phase 1 observation needs the requested real turns; all prior choices and tool calls have been logged.",
             "why_not_alternatives": {
                 "query more state": "The required per-turn state snapshot was already captured.",
                 "make additional changes": "Would move beyond observation and blocker handling.",
@@ -2359,18 +2427,31 @@ def render_codex_review_layer(
             "</tr>"
         )
 
+    mode_zh = observation_mode_zh(actual_turns)
+    next_boundary = (
+        "本报告停在 T50，不继续 T51+，也不进入 Phase 2。"
+        if observation_mode(actual_turns) == "t50_observation"
+        else "人工接受前不继续 T50。"
+    )
     review_notes = [
-        "这份短跑报告已经把原始证据和人工 review 视图放在同一个 HTML 里：先看本导读确认观测范围，再按需展开底层 JSON。",
+        f"这份{mode_zh}报告已经把原始证据和人工 review 视图放在同一个 HTML 里：先看本导读确认观测范围，再按需展开底层 JSON。",
         "当前记录机制证明了链路能覆盖起点加载、回合开始状态、关键决策、工具执行结果、回合后 checkpoint 和最终 checkpoint。",
-        "决策后结果目前主要来自 tool 返回值、decision outcome 和回合后存档；不是每一个非 end-turn 决策后都额外抓取 after-state 快照。若你希望 T50 更严，可以在继续前加 decision-level after snapshot。",
-        "本报告只陈述观测到什么和证据在哪里，不把短跑决策转化为策略改进，也不做失败归因或 promote/reject。",
+        "决策后结果目前主要来自 tool 返回值、decision outcome 和回合后存档；不是每一个非 end-turn 决策后都额外抓取 after-state 快照。",
+        f"本报告只陈述观测到什么和证据在哪里，不把{mode_zh}决策转化为策略改进，也不做失败归因或 promote/reject。{next_boundary}",
     ]
-    review_questions = [
-        "你是否接受 T50 继续沿用同一套 evidence schema：tool/MCP 原始日志、turn-start state、decision_atoms、save_index？",
-        "你是否要求每个关键决策执行后都额外补一份 after-decision state snapshot，而不是只依赖 tool result/outcome 和 after-turn checkpoint？",
-        "你希望 T50 报告按什么维度优先 review：早期战略、城市发展、探索路径、生产/科技/市政选择、单位行动，还是工具覆盖缺口？",
-        "当前 Civ6 版本和 Codex 运行模型信息仍是环境元数据缺口；是否需要在 T50 前补采这些 provenance 字段？",
-    ]
+    if observation_mode(actual_turns) == "t50_observation":
+        review_questions = [
+            "这个 T50 episode 是否完整覆盖了你要看的 50 回合证据链？",
+            "四类证据里是否有任何缺口足以阻止进入 Phase 2 或后续评估？",
+            "T50 报告是否足够支持后续只读复盘，而不需要重新打开游戏补证据？",
+        ]
+    else:
+        review_questions = [
+            "你是否接受 T50 继续沿用同一套 evidence schema：tool/MCP 原始日志、turn-start state、decision_atoms、save_index？",
+            "你是否要求每个关键决策执行后都额外补一份 after-decision state snapshot，而不是只依赖 tool result/outcome 和 after-turn checkpoint？",
+            "你希望 T50 报告按什么维度优先 review：早期战略、城市发展、探索路径、生产/科技/市政选择、单位行动，还是工具覆盖缺口？",
+            "当前 Civ6 版本和 Codex 运行模型信息仍是环境元数据缺口；是否需要在 T50 前补采这些 provenance 字段？",
+        ]
 
     gap_summary = "没有必填字段缺失。" if not missing_decision_fields and not missing_state_cells else (
         f"状态字段缺失 {len(missing_state_cells)} 个，决策字段缺失 {len(missing_decision_fields)} 个。"
@@ -2381,7 +2462,7 @@ def render_codex_review_layer(
   <h2 id="review">Codex review 版导读</h2>
   <section class="review-panel">
     <h3>一句话结论</h3>
-    <p>这次短跑从 T{html.escape(str(first_state.get('turn', '?')))} 到 T{html.escape(str(final_state.get('turn', '?')))}，实际推进 {actual_turns} 回合。记录链路已覆盖四类 Phase 1 证据；页面下方可以逐条展开原始 tool、MCP/Lua、state、decision、save 记录。</p>
+    <p>这次{html.escape(mode_zh)}从 T{html.escape(str(first_state.get('turn', '?')))} 到 T{html.escape(str(final_state.get('turn', '?')))}，实际推进 {actual_turns} 回合。记录链路已覆盖四类 Phase 1 证据；页面下方可以逐条展开原始 tool、MCP/Lua、state、decision、save 记录。</p>
   </section>
 
   <section class="review-panel">
@@ -2477,6 +2558,7 @@ REASON_TRANSLATIONS = {
     "With zero cities, founding immediately is the least speculative action and resolves the main opening blocker.": "当前没有城市；原地建城是最少引入猜测的动作，也能解除开局无法生产、成长和稳定产出的主要阻塞。",
     "No specific recorded tactical target justified movement; fortify/hold avoids speculative exploration in the short validation run.": "快照里没有足够明确的战术目标、敌人或指定探索路线；选择驻守可以避免把推测性探索混进短跑验收。",
     "The short run needs 3-10 real turns; all prior choices and tool calls have been logged.": "短跑需要推进 3-10 个真实回合；本回合前面的选择、工具调用和状态记录已经落盘。",
+    "The Phase 1 observation needs the requested real turns; all prior choices and tool calls have been logged.": "本次 Phase 1 观测需要推进请求的真实回合数；本回合前面的选择、工具调用和状态记录已经落盘。",
     "A research target is already active; Phase 1 should observe rather than rewrite the plan.": "当前已经有科技目标。Phase 1 应该观察并记录，而不是无阻塞地重写路线。",
     "Use repair first if needed, otherwise a static conservative priority list. This does not update the main strategy.": "如果有修理项先修理，否则按固定保守优先级选择。这个选择只用于解除生产阻塞，不更新主策略。",
     "The city has an active queue; changing it would be a strategy intervention.": "城市已经有生产队列。主动切换生产会变成策略干预，不符合本次只观测的边界。",
@@ -2512,7 +2594,7 @@ KEY_TRANSLATIONS = {
     "other": "其他动作",
     "query more state": "继续查询状态",
     "make additional changes": "做额外改动",
-    "pause run": "暂停短跑",
+    "pause run": "暂停运行",
     "change research manually": "手动改科技",
     "other production options": "其他生产选项",
     "leave idle": "让城市空转",
@@ -2912,6 +2994,13 @@ def build_report_pack(
         "save_index": _episode_rel(recorder, recorder.save_index_path),
     }
 
+    run_mode = observation_mode(actual_turns)
+    mode_zh = observation_mode_zh(actual_turns)
+    observe_command = (
+        "$env:PYTHONIOENCODING='utf-8'; & 'O:\\civ6\\.tools\\uv\\uv.exe' run "
+        f"codex-hl-civ6-phase1-observe --save-name \"test 1\" --turns {actual_turns}"
+    )
+
     return {
         "episode_id": recorder.episode_id,
         "phase": PHASE_LABEL,
@@ -2928,8 +3017,10 @@ def build_report_pack(
             "start_turn": recorder.start_turn,
             "final_turn": recorder.final_turn,
             "actual_turns": actual_turns,
+            "mode": run_mode,
+            "mode_zh": mode_zh,
             "route_map": header.get("route_map", PHASE_LABEL),
-            "stop_boundary": "Stop after the 3-10 turn short-run. Do not continue to T50 until human acceptance.",
+            "stop_boundary": observation_stop_boundary(actual_turns),
         },
         "paths": paths,
         "counts": {
@@ -2977,7 +3068,8 @@ def build_report_pack(
             "html_contract_failed": "Fix the human renderer or Codex refinement, then rerun --report-only <episode_id>; raw evidence must remain unchanged.",
         },
         "commands": {
-            "short_run": f"$env:PYTHONIOENCODING='utf-8'; & 'O:\\civ6\\.tools\\uv\\uv.exe' run codex-hl-civ6-phase1-observe --save-name \"test 1\" --turns {actual_turns}",
+            "observe": observe_command,
+            "short_run": observe_command,
             "report_only": "$env:PYTHONIOENCODING='utf-8'; & 'O:\\civ6\\.tools\\uv\\uv.exe' run codex-hl-civ6-phase1-observe --report-only "
             + str(recorder.episode_id),
         },
@@ -2987,6 +3079,12 @@ def build_report_pack(
 def build_agent_handoff(report_pack: dict[str, Any]) -> str:
     evidence = report_pack["evidence_status"]
     paths = report_pack["paths"]
+    run = report_pack["run"]
+    boundary_line = (
+        "- T50 observation complete. Stop before T51+ or Phase 2 unless the user explicitly asks to continue."
+        if run.get("mode") == "t50_observation"
+        else "- Stop before T50 until a human accepts the human HTML."
+    )
     status_rows = "\n".join(
         f"- {name}: {data['status']} ({data['expectation']})"
         for name, data in evidence.items()
@@ -3007,9 +3105,10 @@ def build_agent_handoff(report_pack: dict[str, Any]) -> str:
 
 ## Boundary
 - Phase: {report_pack['phase']}
-- Save: `{report_pack['run']['save_name']}`
-- Turns: T{report_pack['run']['start_turn']} -> T{report_pack['run']['final_turn']} ({report_pack['run']['actual_turns']} turns advanced)
-- Stop before T50 until a human accepts the human HTML.
+- Mode: {run.get('mode_zh', run.get('mode', 'unknown'))}
+- Save: `{run['save_name']}`
+- Turns: T{run['start_turn']} -> T{run['final_turn']} ({run['actual_turns']} turns advanced)
+{boundary_line}
 - Do not do failure attribution, Replay Arena, strategy learning, or promote/reject.
 
 ## Evidence Status
@@ -3024,7 +3123,7 @@ def build_agent_handoff(report_pack: dict[str, Any]) -> str:
 
 ## Commands
 ```powershell
-{report_pack['commands']['short_run']}
+{report_pack['commands'].get('observe', report_pack['commands']['short_run'])}
 {report_pack['commands']['report_only']}
 ```
 
@@ -3127,6 +3226,37 @@ def build_human_report(
 
     tool_error_count = sum(1 for row in tool_rows if row.get("success") is False or "error" in row)
     lua_error_count = sum(1 for row in lua_rows if row.get("success") is False or "error" in row)
+    mode_zh = observation_mode_zh(actual_turns)
+    is_t50 = observation_mode(actual_turns) == "t50_observation"
+    summary_text = (
+        f"本次 T50 完整观测从 T{html.escape(str(start_turn))} 推进到 T{html.escape(str(final_turn))}，实际推进 {actual_turns} 回合。我的操作只用于解除必要阻塞并完整记录 Phase 1 证据，已停在 T50，没有继续 T51+、Phase 2、策略学习、失败归因、Replay Arena 或资产 promote/reject。"
+        if is_t50
+        else f"本次短跑从 T{html.escape(str(start_turn))} 推进到 T{html.escape(str(final_turn))}，实际推进 {actual_turns} 回合。我的操作只用于解除短跑中的必要阻塞并验证记录链路，没有继续 T50，没有做策略学习、失败归因、Replay Arena 或资产 promote/reject。"
+    )
+    first_read_item = (
+        "先看四个 PASS 卡片，确认这次 T50 完整观测有没有达到 Phase 1 的 50 回合证据门槛。"
+        if is_t50
+        else "先看四个 PASS 卡片，确认这次短跑有没有达到 Phase 1 的最低证据门槛。"
+    )
+    final_read_item = (
+        "最后看证据边界、存档关联和缺口清单，决定是否允许进入后续阶段。"
+        if is_t50
+        else "最后看证据边界、存档关联和缺口清单，决定是否允许同一套机制继续 T50。"
+    )
+    evidence_boundary_rows = [
+        (
+            "这次 T50 完整观测证明记录链路能覆盖 50 回合，但仍不宣称这些开局选择是最优策略。"
+            if is_t50
+            else "这次短跑证明记录链路可用，但并不证明这些开局选择是最优策略。"
+        ),
+        "每回合开始都有状态快照；非 end-turn 决策后主要依赖 tool 返回、decision outcome 和后续回合快照来确认结果。",
+        (
+            "T50 已停止在完整观测边界；任何 T51+、Phase 2、失败归因或策略改进都需要用户另行明确要求。"
+            if is_t50
+            else "勇士在短跑中选择驻守，是为了避免把探索策略改进混入 Phase 1。若你希望 T50 覆盖探索决策，需要给出探索原则或允许 runner 在观测阶段做最小探索。"
+        ),
+        f"工具错误和 Lua 错误没有隐藏：tool error={tool_error_count}，lua error={lua_error_count}。详见 Agent 审计报告。",
+    ]
 
     return f"""<!doctype html>
 <html lang="zh-CN">
@@ -3191,14 +3321,14 @@ def build_human_report(
 
   <section class="summary">
     <h2 id="verdict">验收结论</h2>
-    <p>本次短跑从 T{html.escape(str(start_turn))} 推进到 T{html.escape(str(final_turn))}，实际推进 {actual_turns} 回合。我的操作只用于解除短跑中的必要阻塞并验证记录链路，没有继续 T50，没有做策略学习、失败归因、Replay Arena 或资产 promote/reject。</p>
+    <p>{summary_text}</p>
     <p>人类版重点解释“为什么这样决策”。给下一轮 agent 快速接手的摘要在 <a href="{html.escape(agent_handoff_name)}">Agent handoff</a>；完整机器证据另存为 <a href="{html.escape(agent_report_name)}">Agent 审计报告</a>，原始 JSONL 和存档仍保留在 episode 目录下。</p>
     <h3>先读这份报告的顺序</h3>
     <ol class="read-path">
-      <li>先看四个 PASS 卡片，确认这次短跑有没有达到 Phase 1 的最低证据门槛。</li>
+      <li>{html.escape(first_read_item)}</li>
       <li>再看局面变化和回合叙事，建立 T1 到 T{html.escape(str(final_turn))} 的整体画面。</li>
       <li>重点 review 决策流程，判断我看到的信息、候选项、选择理由和未选理由是否足够清楚。</li>
-      <li>最后看证据边界、存档关联和缺口清单，决定是否允许同一套机制继续 T50。</li>
+      <li>{html.escape(final_read_item)}</li>
     </ol>
   </section>
 
@@ -3248,10 +3378,7 @@ def build_human_report(
 
   <h2 id="evidence-boundary">证据边界和你需要判断的点</h2>
   <ul>
-    <li>这次短跑证明记录链路可用，但并不证明这些开局选择是最优策略。</li>
-    <li>每回合开始都有状态快照；非 end-turn 决策后主要依赖 tool 返回、decision outcome 和后续回合快照来确认结果。如果你要求 T50 更严格，应增加“每个关键决策后的 after-decision 快照”。</li>
-    <li>勇士在短跑中选择驻守，是为了避免把探索策略改进混入 Phase 1。若你希望 T50 覆盖探索决策，需要给出探索原则或允许 runner 在观测阶段做最小探索。</li>
-    <li>工具错误和 Lua 错误没有隐藏：tool error={tool_error_count}，lua error={lua_error_count}。详见 Agent 审计报告。</li>
+    {''.join(f'<li>{html.escape(row)}</li>' for row in evidence_boundary_rows)}
   </ul>
 
   <h2 id="saves">存档和决策关联</h2>
@@ -3379,11 +3506,13 @@ def generate_report(recorder: Any) -> None:
         for m in missing_decision_fields
     ]
     if not gaps:
+        mode_zh = observation_mode_zh(actual_turns)
+        next_step = "停在 T50，等待用户决定是否进入后续阶段。" if observation_mode(actual_turns) == "t50_observation" else "人工验收后再继续 T50。"
         gaps = [
             {
                 "field": "none",
-                "reason": "本次短跑生成产物没有缺失必填字段。",
-                "next_step": "人工验收后再继续 T50。",
+                "reason": f"本次{mode_zh}生成产物没有缺失必填字段。",
+                "next_step": next_step,
             }
         ]
 
@@ -3457,6 +3586,12 @@ def generate_report(recorder: Any) -> None:
     if header is None and getattr(recorder, "header_path", None) and recorder.header_path.exists():
         header = json.loads(recorder.header_path.read_text(encoding="utf-8"))
     header = header or {}
+    mode_zh = observation_mode_zh(actual_turns)
+    phase_boundary_text = (
+        "本次是 T50 完整观测；到 T50 后停止，不继续 T51+ 或 Phase 2。"
+        if observation_mode(actual_turns) == "t50_observation"
+        else "本次只做 3-10 回合短跑验收；人工确认前不继续 T50。"
+    )
     review_html = render_codex_review_layer(
         actual_turns=actual_turns,
         state_rows=state_rows,
@@ -3473,7 +3608,7 @@ def generate_report(recorder: Any) -> None:
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <title>Codex HL Phase 1 短跑观测报告 - {html.escape(recorder.episode_id)}</title>
+  <title>Codex HL Phase 1 {html.escape(mode_zh)}报告 - {html.escape(recorder.episode_id)}</title>
   <style>
     body {{ font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif; margin: 28px; color: #1f2937; line-height: 1.5; }}
     h1, h2, h3 {{ color: #111827; }}
@@ -3497,9 +3632,9 @@ def generate_report(recorder: Any) -> None:
   </style>
 </head>
 <body>
-  <h1>Codex HL Phase 1 短跑观测报告</h1>
+  <h1>Codex HL Phase 1 {html.escape(mode_zh)}报告</h1>
   <p class="muted">本报告是中文审计入口。页面内直接列出工具调用、MCP/Lua 原始交互、每回合状态、关键决策、存档索引；原始 JSON 仍以 <code>details</code> 折叠块完整保留。</p>
-  <p><strong>Phase:</strong> {html.escape(PHASE_LABEL)}。本次只做 3-10 回合短跑验收；人工确认前不继续 T50。</p>
+  <p><strong>Phase:</strong> {html.escape(PHASE_LABEL)}。{html.escape(phase_boundary_text)}</p>
 
   <nav class="toc">
     <a href="#review">Codex review 导读</a>
@@ -3565,7 +3700,7 @@ def generate_report(recorder: Any) -> None:
   {render_state_sections(state_rows)}
 
   <h2 id="decisions">3. 关键决策前后的决策记录</h2>
-  <p>每条决策都展示 <code>available_actions</code>，用于区分“没有想到该选项”和“想到了但判断错了”。本短跑只做观测和必要 blocker 处理，不把这些决策 promoted 成策略改进。</p>
+  <p>每条决策都展示 <code>available_actions</code>，用于区分“没有想到该选项”和“想到了但判断错了”。本次{html.escape(mode_zh)}只做观测和必要 blocker 处理，不把这些决策 promoted 成策略改进。</p>
   {render_decision_sections(decisions)}
 
   <h2 id="saves">4. 存档文件和回合/决策的关联</h2>
@@ -3665,11 +3800,13 @@ def generate_reports(recorder: Any) -> None:
         for m in missing_decision_fields
     ]
     if not gaps:
+        mode_zh = observation_mode_zh(actual_turns)
+        next_step = "停在 T50，等待用户决定是否进入后续阶段。" if observation_mode(actual_turns) == "t50_observation" else "人工验收后再继续 T50。"
         gaps = [
             {
                 "field": "none",
-                "reason": "本次短跑生成产物没有缺失必填字段。",
-                "next_step": "人工验收后再继续 T50。",
+                "reason": f"本次{mode_zh}生成产物没有缺失必填字段。",
+                "next_step": next_step,
             }
         ]
 
@@ -3794,8 +3931,12 @@ async def run_short(args: argparse.Namespace) -> int:
     if not save_path.exists():
         raise FileNotFoundError(f"Save not found: {save_path}")
 
-    episode_id = args.episode_id or f"phase1_test1_short_{now_stamp()}"
+    mode = observation_mode(args.turns)
+    mode_zh = observation_mode_zh(args.turns)
+    episode_id = args.episode_id or f"{observation_episode_prefix(args.turns)}_{now_stamp()}"
     recorder = EpisodeRecorder(episode_id, save_name)
+    recorder.requested_turns = args.turns
+    recorder.observation_mode = mode
     hostname = os.environ.get("COMPUTERNAME")
     if not hostname and hasattr(os, "uname"):
         hostname = os.uname().nodename
@@ -3829,15 +3970,19 @@ async def run_short(args: argparse.Namespace) -> int:
         "save_name": save_name,
         "save_path": str(save_path),
         "save_sha256": sha256_file(save_path),
-        "route_map": PHASE_LABEL,
+        "requested_turns": args.turns,
+        "observation_mode": mode,
+        "observation_mode_zh": mode_zh,
+        "route_map": f"{PHASE_LABEL} - {mode_zh}",
         "phase_rules": [
-            "short run only before human acceptance",
+            "short run only before human acceptance" if mode == "short_validation" else "T50 observation only after human short-run acceptance",
             "no failure attribution",
             "no Replay Arena",
             "no candidate strategy improvement",
             "no learning loop",
             "no asset promote/reject",
             "single-player test 1 save only",
+            "stop at T50; no T51+ without explicit user approval" if mode == "t50_observation" else "stop before T50 until human acceptance",
         ],
     }
     recorder.write_header(header)
@@ -3869,7 +4014,7 @@ async def run_short(args: argparse.Namespace) -> int:
             await recorder.tool_call(
                 "reset_game_before_front_end_load",
                 {
-                    "reason": "Fresh Phase 1 short-runs must not depend on whatever screen a previous session left open.",
+                    "reason": "Fresh Phase 1 observation runs must not depend on whatever screen a previous session left open.",
                     "expected_next_step": "launch Civ6 to the front end, then load test 1 through FrontEnd/LoadGameMenu Lua state",
                 },
                 lambda: game_launcher.kill_game(),
@@ -3900,16 +4045,15 @@ async def run_short(args: argparse.Namespace) -> int:
                 }
             )
 
-        final_turn, final_state_id, _final_snapshot = await capture_state(
-            recorder, gs, "short_run_final"
-        )
+        final_label = "t50_final" if mode == "t50_observation" else "short_run_final"
+        final_turn, final_state_id, _final_snapshot = await capture_state(recorder, gs, final_label)
         recorder.final_turn = final_turn
-        await save_checkpoint(recorder, gs, final_turn, "short_run_final")
+        await save_checkpoint(recorder, gs, final_turn, final_label)
         recorder.codex_output(
-            "short_run_pause",
+            "t50_pause" if mode == "t50_observation" else "short_run_pause",
             final_turn,
             {
-                "message": "Short run complete. Pausing for human acceptance before any T50 run.",
+                "message": "T50 observation complete. Stop before T51+ or Phase 2." if mode == "t50_observation" else "Short run complete. Pausing for human acceptance before any T50 run.",
                 "final_state_snapshot_id": final_state_id,
                 "report_path": str(recorder.report_path),
             },
@@ -3959,11 +4103,9 @@ def parse_args() -> argparse.Namespace:
         help="Reuse the current Civ6 process instead of resetting to the front end before loading the save.",
     )
     args = parser.parse_args()
-    if not args.report_only and (
-        args.turns < MIN_SHORT_RUN_TURNS or args.turns > MAX_SHORT_RUN_TURNS
-    ):
+    if not args.report_only and not valid_observation_turns(args.turns):
         parser.error(
-            f"--turns must be between {MIN_SHORT_RUN_TURNS} and {MAX_SHORT_RUN_TURNS} for Phase 1 short-run validation"
+            f"--turns must be {MIN_SHORT_RUN_TURNS}-{MAX_SHORT_RUN_TURNS} for Phase 1 short-run validation or {T50_OBSERVATION_TURNS} for T50 observation"
         )
     return args
 

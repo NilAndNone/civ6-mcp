@@ -1,11 +1,11 @@
 ---
 name: civ6-phase1-observation
-description: 在已安装的 codex-hl-civ6 插件中复现 Civilization VI 的 Codex HL Phase 1 观测短跑。用户要求 Codex HL Phase 1、Civ6 观测、test 1 短跑/T50 验证、可复用观测流程、人类报告或 Agent 审计报告时使用。
+description: 在已安装的 codex-hl-civ6 插件中复现 Civilization VI 的 Codex HL Phase 1 观测。用户要求 Codex HL Phase 1、Civ6 观测、test 1 短跑/T50 验证、可复用观测流程、人类报告或 Agent 审计报告时使用。
 ---
 
 # Civ6 Phase 1 观测
 
-使用已安装的 `codex-hl-civ6` 插件，在真实 `test 1` 单人存档上运行 Codex HL Phase 1 观测流程。目标是记录证据，不是提升策略。
+使用已安装的 `codex-hl-civ6` 插件，在真实 `test 1` 单人存档上运行 Codex HL Phase 1 观测流程。目标是记录证据，不是提升策略。默认先做短跑验收；人工接受后，可以用同一套证据契约跑完整 T50 观测。
 
 ## 硬边界
 
@@ -13,9 +13,10 @@ description: 在已安装的 codex-hl-civ6 插件中复现 Civilization VI 的 C
 - 不要切到 Hotseat、其他存档或产品化测试框架。
 - 不做失败归因、Replay Arena、候选策略优化、自动学习、晋级或淘汰判断。
 - 人工接受短跑报告前，不要继续到 T50。
+- 人工接受短跑报告后，T50 仍然只做观测：完整记录 50 回合，不进入 Phase 2。
 - `episodes/` 视为本地运行产物；除非用户明确要求提交某个 episode，否则不要提交。
 
-## 标准流程
+## 短跑标准流程
 
 1. 确认仓库根目录和当前分支。
    - 如果 `git` 不在 PATH，优先使用 `C:\Program Files\Git\cmd\git.exe`。
@@ -51,6 +52,38 @@ description: 在已安装的 codex-hl-civ6 插件中复现 Civilization VI 的 C
    - 最终 `phase1_short_run_report.html` 是给人看的中文入口。它必须基于 `report_pack.json`，并通过下面的中文 HTML 契约。
 6. 确认 `phase1_short_run_report.html` 满足下面的中文 HTML 契约。运行器会自动检查；如果失败，先修报告渲染器或用 `--report-only` 重建，不要直接请求人工验收。
 7. 汇报中文人工报告路径，然后暂停等待人工验收。
+
+## T50 完整观测流程
+
+只有用户明确表示短跑产物已接受，或明确要求在已接受短跑基础上继续 T50 时，才执行本流程。T50 仍然必须使用 `codex-hl-civ6-phase1-observe`，不要单独启动 `civ6-connector` 服务。
+
+1. 先确认当前请求确实允许 T50。
+   - 如果用户只是要求短跑、回归测试或人工验收，不要继续 T50。
+   - 如果用户要求 T50，但短跑还没有被接受，先说明需要短跑验收。
+2. 从真实 `test 1` 单人存档起点跑 50 回合：
+   ```powershell
+   $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-phase1-observe --save-name "test 1" --turns 50
+   ```
+3. 如果命令因为 `--turns` 上限拒绝 50，不要拆成多个短跑 episode。先把 runner 修到支持单个 T50 episode，再重跑。
+4. T50 episode 必须完整包含短跑同款产物：
+   - `header.json`
+   - `raw/tool_calls.jsonl`
+   - `raw/mcp.jsonl`
+   - `raw/civ6_states/*.json`
+   - `raw/saves/save_index.jsonl`
+   - `derived/decision_atoms.jsonl`
+   - `derived/report_pack.json`
+   - `outcome/phase1_short_run_report.draft.html`
+   - `outcome/phase1_short_run_report.html`
+   - `outcome/phase1_agent_report.md`
+   - `outcome/phase1_agent_audit_report.html`
+5. T50 验收时必须额外确认：
+   - `derived/report_pack.json` 里 `run.actual_turns` 是 `50`。
+   - 状态快照覆盖从起点到 T50 终点的每个回合边界。
+   - 决策记录覆盖每个关键阻塞、生产/科技/市政选择、单位处理和结束回合。
+   - 存档索引至少包含起点、每回合或每个 checkpoint，以及最终 T50 存档。
+   - 报告正文清楚说明这是 T50 完整观测，不是 3-10 回合短跑。
+6. 到 T50 后停止并汇报报告路径、episode_id、四类证据 PASS/FAIL、`actual_turns` 和最终回合。不要继续 T51+。
 
 ## 报告分工
 
@@ -108,7 +141,7 @@ $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-ph
 
 报告重建模式不能启动 Civ6，也不能修改当前游戏。
 
-## 新 Agent 验证提示词
+## 新 Agent 短跑验证提示词
 
 用全新 Agent 验证技能时，使用这个提示词结构：
 
@@ -120,6 +153,21 @@ $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-ph
 创建一个新的 episode id，命名为 phase1_subagent_validation_<timestamp>。
 在 T50 前停止。
 返回 episode_id、中文人工报告路径、Agent 接手报告路径、Agent 审计报告路径、四类证据的 PASS/FAIL 结果，以及阻塞项。
+```
+
+## 新 Agent T50 验证提示词
+
+短跑已被人工接受后，使用这个提示词结构：
+
+```text
+使用 plugin/skills/civ6-phase1-observation/SKILL.md。
+不要提交，不要推送。
+在真实 test 1 单人存档上跑一次 50 回合 Phase 1 T50 完整观测。
+不要单独启动 civ6-connector 服务；只使用 codex-hl-civ6-phase1-observe。
+必须生成单个完整 episode，不要用多个短跑 episode 拼接。
+验证 run.actual_turns = 50，状态快照、决策记录、工具/MCP 调用和存档关联全部 PASS。
+到 T50 后停止，不要继续 T51+ 或 Phase 2。
+返回 episode_id、中文人工报告路径、Agent 接手报告路径、Agent 审计报告路径、四类证据 PASS/FAIL、起点/终点回合，以及阻塞项。
 ```
 
 ## 提交边界
