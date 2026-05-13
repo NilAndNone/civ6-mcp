@@ -36,20 +36,28 @@ Use this skill to run the Codex HL Phase 1 observation workflow on the real `tes
    - `raw/civ6_states/*.json`
    - `raw/saves/save_index.jsonl`
    - `derived/decision_atoms.jsonl`
+   - `derived/report_pack.json`
+   - `outcome/phase1_short_run_report.draft.html`
    - `outcome/phase1_short_run_report.html`
+   - `outcome/phase1_agent_report.md`
    - `outcome/phase1_agent_audit_report.html`
 4. Validate the four evidence classes:
    - all tool/MCP calls include time, params, raw result or error
    - every turn has a state snapshot covering empire, cities, units, notifications, threats, research/civic, production, or explicit gaps
    - decision records include `available_actions`, rationale, `why_not_alternatives`, execution, outcome, `related_*_ids`, plus compatibility aliases `alternatives` and `evidence_ids`
    - save index links saves to episode, turn, decision or event
-5. Confirm `phase1_short_run_report.html` satisfies the Human HTML Contract below. The runner performs this check automatically; if it fails, fix the report renderer before asking for human acceptance.
-6. Present the human report path and pause for human acceptance.
+5. Treat reporting as two stages:
+   - Evidence capture writes raw logs, `derived/report_pack.json`, and the draft human HTML.
+   - The final `phase1_short_run_report.html` is the Codex-refined human entrypoint. It must stay grounded in `report_pack.json` and pass the Human HTML Contract below.
+6. Confirm `phase1_short_run_report.html` satisfies the Human HTML Contract below. The runner performs this check automatically; if it fails, fix the report renderer or rerun `--report-only` after refining the human HTML before asking for human acceptance.
+7. Present the human report path and pause for human acceptance.
 
 ## Report Roles
 
 - `phase1_short_run_report.html` is the only human review entrypoint. It must preserve the accepted Chinese HTML shape from `phase1_test1_short_20260512_130155`, not a newly invented engineering summary.
-- `phase1_agent_audit_report.html` is the machine/agent audit report. It may be HTML or another agent-facing format in future revisions, but it must preserve raw JSON evidence and expandable details. It is never a substitute for the human HTML.
+- `phase1_short_run_report.draft.html` is runner-produced draft material. It is useful for renderer debugging, but it is not the human acceptance entrypoint if it fails the final contract.
+- `phase1_agent_report.md` is the quick handoff for the next agent/session. Read this first when resuming.
+- `phase1_agent_audit_report.html` is the complete machine/agent audit report with raw JSON evidence and expandable details. It is never a substitute for the human HTML.
 - If the human report reads like raw JSON, field dumps, or a table-only audit, regenerate or improve the report before asking for acceptance.
 
 ## Human HTML Contract
@@ -64,7 +72,7 @@ The human report must be a polished Chinese HTML review document with this secti
 6. `证据边界和你需要判断的点`
 7. `存档和决策关联`
 8. `缺口清单`
-9. `面向 Agent 的报告`, linking to the agent audit artifact
+9. `面向 Agent 的报告`, linking to both `phase1_agent_report.md` and the agent audit artifact
 
 Each decision in the human report must be rendered as prose with these labels:
 
@@ -76,7 +84,9 @@ Each decision in the human report must be rendered as prose with these labels:
 - `执行后结果：`
 - `对 review 的意义：`
 
-Do not put raw JSON blocks, `<details>`, or `<pre>` audit dumps in `phase1_short_run_report.html`. Raw evidence belongs in `phase1_agent_audit_report.html` and the episode `raw/` files.
+Do not put raw JSON blocks, `<details>`, `<pre>`, or `{&quot;turn&quot;` style encoded state dumps in `phase1_short_run_report.html`. Raw evidence belongs in `phase1_agent_audit_report.html`, `derived/report_pack.json`, and the episode `raw/` files.
+
+The contract source is `tests/fixtures/phase1_human_report_contract/contract.json`; the skeleton fixture is there to prevent future agents from inventing a different human report shape.
 
 ## Rebuild Existing Reports
 
@@ -99,7 +109,7 @@ Run a real 3-turn Phase 1 short-run on the test 1 single-player save.
 Do not start a separate civ-mcp server; use only scripts/codex_phase1_observe.py.
 Create a new episode id named phase1_subagent_validation_<timestamp>.
 Stop before T50.
-Return the episode_id, human report path, agent audit report path, four evidence-class PASS/FAIL results, and blockers.
+Return the episode_id, human report path, agent handoff path, agent audit report path, four evidence-class PASS/FAIL results, and blockers.
 ```
 
 ## Commit Hygiene

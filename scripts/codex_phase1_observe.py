@@ -39,6 +39,47 @@ from civ_mcp.game_state import GameState  # noqa: E402
 PHASE_LABEL = "Phase 1 Observation Only"
 SAVE_DIR = Path(game_launcher.SINGLE_SAVE_DIR)
 DEFAULT_SAVE_NAME = "test 1"
+ACCEPTED_HUMAN_REPORT_EPISODE = "phase1_test1_short_20260512_130155"
+HUMAN_REPORT_CONTRACT_PATH = (
+    ROOT / "tests" / "fixtures" / "phase1_human_report_contract" / "contract.json"
+)
+
+DEFAULT_HUMAN_REPORT_CONTRACT = {
+    "reference_episode": ACCEPTED_HUMAN_REPORT_EPISODE,
+    "required_fragments": [
+        '<html lang="zh-CN">',
+        "Codex HL Phase 1 人类验收报告",
+        "验收结论",
+        "我实际观测到的局面变化",
+        "起点 T",
+        "终点 T",
+        "回合叙事",
+        "重点：决策流程",
+        "当时看到的问题：",
+        "候选动作：",
+        "我选择了：",
+        "为什么这样选：",
+        "为什么没选其他动作：",
+        "执行后结果：",
+        "对 review 的意义：",
+        "证据边界和你需要判断的点",
+        "存档和决策关联",
+        "缺口清单",
+        "面向 Agent 的报告",
+        "phase1_agent_report.md",
+        "phase1_agent_audit_report.html",
+    ],
+    "required_css_fragments": [
+        ".summary",
+        ".verdict",
+        ".tile",
+        ".turn-flow",
+        ".decision-card",
+        ".evidence",
+        ".two-col",
+    ],
+    "forbidden_fragments": ["<details", "<pre", "{&quot;turn&quot;"],
+}
 
 TECH_PRIORITY = [
     "TECH_MINING",
@@ -181,14 +222,22 @@ $targets = Get-CimInstance Win32_Process | Where-Object {
 }
 $rows = @()
 foreach ($p in $targets) {
+    $stopped = $true
+    $stop_note = ''
+    try {
+        Stop-Process -Id $p.ProcessId -Force -ErrorAction Stop
+    } catch [Microsoft.PowerShell.Commands.ProcessCommandException] {
+        $stopped = $false
+        $stop_note = 'already exited before Stop-Process'
+    }
     $rows += [pscustomobject]@{
         pid = $p.ProcessId
         name = $p.Name
         command_line = $p.CommandLine
+        stop_attempted = $true
+        stopped = $stopped
+        note = $stop_note
     }
-}
-foreach ($p in $targets) {
-    Stop-Process -Id $p.ProcessId -Force -ErrorAction Stop
 }
 if ($rows.Count -eq 0) {
     'No repo-local civ-mcp server processes found.'
@@ -246,9 +295,12 @@ class EpisodeRecorder:
         self.tool_calls_path = self.raw / "tool_calls.jsonl"
         self.codex_outputs_path = self.raw / "codex_outputs.jsonl"
         self.decision_path = self.derived / "decision_atoms.jsonl"
+        self.report_pack_path = self.derived / "report_pack.json"
         self.timeline_path = self.derived / "timeline.md"
         self.human_notes_path = self.outcome / "human_notes.md"
+        self.human_draft_path = self.outcome / "phase1_short_run_report.draft.html"
         self.report_path = self.outcome / "phase1_short_run_report.html"
+        self.agent_handoff_path = self.outcome / "phase1_agent_report.md"
         self.agent_report_path = self.outcome / "phase1_agent_audit_report.html"
         self.save_index_path = self.saves_dir / "save_index.jsonl"
         self.manifest_path = self.assets / "manifest.json"
@@ -1611,8 +1663,11 @@ class ExistingEpisodeReportView:
         self.tool_calls_path = self.raw / "tool_calls.jsonl"
         self.codex_outputs_path = self.raw / "codex_outputs.jsonl"
         self.decision_path = self.derived / "decision_atoms.jsonl"
+        self.report_pack_path = self.derived / "report_pack.json"
         self.timeline_path = self.derived / "timeline.md"
+        self.human_draft_path = self.outcome / "phase1_short_run_report.draft.html"
         self.report_path = self.outcome / "phase1_short_run_report.html"
+        self.agent_handoff_path = self.outcome / "phase1_agent_report.md"
         self.agent_report_path = self.outcome / "phase1_agent_audit_report.html"
         self.save_index_path = self.saves_dir / "save_index.jsonl"
         self.manifest_path = self.assets / "manifest.json"
@@ -2631,6 +2686,271 @@ def build_human_decision_flow(decisions: list[dict[str, Any]]) -> str:
     return "\n".join(blocks)
 
 
+def _episode_rel(recorder: Any, path: Path) -> str:
+    try:
+        return path.relative_to(recorder.root).as_posix()
+    except ValueError:
+        return str(path)
+
+
+def build_evidence_status(
+    *,
+    tool_complete: bool,
+    mcp_complete: bool,
+    states_complete: bool,
+    decisions_complete: bool,
+    save_complete: bool,
+    tool_rows: list[dict[str, Any]],
+    lua_rows: list[dict[str, Any]],
+    state_rows: list[dict[str, Any]],
+    decisions: list[dict[str, Any]],
+    saves: list[dict[str, Any]],
+    missing_state_cells: list[tuple[Any, str]],
+    missing_decision_fields: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "tool_mcp_raw_records": {
+            "status": yes_no(tool_complete and mcp_complete),
+            "tool_calls": len(tool_rows),
+            "lua_exchanges": len(lua_rows),
+            "tool_errors": sum(
+                1 for row in tool_rows if row.get("success") is False or "error" in row
+            ),
+            "lua_errors": sum(
+                1 for row in lua_rows if row.get("success") is False or "error" in row
+            ),
+            "expectation": "Every tool/MCP call keeps timing, params/request, raw result/response, and raw error data.",
+        },
+        "turn_state_snapshots": {
+            "status": yes_no(states_complete),
+            "snapshots": len(state_rows),
+            "turns": sorted(
+                {row.get("turn") for row in state_rows if isinstance(row.get("turn"), int)}
+            ),
+            "missing_cells": [
+                {"snapshot_id": snapshot_id, "field": field}
+                for snapshot_id, field in missing_state_cells
+            ],
+            "expectation": "Every turn start has empire, cities, units, notifications, threats, research/civic, and production coverage or explicit gaps.",
+        },
+        "decision_records": {
+            "status": yes_no(decisions_complete),
+            "decision_atoms": len(decisions),
+            "missing_fields": missing_decision_fields,
+            "expectation": "Each important decision records context, available actions, choice, rationale, rejected alternatives, execution, outcome, and evidence ids.",
+        },
+        "save_links": {
+            "status": yes_no(save_complete),
+            "indexed_saves": len(saves),
+            "expectation": "Every checkpoint save is linked to episode, turn, decision or event, path, size, and SHA256.",
+        },
+    }
+
+
+def build_report_pack(
+    recorder: Any,
+    *,
+    header: dict[str, Any],
+    state_rows: list[dict[str, Any]],
+    decisions: list[dict[str, Any]],
+    saves: list[dict[str, Any]],
+    tool_rows: list[dict[str, Any]],
+    lua_rows: list[dict[str, Any]],
+    gaps: list[dict[str, Any]],
+    actual_turns: int,
+    evidence_status: dict[str, Any],
+) -> dict[str, Any]:
+    first_state = state_rows[0] if state_rows else {}
+    final_state = state_rows[-1] if state_rows else {}
+    decision_flows = []
+    for decision in decisions:
+        flow = decision_flow_narrative(decision)
+        decision_flows.append(
+            {
+                "decision_id": decision.get("decision_id"),
+                "turn": decision.get("turn"),
+                "selected_action": flow["selected"],
+                "observed_problem": flow["observed"],
+                "candidate_actions": flow["actions"],
+                "rationale": flow["rationale"],
+                "why_not_alternatives": flow["why_not"],
+                "execution_outcome": flow["outcome"],
+                "review_meaning": flow["meaning"],
+                "evidence": {
+                    "state_snapshot_ids": decision.get("related_state_snapshot_ids", []),
+                    "tool_call_ids": decision.get("related_tool_call_ids", []),
+                    "save_ids": decision.get("related_save_ids", []),
+                },
+            }
+        )
+
+    turn_story = []
+    saves_by_turn: dict[int, list[dict[str, Any]]] = {}
+    decisions_by_turn: dict[int, list[dict[str, Any]]] = {}
+    for save in saves:
+        if isinstance(save.get("turn"), int):
+            saves_by_turn.setdefault(save["turn"], []).append(save)
+    for decision in decisions:
+        if isinstance(decision.get("turn"), int):
+            decisions_by_turn.setdefault(decision["turn"], []).append(decision)
+    for state in state_rows:
+        turn = state.get("turn")
+        turn_story.append(
+            {
+                "turn": turn,
+                "human_state": [
+                    city_sentence(state),
+                    production_sentence(state),
+                    unit_sentence(state),
+                ],
+                "decisions": [
+                    {
+                        "decision_id": decision.get("decision_id"),
+                        "selected_action": humanize(decision.get("selected_action")),
+                    }
+                    for decision in decisions_by_turn.get(turn, [])
+                ],
+                "saves": [
+                    {
+                        "save_id": save.get("save_id"),
+                        "label": save.get("label"),
+                        "decision_id": save.get("decision_id"),
+                    }
+                    for save in saves_by_turn.get(turn, [])
+                ],
+            }
+        )
+
+    paths = {
+        "human_html": _episode_rel(recorder, recorder.report_path),
+        "human_draft_html": _episode_rel(recorder, recorder.human_draft_path),
+        "agent_handoff": _episode_rel(recorder, recorder.agent_handoff_path),
+        "agent_audit_html": _episode_rel(recorder, recorder.agent_report_path),
+        "report_pack": _episode_rel(recorder, recorder.report_pack_path),
+        "tool_calls": _episode_rel(recorder, recorder.tool_calls_path),
+        "mcp_lua": _episode_rel(recorder, recorder.mcp_path),
+        "state_snapshots_dir": _episode_rel(recorder, recorder.states_dir),
+        "decision_atoms": _episode_rel(recorder, recorder.decision_path),
+        "save_index": _episode_rel(recorder, recorder.save_index_path),
+    }
+
+    return {
+        "episode_id": recorder.episode_id,
+        "phase": PHASE_LABEL,
+        "generated_at": now_iso(),
+        "accepted_reference_episode": ACCEPTED_HUMAN_REPORT_EPISODE,
+        "repo": {
+            "root": str(ROOT),
+            "branch": run_git(["branch", "--show-current"]),
+            "commit": run_git(["rev-parse", "HEAD"]),
+            "status_short": run_git(["status", "--short"]),
+        },
+        "run": {
+            "save_name": recorder.save_name,
+            "start_turn": recorder.start_turn,
+            "final_turn": recorder.final_turn,
+            "actual_turns": actual_turns,
+            "route_map": header.get("route_map", PHASE_LABEL),
+            "stop_boundary": "Stop after the 3-5 turn short-run. Do not continue to T50 until human acceptance.",
+        },
+        "paths": paths,
+        "counts": {
+            "tool_calls": len(tool_rows),
+            "lua_exchanges": len(lua_rows),
+            "state_snapshots": len(state_rows),
+            "decision_atoms": len(decisions),
+            "indexed_saves": len(saves),
+        },
+        "evidence_status": evidence_status,
+        "human_html_contract": load_human_report_contract(),
+        "human_report_guidance": {
+            "role": "Polished Chinese review HTML for a human. It should be agent-refined prose, not a raw evidence dump.",
+            "allowed_to_change": [
+                "episode id",
+                "counts",
+                "paths",
+                "observed game-state text",
+                "decision prose derived from decision_atoms",
+            ],
+            "must_preserve": [
+                "accepted section order",
+                "CSS skeleton and card layout",
+                "decision-flow labels",
+                "links to both agent handoff and audit report",
+                "no raw JSON/details/pre blocks",
+            ],
+        },
+        "turn_story": turn_story,
+        "decision_flows": decision_flows,
+        "gaps": gaps,
+        "recovery": {
+            "firetuner_reconnect": "Confirm EnableTuner=1, close stale Civ6/civ-mcp processes, rerun the normal short-run, and inspect raw/tool_calls.jsonl for reconnect attempts.",
+            "stale_repo_mcp": "Rerun without --keep-existing-mcp-server; default preflight stops repo-local civ-mcp server processes and logs affected pids.",
+            "stale_civ6_frontend": "Rerun without --reuse-running-game; default preflight resets Civ6 before loading test 1.",
+            "html_contract_failed": "Fix the human renderer or Codex refinement, then rerun --report-only <episode_id>; raw evidence must remain unchanged.",
+        },
+        "commands": {
+            "short_run": "$env:PYTHONIOENCODING='utf-8'; & 'O:\\civ6\\.tools\\uv\\uv.exe' run python scripts\\codex_phase1_observe.py --save-name \"test 1\" --turns 3",
+            "report_only": "$env:PYTHONIOENCODING='utf-8'; & 'O:\\civ6\\.tools\\uv\\uv.exe' run python scripts\\codex_phase1_observe.py --report-only "
+            + str(recorder.episode_id),
+        },
+    }
+
+
+def build_agent_handoff(report_pack: dict[str, Any]) -> str:
+    evidence = report_pack["evidence_status"]
+    paths = report_pack["paths"]
+    status_rows = "\n".join(
+        f"- {name}: {data['status']} ({data['expectation']})"
+        for name, data in evidence.items()
+    )
+    gap_rows = "\n".join(
+        f"- {gap.get('field')}: {gap.get('reason')} Next: {gap.get('next_step')}"
+        for gap in report_pack.get("gaps", [])
+    )
+    if not gap_rows:
+        gap_rows = "- none"
+    return f"""# Phase 1 Agent Handoff - {report_pack['episode_id']}
+
+## Read First
+- Human review HTML: `{paths['human_html']}`
+- Draft human HTML: `{paths['human_draft_html']}`
+- Report pack: `{paths['report_pack']}`
+- Full audit HTML: `{paths['agent_audit_html']}`
+
+## Boundary
+- Phase: {report_pack['phase']}
+- Save: `{report_pack['run']['save_name']}`
+- Turns: T{report_pack['run']['start_turn']} -> T{report_pack['run']['final_turn']} ({report_pack['run']['actual_turns']} turns advanced)
+- Stop before T50 until a human accepts the human HTML.
+- Do not do failure attribution, Replay Arena, strategy learning, or promote/reject.
+
+## Evidence Status
+{status_rows}
+
+## Human HTML Contract
+- Preserve the accepted `phase1_test1_short_20260512_130155` structure, style skeleton, sections, and decision-flow labels.
+- The final human HTML must be Chinese, readable, and decision-focused.
+- Raw JSON, `<details>`, and `<pre>` belong only in the audit HTML, never in the human HTML.
+- Human HTML must link both `phase1_agent_report.md` and `phase1_agent_audit_report.html`.
+
+## Commands
+```powershell
+{report_pack['commands']['short_run']}
+{report_pack['commands']['report_only']}
+```
+
+## Recovery
+- FireTuner reconnect: {report_pack['recovery']['firetuner_reconnect']}
+- Stale repo-local MCP: {report_pack['recovery']['stale_repo_mcp']}
+- Stale Civ6/frontend state: {report_pack['recovery']['stale_civ6_frontend']}
+- HTML contract failure: {report_pack['recovery']['html_contract_failed']}
+
+## Gaps
+{gap_rows}
+"""
+
+
 def build_human_report(
     recorder: Any,
     *,
@@ -2649,6 +2969,7 @@ def build_human_report(
     save_complete: bool,
     missing_state_cells: list[tuple[Any, str]],
     missing_decision_fields: list[dict[str, Any]],
+    agent_handoff_name: str,
     agent_report_name: str,
 ) -> str:
     first_state = state_rows[0] if state_rows else {}
@@ -2751,7 +3072,7 @@ def build_human_report(
   <section class="summary">
     <h2 style="border:0; margin-top:0; padding-top:0;">验收结论</h2>
     <p>本次短跑从 T{html.escape(str(start_turn))} 推进到 T{html.escape(str(final_turn))}，实际推进 {actual_turns} 回合。我的操作只用于解除短跑中的必要阻塞并验证记录链路，没有继续 T50，没有做策略学习、失败归因、Replay Arena 或资产 promote/reject。</p>
-    <p>人类版重点解释“为什么这样决策”。完整机器证据另存为 <a href="{html.escape(agent_report_name)}">Agent 审计报告</a>，原始 JSONL 和存档仍保留在 episode 目录下。</p>
+    <p>人类版重点解释“为什么这样决策”。给下一轮 agent 快速接手的摘要在 <a href="{html.escape(agent_handoff_name)}">Agent handoff</a>；完整机器证据另存为 <a href="{html.escape(agent_report_name)}">Agent 审计报告</a>，原始 JSONL 和存档仍保留在 episode 目录下。</p>
   </section>
 
   <div class="verdict">
@@ -2809,49 +3130,49 @@ def build_human_report(
   </table>
 
   <h2>面向 Agent 的报告</h2>
+  <p>下一轮 agent 先读快速 handoff：<a href="{html.escape(agent_handoff_name)}">{html.escape(agent_handoff_name)}</a>。</p>
   <p>机器可审计版保留完整 tool/MCP/state/decision/save 表格和可展开 JSON：<a href="{html.escape(agent_report_name)}">{html.escape(agent_report_name)}</a>。</p>
 </body>
 </html>
 """
 
 
-def validate_human_report_contract(path: Path) -> None:
+def load_human_report_contract() -> dict[str, Any]:
+    if HUMAN_REPORT_CONTRACT_PATH.exists():
+        return json.loads(HUMAN_REPORT_CONTRACT_PATH.read_text(encoding="utf-8"))
+    return DEFAULT_HUMAN_REPORT_CONTRACT
+
+
+def validate_human_report_text(text: str, *, path_hint: str = "<memory>") -> None:
     """Keep the human-facing report compatible with the accepted Phase 1 review HTML."""
-    text = path.read_text(encoding="utf-8")
+    contract = load_human_report_contract()
     lower_text = text.lower()
-    required_fragments = [
-        '<html lang="zh-CN">',
-        "Codex HL Phase 1 人类验收报告",
-        "验收结论",
-        "我实际观测到的局面变化",
-        "起点 T",
-        "终点 T",
-        "回合叙事",
-        "重点：决策流程",
-        "当时看到的问题：",
-        "候选动作：",
-        "我选择了：",
-        "为什么这样选：",
-        "为什么没选其他动作：",
-        "执行后结果：",
-        "对 review 的意义：",
-        "证据边界和你需要判断的点",
-        "存档和决策关联",
-        "缺口清单",
-        "面向 Agent 的报告",
-        "phase1_agent_audit_report.html",
+    required_fragments = contract.get("required_fragments", [])
+    required_css = contract.get("required_css_fragments", [])
+    forbidden_fragments = contract.get("forbidden_fragments", [])
+    missing = [
+        str(fragment)
+        for fragment in [*required_fragments, *required_css]
+        if str(fragment) not in text
     ]
-    missing = [fragment for fragment in required_fragments if fragment not in text]
-    forbidden_tags = [tag for tag in ("<details", "<pre") if tag in lower_text]
+    forbidden = [
+        str(fragment)
+        for fragment in forbidden_fragments
+        if str(fragment).lower() in lower_text
+    ]
     problems = []
     if missing:
         problems.append("missing required human-report fragments: " + ", ".join(missing))
-    if forbidden_tags:
-        problems.append("human report contains raw-audit tags: " + ", ".join(forbidden_tags))
+    if forbidden:
+        problems.append("human report contains raw-audit fragments: " + ", ".join(forbidden))
     if problems:
         raise RuntimeError(
-            f"Human report contract failed for {path}: " + "; ".join(problems)
+            f"Human report contract failed for {path_hint}: " + "; ".join(problems)
         )
+
+
+def validate_human_report_contract(path: Path) -> None:
+    validate_human_report_text(path.read_text(encoding="utf-8"), path_hint=str(path))
 
 
 def generate_report(recorder: Any) -> None:
@@ -3246,6 +3567,53 @@ def generate_reports(recorder: Any) -> None:
     if header is None and getattr(recorder, "header_path", None) and recorder.header_path.exists():
         header = json.loads(recorder.header_path.read_text(encoding="utf-8"))
     header = header or {}
+    agent_handoff_path = getattr(
+        recorder,
+        "agent_handoff_path",
+        recorder.outcome / "phase1_agent_report.md",
+    )
+    human_draft_path = getattr(
+        recorder,
+        "human_draft_path",
+        recorder.outcome / "phase1_short_run_report.draft.html",
+    )
+    report_pack_path = getattr(
+        recorder,
+        "report_pack_path",
+        recorder.derived / "report_pack.json",
+    )
+
+    evidence_status = build_evidence_status(
+        tool_complete=tool_complete,
+        mcp_complete=mcp_complete,
+        states_complete=states_complete,
+        decisions_complete=decisions_complete,
+        save_complete=save_complete,
+        tool_rows=tool_rows,
+        lua_rows=lua_rows,
+        state_rows=state_rows,
+        decisions=decisions,
+        saves=saves,
+        missing_state_cells=missing_state_cells,
+        missing_decision_fields=missing_decision_fields,
+    )
+    report_pack = build_report_pack(
+        recorder,
+        header=header,
+        state_rows=state_rows,
+        decisions=decisions,
+        saves=saves,
+        tool_rows=tool_rows,
+        lua_rows=lua_rows,
+        gaps=gaps,
+        actual_turns=actual_turns,
+        evidence_status=evidence_status,
+    )
+    report_pack_path.write_text(
+        json.dumps(to_jsonable(report_pack), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    agent_handoff_path.write_text(build_agent_handoff(report_pack), encoding="utf-8")
 
     human_report = build_human_report(
         recorder,
@@ -3264,8 +3632,10 @@ def generate_reports(recorder: Any) -> None:
         save_complete=save_complete,
         missing_state_cells=missing_state_cells,
         missing_decision_fields=missing_decision_fields,
+        agent_handoff_name=agent_handoff_path.name,
         agent_report_name=agent_report_path.name,
     )
+    human_draft_path.write_text(human_report, encoding="utf-8")
     recorder.report_path.write_text(human_report, encoding="utf-8")
     validate_human_report_contract(recorder.report_path)
 

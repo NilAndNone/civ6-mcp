@@ -1,0 +1,40 @@
+{
+  "reference_episode": "phase1_test1_short_20260512_130155",
+  "required_fragments": [
+    "<html lang=\"zh-CN\">",
+    "Codex HL Phase 1 人类验收报告",
+    "验收结论",
+    "我实际观测到的局面变化",
+    "起点 T",
+    "终点 T",
+    "回合叙事",
+    "重点：决策流程",
+    "当时看到的问题：",
+    "候选动作：",
+    "我选择了：",
+    "为什么这样选：",
+    "为什么没选其他动作：",
+    "执行后结果：",
+    "对 review 的意义：",
+    "证据边界和你需要判断的点",
+    "存档和决策关联",
+    "缺口清单",
+    "面向 Agent 的报告",
+    "phase1_agent_report.md",
+    "phase1_agent_audit_report.html"
+  ],
+  "required_css_fragments": [
+    ".summary",
+    ".verdict",
+    ".tile",
+    ".turn-flow",
+    ".decision-card",
+    ".evidence",
+    ".two-col"
+  ],
+  "forbidden_fragments": [
+    "<details",
+    "<pre",
+    "{&quot;turn&quot;"
+  ]
+}

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>Codex HL Phase 1 人类验收报告 - {{ episode_id }}</title>
+  <style>
+    body { font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif; }
+    .summary { border-left: 5px solid #2563eb; }
+    .verdict { display: grid; }
+    .tile { border: 1px solid #d1d5db; }
+    .turn-flow { margin: 20px 0 30px; }
+    .decision-card { border-left: 4px solid #2563eb; }
+    .evidence { color: #475569; }
+    .two-col { display: grid; }
+  </style>
+</head>
+<body>
+  <h1>Codex HL Phase 1 人类验收报告</h1>
+  <section class="summary">
+    <h2>验收结论</h2>
+    <p>给下一轮 agent 快速接手的摘要在 <a href="phase1_agent_report.md">Agent handoff</a>；完整机器证据另存为 <a href="phase1_agent_audit_report.html">Agent 审计报告</a>。</p>
+  </section>
+  <div class="verdict"><div class="tile">PASS</div></div>
+  <h2>我实际观测到的局面变化</h2>
+  <div class="two-col">
+    <div class="tile"><h3>起点 T{{ start_turn }}</h3></div>
+    <div class="tile"><h3>终点 T{{ final_turn }}</h3></div>
+  </div>
+  <h2>回合叙事</h2>
+  <h2>重点：决策流程</h2>
+  <section class="turn-flow">
+    <article class="decision-card">
+      <p><strong>当时看到的问题：</strong>{{ observed }}</p>
+      <p><strong>候选动作：</strong>{{ actions }}</p>
+      <p><strong>我选择了：</strong>{{ selected }}</p>
+      <p><strong>为什么这样选：</strong>{{ rationale }}</p>
+      <p><strong>为什么没选其他动作：</strong>{{ alternatives }}</p>
+      <p><strong>执行后结果：</strong>{{ outcome }}</p>
+      <p><strong>对 review 的意义：</strong>{{ meaning }}</p>
+      <p class="evidence">证据：state={{ state_id }}；tool={{ tool_id }}；save={{ save_id }}</p>
+    </article>
+  </section>
+  <h2>证据边界和你需要判断的点</h2>
+  <h2>存档和决策关联</h2>
+  <h2>缺口清单</h2>
+  <h2>面向 Agent 的报告</h2>
+  <p><a href="phase1_agent_report.md">phase1_agent_report.md</a></p>
+  <p><a href="phase1_agent_audit_report.html">phase1_agent_audit_report.html</a></p>
+</body>
+</html>
