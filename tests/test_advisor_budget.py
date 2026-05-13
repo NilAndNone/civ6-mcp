@@ -13,7 +13,7 @@ def _make_gs():
     """Build a GameState-like object with just the advisor budget fields."""
     # Import the real class so we pick up the ADVISOR_BUDGET_* constants and
     # the _advisor_budget_check() method logic.
-    from civ_mcp.game_state import GameState
+    from civ6_connector.game_state import GameState
 
     gs = types.SimpleNamespace()
     gs._advisor_calls_this_turn = 0

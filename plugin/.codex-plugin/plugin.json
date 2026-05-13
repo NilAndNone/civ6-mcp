@@ -1,0 +1,33 @@
+{
+  "name": "codex-hl-civ6",
+  "version": "0.1.0",
+  "description": "Codex HL Civ6 plugin for Phase 0/1 observation-first Civilization VI play.",
+  "author": {
+    "name": "Xiaohan Lu"
+  },
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "civ6",
+    "civilization",
+    "phase1",
+    "observation"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Codex HL Civ6",
+    "shortDescription": "Run observation-first Codex HL Civ6 episodes",
+    "longDescription": "Codex HL Civ6 installs a self-contained Phase 0/1 harness for Civilization VI. It records real Civ6 turns, decision atoms, state snapshots, saves, and human review reports before any long-run continuation.",
+    "developerName": "Xiaohan Lu",
+    "category": "Engineering",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Run a 3-turn Phase 1 observation short-run on the test 1 Civ6 save"
+    ],
+    "brandColor": "#2B5C8A",
+    "screenshots": []
+  }
+}

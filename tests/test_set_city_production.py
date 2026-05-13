@@ -8,7 +8,7 @@ in a degenerate state. The OK-path verification catches this.
 import asyncio
 import types
 
-from civ_mcp.game_state import GameState
+from civ6_connector.game_state import GameState
 
 
 class _StubConnection:

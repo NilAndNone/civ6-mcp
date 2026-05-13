@@ -1,6 +1,6 @@
 """Tests for run_id generation — hostname differentiation + hour bucket."""
 
-from civ_mcp.run_id import generate_run_id
+from civ6_connector.run_id import generate_run_id
 
 
 class TestRunId:

@@ -1,69 +1,46 @@
-# Civ6 Codex HL Agent Instructions
+# codex-hl-civ6 Development Instructions
 
-This file is the repository-level entry point for Codex behavior in this checkout. Keep it focused on authority, task routing, ownership, and safety boundaries.
+This file is for developing the plugin in this repository. It is not the runtime playbook for an installed plugin.
 
 ## Source Of Truth
 
-- `docs/codex-hl-evolution-roadmap.md` is the only source of truth for the Codex HL Evolution Harness roadmap.
-- `docs/codex-hl-evolution-roadmap.html` is the human review companion. Use it to visually compare the review version against the Markdown source; do not treat it as authoritative over the Markdown.
-- Do not edit either of those two roadmap files without explicit user approval. If a change is needed, first present the intended change and wait for approval.
-- If the Markdown and HTML disagree, follow the Markdown and report the mismatch.
+- `docs/codex-hl-evolution-roadmap.md` is the roadmap source of truth.
+- `docs/codex-hl-evolution-roadmap.html` is only the human review companion.
+- Do not edit either roadmap file without explicit user approval.
+- If Markdown and HTML disagree, follow the Markdown and report the mismatch.
 
-## Repository Documents
+## Repository Shape
 
-- `AGENTS.md`: highest-priority repo entry rule, limited to responsibility boundaries and task routing.
-- `docs/codex-hl-phase1-observation.md`: current Phase 1 observation workflow contract for this repo.
-- `civ6-mcp.md`: concrete Civ6 MCP operation manual for normal gameplay, including turn flow, tools, strategic checks, combat, diplomacy, production, victory conditions, and recovery.
-- `docs/hotseat-agent-lab-roadmap.md`: legacy/project-specific Hotseat roadmap context. Use it for Hotseat/P2/Xiaohan tasks only after reading the current HL roadmap Markdown above.
+- `plugin/` is the self-contained Codex plugin. It contains runtime code, plugin metadata, commands, skills, agents, fixtures, and plugin usage instructions.
+- `plugin/AGENTS.md` is for using the installed plugin to play or observe Civ6.
+- Root `AGENTS.md`, `README.md`, and `docs/` are for developing and validating the plugin.
+- `archive/legacy/` contains old CivBench, web, eval, devlog, publish, Hotseat, and generic MCP assets. Keep them isolated from the active plugin path.
 
-## Current Direction
+## Current Scope
 
-The current priority is **Phase 1 observation** for Codex HL Evolution Harness.
+The active implementation scope is Phase 0/1 only.
 
-Phase 1 means:
+- Phase 0: vocabulary, boundary, asset, and checklist alignment.
+- Phase 1: real Civ6 observation, episode evidence, decision atoms, save links, and human review HTML.
+- Do not implement Phase 2+ failure attribution, candidate strategy generation, Replay Arena, asset merge, rollback, or automatic learning unless the user explicitly asks.
 
-- Record a real Civ6 game completely enough to explain what happened.
-- Preserve tool/MCP calls, turn state snapshots, decision atoms, and save links.
-- Generate a human-reviewable HTML acceptance report.
-- Stop after the 3-5 turn short run until human review accepts continuation.
+## Development Routing
 
-Phase 1 does not mean:
+- For plugin architecture or packaging: inspect `plugin/.codex-plugin/plugin.json`, `plugin/AGENTS.md`, and `plugin/commands/`.
+- For Phase 1 workflow changes: inspect `docs/codex-hl-phase1-observation.md`, then `plugin/src/codex_hl/phase1/observer.py`, then the relevant tests.
+- For Civ6 connection changes: keep behavior inside `plugin/src/civ6_connector/` and avoid leaking connector details into root docs.
+- For old CivBench/web/eval questions: read from `archive/legacy/`; do not move those assets back into the active path without approval.
 
-- Automatic learning.
-- Strategy improvement.
-- Replay Arena.
-- Candidate strategy generation.
-- Asset merge, rollback, or audit automation.
-- Treating a single save as proof of general improvement.
+## Ownership And Safety
 
-## Task Routing
+- The user owns the roadmap and strategy direction.
+- Codex owns implementation, tests, validation scripts, plugin packaging, and docs unless the user narrows scope.
+- Do not use a worktree in this repository unless the user explicitly asks.
+- Do not revert unrelated user changes.
+- `episodes/` is local run output and should stay untracked unless the user asks for a specific artifact.
 
-- For Codex HL, Phase 1 observation, episodes, reports, validation, or evolution-harness work: read `docs/codex-hl-evolution-roadmap.md` first, then `docs/codex-hl-phase1-observation.md`, then inspect the relevant code and tests.
-- For normal Civ6 MCP play or operations: read `civ6-mcp.md` before using gameplay tools.
-- For Hotseat, Player 2, P2, Agent Lab, Goal 0-13, Xiaohan duel, or live Codex-vs-Xiaohan play: read the current HL roadmap Markdown first, then `docs/hotseat-agent-lab-roadmap.md`, and keep the live-play safety rules below.
-- If repository docs conflict with the external roadmap Markdown, the external Markdown wins. Report the conflict instead of silently blending the rules.
+## Verification
 
-## Ownership
+Before reporting completion, run the local checks documented in `docs/codex-hl-phase1-observation.md`.
 
-- The user owns strategy direction and the user-owned roadmap/review pair:
-  - `docs/codex-hl-evolution-roadmap.md`
-  - `docs/codex-hl-evolution-roadmap.html`
-- Codex owns repo implementation work: scripts, tests, workflow docs, validators, reports, logs, fixes, and retrospectives unless the user narrows scope.
-- Do not send implementation details, validation work, script writing, test repair, log inspection, or report generation back to the user unless explicit approval or live-game input is required.
-- Do not use a worktree for this repo unless the user explicitly asks.
-- The working tree may already contain unrelated user changes. Do not revert changes you did not make.
-
-## Live Hotseat Safety
-
-Hotseat P2 safety has higher priority than normal gameplay optimization.
-
-- If the active player is not the expected P2, stop before calling any action tool.
-- During P1 turns, do not call action tools.
-- Do not inspect hidden information about Xiaohan's civilization.
-- Do not load or retry saves except under a documented crash-recovery policy.
-- During live play, first propose a P2 turn plan, wait for approval, execute only approved actions, and record the result.
-
-## Local Execution Notes
-
-- On this Windows checkout, `git` may not resolve in the current PowerShell session. Use `C:\Program Files\Git\cmd\git.exe` when needed.
-- Prefer the repo workflow documented in `docs/codex-hl-phase1-observation.md` for Phase 1 validation and report regeneration.
+True end-to-end acceptance still requires a Windows Civ6 machine to run a real 3-turn `test 1` Phase 1 short-run through the plugin.

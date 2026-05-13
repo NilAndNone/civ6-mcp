@@ -8,7 +8,7 @@ Validates that _check_save_scumming correctly distinguishes:
 
 import types
 
-from civ_mcp.end_turn import _check_save_scumming
+from civ6_connector.end_turn import _check_save_scumming
 
 
 def _make_gs(history: list[tuple[float, int, str]]) -> types.SimpleNamespace:

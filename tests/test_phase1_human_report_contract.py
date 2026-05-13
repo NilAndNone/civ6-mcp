@@ -1,20 +1,21 @@
 from pathlib import Path
-import importlib.util
+import importlib
+import sys
 
 import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "scripts" / "codex_phase1_observe.py"
-FIXTURE = ROOT / "tests" / "fixtures" / "phase1_human_report_contract" / "golden_skeleton.html"
+PLUGIN_SRC = ROOT / "plugin" / "src"
+FIXTURE = ROOT / "plugin" / "fixtures" / "phase1_human_report_contract" / "golden_skeleton.html"
 
 
 def load_runner_module():
-    spec = importlib.util.spec_from_file_location("codex_phase1_observe", SCRIPT)
-    assert spec and spec.loader
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    sys.path.insert(0, str(PLUGIN_SRC))
+    try:
+        return importlib.import_module("codex_hl.phase1.observer")
+    finally:
+        sys.path.remove(str(PLUGIN_SRC))
 
 
 def test_human_report_contract_accepts_golden_skeleton():
