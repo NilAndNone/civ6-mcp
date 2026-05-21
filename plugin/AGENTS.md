@@ -8,6 +8,7 @@
 - 除非用户明确指定其他存档，否则使用真实 `test 1` 单人存档。
 - 先跑 3-5 回合，生成中文人工报告，然后等待人工验收。
 - 验收前不要继续到 T50；验收通过后，T50 仍然只做完整观测，不进入 Phase 2。
+- 只有用户明确要求 Phase 2 时，才对已有 episode 执行离线标注；Phase 2 不启动 Civ6，也不推进回合。
 
 ## 边界
 
@@ -19,7 +20,16 @@
 
 - `/civ6-phase1-observe`：跑 Phase 1 观测；默认短跑，验收后可跑单个 episode 的 T50 完整观测。
 - `/civ6-phase1-report`：基于已有 episode 重新生成报告，不推进游戏。
+- `/civ6-phase2-label`：对已有 Phase 1 episode 生成候选失败、人工确认后生成正式 failure 和被动 regression seed。
 - `/civ6-debug`：做受控连接测试和排障。
+
+## Phase 2 v1 离线标注
+
+Phase 2 v1 只读已有 Phase 1 证据，所有输出都写在 `episodes/<episode_id>/phase2/`。
+
+默认运行只生成 `candidates.jsonl` 和 `phase2_review.html`，不得写 `failures.jsonl` 或 `regression_seeds.jsonl`。正式写入必须经过人工 `confirmation.jsonl` 和显式 `--apply-confirmation`。
+
+短跑 planning failure 必须标明只适用于 `T10/T20 local_episode_fragment`，不是长期战略结论，也不是资产修改证据。
 
 ## 证据要求
 

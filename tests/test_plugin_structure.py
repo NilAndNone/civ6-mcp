@@ -21,6 +21,7 @@ def test_plugin_is_self_contained_codex_package():
     for command in [
         "civ6-phase1-observe.md",
         "civ6-phase1-report.md",
+        "civ6-phase2-label.md",
         "civ6-debug.md",
     ]:
         assert (PLUGIN / "commands" / command).exists()
@@ -32,6 +33,7 @@ def test_plugin_runtime_modules_import_from_plugin_src():
     try:
         assert importlib.import_module("codex_hl.phase0")
         assert importlib.import_module("codex_hl.phase1.observer")
+        assert importlib.import_module("codex_hl.phase2.labeler")
         assert importlib.import_module("civ6_connector.game_state")
     finally:
         sys.path.remove(plugin_src)

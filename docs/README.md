@@ -8,6 +8,7 @@
 - [Codex HL Evolution Roadmap HTML](codex-hl-evolution-roadmap.html)：路线图的人类审阅对照版本。
 - [插件架构说明](plugin-architecture.md)：当前开发侧和插件使用侧如何隔离。
 - [Phase 1 观测流程](codex-hl-phase1-observation.md)：当前 Phase 1 的开发和验收契约。
+- [Phase 2 v1 离线失败标注](codex-hl-phase2-v1-labeling.md)：用户显式开启 Phase 2 后的候选失败、人工确认和被动 seed 契约。
 
 ## 插件使用说明
 

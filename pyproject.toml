@@ -1,14 +1,14 @@
 [project]
 name = "codex-hl-civ6"
 version = "0.1.0"
-description = "Codex HL Civ6 plugin for Phase 0/1 observation-first play"
+description = "Codex HL Civ6 plugin for Phase 0/1 observation-first play and explicit Phase 2 offline labeling"
 readme = "README.md"
 license = "MIT"
 authors = [
     { name = "Xiaohan Lu" }
 ]
 requires-python = ">=3.12"
-keywords = ["codex", "civ6", "civilization", "phase1", "observation", "plugin"]
+keywords = ["codex", "civ6", "civilization", "phase1", "phase2", "observation", "plugin"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: MIT License",
@@ -43,6 +43,7 @@ launcher = ["codex-hl-civ6[launcher-macos]"]
 
 [project.scripts]
 codex-hl-civ6-phase1-observe = "codex_hl.phase1.observer:main"
+codex-hl-civ6-phase2-label = "codex_hl.phase2.labeler:main"
 codex-hl-civ6-debug = "codex_hl.debug:main"
 civ6-connector = "civ6_connector.server:main"
 
