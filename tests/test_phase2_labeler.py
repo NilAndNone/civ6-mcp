@@ -19,14 +19,22 @@ def write_jsonl(path: Path, rows: list[dict]) -> None:
     )
 
 
-def make_episode(workspace: Path, episode_id: str = "ep_short") -> Path:
+def make_episode(
+    workspace: Path,
+    episode_id: str = "ep_short",
+    *,
+    observation_mode: str = "short_validation",
+    requested_turns: int = 3,
+    actual_turns: int = 3,
+    final_turn: int = 4,
+) -> Path:
     episode = workspace / "episodes" / episode_id
     write_json(
         episode / "header.json",
         {
             "episode_id": episode_id,
-            "observation_mode": "short_validation",
-            "requested_turns": 3,
+            "observation_mode": observation_mode,
+            "requested_turns": requested_turns,
         },
     )
     write_jsonl(
@@ -130,7 +138,7 @@ def make_episode(workspace: Path, episode_id: str = "ep_short") -> Path:
         episode / "derived" / "report_pack.json",
         {
             "episode_id": episode_id,
-            "run": {"start_turn": 1, "final_turn": 4, "actual_turns": 3},
+            "run": {"start_turn": 1, "final_turn": final_turn, "actual_turns": actual_turns},
             "counts": {
                 "tool_calls": 2,
                 "lua_exchanges": 0,
@@ -174,6 +182,250 @@ def test_candidate_generation_is_offline_and_gated(tmp_path):
     assert any(labeler.CAVEAT_TEXT in c.get("scope_caveats", []) for c in candidates)
     assert "pending" in review
     assert labeler.CAVEAT_TEXT in review
+
+
+def test_t20_candidate_generation_is_local_fragment_evidence(tmp_path):
+    episode = make_episode(
+        tmp_path,
+        "ep_t20",
+        observation_mode="t20_exploration",
+        requested_turns=20,
+        actual_turns=20,
+        final_turn=21,
+    )
+
+    labeler.generate_candidates("ep_t20", workspace=tmp_path, session_id="sess-t20")
+
+    phase2 = episode / "phase2"
+    candidates = labeler.read_jsonl(phase2 / "candidates.jsonl")
+    manifest = labeler.read_json(phase2 / "MANIFEST.json")
+    planning = [candidate for candidate in candidates if candidate["capability_category"] == "planning"]
+
+    assert manifest["episode_mode"] == "t20_exploration"
+    assert manifest["turn_target"] == "T20"
+    assert manifest["local_episode_fragment"] is True
+    assert planning
+    assert all(candidate["claim_scope"] == "local_episode_fragment" for candidate in planning)
+    assert all(labeler.CAVEAT_TEXT in candidate["scope_caveats"] for candidate in planning)
+
+
+def test_t50_candidate_generation_detects_over_scout_no_expansion(tmp_path):
+    episode = make_episode(
+        tmp_path,
+        "ep_t50_overscout",
+        observation_mode="t50_observation",
+        requested_turns=50,
+        actual_turns=50,
+        final_turn=50,
+    )
+    write_json(
+        episode / "raw" / "civ6_states" / "state-0051-T0050-t50_final.json",
+        {
+            "snapshot_id": "state-0051-T0050-t50_final",
+            "episode_id": "ep_t50_overscout",
+            "turn": 50,
+            "label": "t50_final",
+            "overview": {"turn": 50, "num_cities": 1, "num_units": 6},
+            "units": [
+                {"unit_type": "UNIT_SCOUT"},
+                {"unit_type": "UNIT_SCOUT"},
+                {"unit_type": "UNIT_SCOUT"},
+                {"unit_type": "UNIT_SCOUT"},
+            ],
+        },
+    )
+    decisions = labeler.read_jsonl(episode / "derived" / "decision_atoms.jsonl")
+    decisions.append(
+        {
+            "decision_id": "decision-0099",
+            "episode_id": "ep_t50_overscout",
+            "turn": 42,
+            "trigger": "idle city production for capital",
+            "selected_action": "UNIT UNIT_SCOUT",
+            "available_actions": ["UNIT UNIT_SCOUT", "UNIT UNIT_SETTLER"],
+            "related_tool_call_ids": ["tool-0002"],
+            "related_state_snapshot_ids": ["state-0051-T0050-t50_final"],
+            "related_save_ids": [],
+            "evidence_ids": {
+                "tool_call_ids": ["tool-0002"],
+                "state_snapshot_ids": ["state-0051-T0050-t50_final"],
+                "save_ids": [],
+            },
+        }
+    )
+    write_jsonl(episode / "derived" / "decision_atoms.jsonl", decisions)
+
+    labeler.generate_candidates("ep_t50_overscout", workspace=tmp_path, session_id="sess-t50")
+
+    candidates = labeler.read_jsonl(episode / "phase2" / "candidates.jsonl")
+    overscout = next(
+        candidate for candidate in candidates if "过度生产侦察兵" in candidate["title"]
+    )
+    assert overscout["confidence"] == "medium"
+    assert overscout["episode_mode"] == "t50_observation"
+    assert labeler.CAVEAT_TEXT not in overscout["scope_caveats"]
+
+
+def test_t50_candidate_generation_detects_unsettled_settler_pathing(tmp_path):
+    episode = make_episode(
+        tmp_path,
+        "ep_t50_unsettled",
+        observation_mode="t50_observation",
+        requested_turns=50,
+        actual_turns=50,
+        final_turn=50,
+    )
+    write_json(
+        episode / "raw" / "civ6_states" / "state-0051-T0050-t50_final.json",
+        {
+            "snapshot_id": "state-0051-T0050-t50_final",
+            "episode_id": "ep_t50_unsettled",
+            "turn": 50,
+            "label": "t50_final",
+            "overview": {"turn": 50, "num_cities": 2, "num_units": 3},
+            "units": [{"unit_type": "UNIT_SETTLER"}],
+        },
+    )
+    decisions = labeler.read_jsonl(episode / "derived" / "decision_atoms.jsonl")
+    decisions.extend(
+        [
+            {
+                "decision_id": "decision-0101",
+                "episode_id": "ep_t50_unsettled",
+                "turn": 40,
+                "trigger": "expansion settler action 123",
+                "selected_action": "move toward best settle candidate",
+                "outcome": "CAPTURE_MOVE|68,36|BLOCKED",
+                "related_tool_call_ids": ["tool-0002"],
+                "related_state_snapshot_ids": ["state-0051-T0050-t50_final"],
+                "related_save_ids": [],
+            },
+            {
+                "decision_id": "decision-0102",
+                "episode_id": "ep_t50_unsettled",
+                "turn": 41,
+                "trigger": "expansion settler action 123",
+                "selected_action": "move toward best settle candidate",
+                "outcome": "CAPTURE_MOVE|68,36|BLOCKED",
+                "related_tool_call_ids": ["tool-0002"],
+                "related_state_snapshot_ids": ["state-0051-T0050-t50_final"],
+                "related_save_ids": [],
+            },
+        ]
+    )
+    write_jsonl(episode / "derived" / "decision_atoms.jsonl", decisions)
+
+    labeler.generate_candidates("ep_t50_unsettled", workspace=tmp_path, session_id="sess-t50")
+
+    candidates = labeler.read_jsonl(episode / "phase2" / "candidates.jsonl")
+    unsettled = next(
+        candidate for candidate in candidates if "settler 扩张路径" in candidate["title"]
+    )
+    assert unsettled["confidence"] == "medium"
+    assert unsettled["capability_category"] == "planning"
+
+
+def test_t50_candidate_generation_detects_idle_builder_overproduction(tmp_path):
+    episode = make_episode(
+        tmp_path,
+        "ep_t50_builders",
+        observation_mode="t50_observation",
+        requested_turns=50,
+        actual_turns=50,
+        final_turn=50,
+    )
+    write_json(
+        episode / "raw" / "civ6_states" / "state-0051-T0050-t50_final.json",
+        {
+            "snapshot_id": "state-0051-T0050-t50_final",
+            "episode_id": "ep_t50_builders",
+            "turn": 50,
+            "label": "t50_final",
+            "overview": {"turn": 50, "num_cities": 3, "num_units": 6},
+            "units": [
+                {"unit_type": "UNIT_BUILDER"},
+                {"unit_type": "UNIT_BUILDER"},
+                {"unit_type": "UNIT_BUILDER"},
+            ],
+        },
+    )
+    decisions = labeler.read_jsonl(episode / "derived" / "decision_atoms.jsonl")
+    tool_calls = labeler.read_jsonl(episode / "raw" / "tool_calls.jsonl")
+    for index in range(3):
+        tool_calls.append(
+            {
+                "tool_call_id": f"tool-builder-{index}",
+                "episode_id": "ep_t50_builders",
+                "turn": 44 + index,
+                "tool": "unit_action",
+                "success": True,
+                "result_raw": "SKIPPED",
+            }
+        )
+        decisions.append(
+            {
+                "decision_id": f"decision-builder-{index}",
+                "episode_id": "ep_t50_builders",
+                "turn": 44 + index,
+                "trigger": f"unit action review UNIT_BUILDER {index}",
+                "selected_action": "skip",
+                "outcome": "SKIPPED",
+                "related_tool_call_ids": [f"tool-builder-{index}"],
+                "related_state_snapshot_ids": ["state-0051-T0050-t50_final"],
+                "related_save_ids": [],
+            }
+        )
+    write_jsonl(episode / "raw" / "tool_calls.jsonl", tool_calls)
+    write_jsonl(episode / "derived" / "decision_atoms.jsonl", decisions)
+
+    labeler.generate_candidates("ep_t50_builders", workspace=tmp_path, session_id="sess-t50")
+
+    candidates = labeler.read_jsonl(episode / "phase2" / "candidates.jsonl")
+    builder = next(candidate for candidate in candidates if "builder 过量" in candidate["title"])
+    assert builder["confidence"] == "medium"
+    assert builder["capability_category"] == "planning"
+
+
+def test_t50_candidate_generation_detects_city_count_regression(tmp_path):
+    episode = make_episode(
+        tmp_path,
+        "ep_t50_city_regression",
+        observation_mode="t50_observation",
+        requested_turns=50,
+        actual_turns=50,
+        final_turn=50,
+    )
+    write_json(
+        episode / "raw" / "civ6_states" / "state-0035-T0035-turn_start_35.json",
+        {
+            "snapshot_id": "state-0035-T0035-turn_start_35",
+            "episode_id": "ep_t50_city_regression",
+            "turn": 35,
+            "label": "turn_start_35",
+            "overview": {"turn": 35, "num_cities": 3, "num_units": 4},
+            "units": [],
+        },
+    )
+    write_json(
+        episode / "raw" / "civ6_states" / "state-0051-T0050-t50_final.json",
+        {
+            "snapshot_id": "state-0051-T0050-t50_final",
+            "episode_id": "ep_t50_city_regression",
+            "turn": 50,
+            "label": "t50_final",
+            "overview": {"turn": 50, "num_cities": 2, "num_units": 4},
+            "units": [],
+        },
+    )
+
+    labeler.generate_candidates(
+        "ep_t50_city_regression", workspace=tmp_path, session_id="sess-t50"
+    )
+
+    candidates = labeler.read_jsonl(episode / "phase2" / "candidates.jsonl")
+    regression = next(candidate for candidate in candidates if "城市数回落" in candidate["title"])
+    assert regression["confidence"] == "medium"
+    assert regression["capability_category"] == "planning"
 
 
 def test_label_page_supports_batch_card_review(tmp_path):
@@ -249,6 +501,32 @@ def test_apply_confirmation_creates_formal_failures_and_one_to_one_seeds(tmp_pat
     assert summary["one_failure_to_one_seed"] is True
     assert "rerun_command" not in formal_text
     assert "suggested_fix" not in formal_text
+
+
+def test_apply_confirmation_accepts_utf8_bom_jsonl(tmp_path):
+    episode = make_episode(tmp_path)
+    labeler.generate_candidates("ep_short", workspace=tmp_path)
+    phase2 = episode / "phase2"
+    candidate = labeler.read_jsonl(phase2 / "candidates.jsonl")[0]
+    confirmation = phase2 / "confirmation" / "confirmation.jsonl"
+    confirmation.parent.mkdir(parents=True, exist_ok=True)
+    row = {
+        "candidate_id": candidate["candidate_id"],
+        "action": "accept",
+        "modified_fields": {},
+        "reviewer": "coverage-test",
+        "reviewer_note": "PowerShell-created UTF-8 BOM JSONL should be accepted.",
+        "reviewed_at": "2026-05-21T00:00:00+08:00",
+    }
+    confirmation.write_text(
+        json.dumps(row, ensure_ascii=False) + "\n",
+        encoding="utf-8-sig",
+    )
+
+    result = labeler.apply_confirmation("ep_short", confirmation, workspace=tmp_path)
+
+    assert result["failures"] == 1
+    assert labeler.read_jsonl(phase2 / "failures.jsonl")
 
 
 def test_apply_rejects_forbidden_confirmation_fields(tmp_path):

@@ -1,0 +1,272 @@
+{
+  "schema_version": 1,
+  "catalog_id": "codex-hl-civ6-phase3-assets",
+  "generated_at": "2026-05-21T00:00:00+08:00",
+  "assets": [
+    {
+      "asset_id": "prompt.default_boundary",
+      "asset_type": "prompt",
+      "version": "1.0.0",
+      "content_path": "assets/prompt-default-boundary.md",
+      "content_sha256": "256a76db0d71bcad4bbc6ffc848ee2b6b433c23a985125aa3626214ace0e6efd",
+      "source_refs": [
+        "docs/codex-hl-evolution-roadmap.md",
+        "plugin/AGENTS.md",
+        "human plan: Phase 3 首批资产迁移计划"
+      ],
+      "applicability": [
+        "installed plugin default behavior",
+        "phase boundary decisions"
+      ],
+      "risk_level": "medium",
+      "rollback_path": "assets/prompt-default-boundary.md",
+      "capability_dimensions": [
+        "planning",
+        "memory/state",
+        "recovery"
+      ],
+      "status": "active"
+    },
+    {
+      "asset_id": "playbook.phase1_observation",
+      "asset_type": "playbook",
+      "version": "1.0.0",
+      "content_path": "assets/playbook-phase1-observation.md",
+      "content_sha256": "756ca2ae71c37eea9b67e71130ffd2a9c67c5ee417a61babf0497d60eb8a5e4d",
+      "source_refs": [
+        "docs/codex-hl-phase1-observation.md",
+        "plugin/commands/civ6-phase1-observe.md",
+        "plugin/skills/civ6-phase1-observation/SKILL.md",
+        "human plan: Phase 3 首批资产迁移计划"
+      ],
+      "applicability": [
+        "Phase 1 short validation",
+        "Phase 1 T50 observation"
+      ],
+      "risk_level": "high",
+      "rollback_path": "assets/playbook-phase1-observation.md",
+      "capability_dimensions": [
+        "planning",
+        "execution",
+        "verification",
+        "recovery"
+      ],
+      "status": "active"
+    },
+    {
+      "asset_id": "playbook.phase2_offline_labeling",
+      "asset_type": "playbook",
+      "version": "1.0.0",
+      "content_path": "assets/playbook-phase2-offline-labeling.md",
+      "content_sha256": "52547e93e5b810238e7994cf8a364db9d164c5b18552ab11fdf1466ae39a440c",
+      "source_refs": [
+        "docs/codex-hl-phase2-v1-labeling.md",
+        "plugin/commands/civ6-phase2-label.md",
+        "human plan: Phase 3 首批资产迁移计划"
+      ],
+      "applicability": [
+        "Phase 2 candidate generation",
+        "Phase 2 confirmation apply"
+      ],
+      "risk_level": "high",
+      "rollback_path": "assets/playbook-phase2-offline-labeling.md",
+      "capability_dimensions": [
+        "planning",
+        "tool grounding",
+        "verification"
+      ],
+      "status": "active"
+    },
+    {
+      "asset_id": "tool_policy.phase1_run_and_evidence",
+      "asset_type": "tool_policy",
+      "version": "1.0.0",
+      "content_path": "assets/tool-policy-phase1-run-and-evidence.md",
+      "content_sha256": "25b0373b84cbf2c8e4b83f372f9aa9ffa2f27993d16e774298d6b28d9042d62f",
+      "source_refs": [
+        "docs/codex-hl-phase1-observation.md",
+        "plugin/skills/civ6-phase1-observation/SKILL.md",
+        "human plan: Phase 3 首批资产迁移计划"
+      ],
+      "applicability": [
+        "Phase 1 runner invocation",
+        "Phase 1 evidence acceptance"
+      ],
+      "risk_level": "high",
+      "rollback_path": "assets/tool-policy-phase1-run-and-evidence.md",
+      "capability_dimensions": [
+        "execution",
+        "tool grounding",
+        "verification",
+        "recovery"
+      ],
+      "status": "active"
+    },
+    {
+      "asset_id": "tool_policy.phase2_confirmation_apply",
+      "asset_type": "tool_policy",
+      "version": "1.0.0",
+      "content_path": "assets/tool-policy-phase2-confirmation-apply.md",
+      "content_sha256": "9d2c8999e6508dc5ce5d0cfddc3b67d8336b0fabb76c5c827a714be5266151dd",
+      "source_refs": [
+        "docs/codex-hl-phase2-v1-labeling.md",
+        "plugin/commands/civ6-phase2-label.md",
+        "human plan: Phase 3 首批资产迁移计划"
+      ],
+      "applicability": [
+        "Phase 2 local labeler",
+        "Phase 2 confirmation apply"
+      ],
+      "risk_level": "high",
+      "rollback_path": "assets/tool-policy-phase2-confirmation-apply.md",
+      "capability_dimensions": [
+        "execution",
+        "tool grounding",
+        "verification"
+      ],
+      "status": "active"
+    },
+    {
+      "asset_id": "memory.low_trust_policy",
+      "asset_type": "memory",
+      "version": "1.0.0",
+      "content_path": "assets/memory-low-trust-policy.md",
+      "content_sha256": "983b001b8ae40c8f083c33bb48f22af0fc6381a27b9eb8d83857ff2e0b05d1e2",
+      "source_refs": [
+        "docs/codex-hl-evolution-roadmap.md",
+        "plugin/AGENTS.md",
+        "human plan: Phase 3 首批资产迁移计划"
+      ],
+      "applicability": [
+        "memory use",
+        "state grounding"
+      ],
+      "risk_level": "medium",
+      "rollback_path": "assets/memory-low-trust-policy.md",
+      "capability_dimensions": [
+        "memory/state",
+        "tool grounding",
+        "verification"
+      ],
+      "status": "active"
+    },
+    {
+      "asset_id": "tool_policy.t50_metrics_review",
+      "asset_type": "tool_policy",
+      "version": "1.0.0",
+      "content_path": "assets/tool-policy-t50-metrics-review.md",
+      "content_sha256": "5625ca77f36cbc3cf3912299a6be86e259f18097e468d37268b57b9157a8963f",
+      "source_refs": [
+        "docs/codex-hl-evolution-roadmap.md",
+        "human plan: Phase 3 首批资产迁移计划"
+      ],
+      "applicability": [
+        "Phase 3 T50 metric comparison",
+        "candidate evidence review"
+      ],
+      "risk_level": "medium",
+      "rollback_path": "assets/tool-policy-t50-metrics-review.md",
+      "capability_dimensions": [
+        "verification",
+        "planning"
+      ],
+      "status": "active"
+    },
+    {
+      "asset_id": "playbook.phase4_candidate_improvements",
+      "asset_type": "playbook",
+      "version": "1.0.0",
+      "content_path": "assets/playbook-phase4-candidate-improvements.md",
+      "content_sha256": "a6bec85efe54d8657d14477befc1f9306492ec549fd115b2842089a827c5546d",
+      "source_refs": [
+        "docs/codex-hl-phase4-candidates.md",
+        "plugin/commands/civ6-phase4-candidates.md",
+        "human request: complete all roadmap modules"
+      ],
+      "applicability": [
+        "Phase 4 candidate improvement packaging",
+        "asset change proposal review"
+      ],
+      "risk_level": "high",
+      "rollback_path": "assets/playbook-phase4-candidate-improvements.md",
+      "capability_dimensions": [
+        "planning",
+        "verification",
+        "recovery"
+      ],
+      "status": "active"
+    },
+    {
+      "asset_id": "tool_policy.phase4_candidate_gate",
+      "asset_type": "tool_policy",
+      "version": "1.0.0",
+      "content_path": "assets/tool-policy-phase4-candidate-gate.md",
+      "content_sha256": "f60c30460b3a86ed8171553661c73f7f991f4aad6aab12b3b5728b1148ef73e3",
+      "source_refs": [
+        "docs/codex-hl-phase4-candidates.md",
+        "plugin/commands/civ6-phase4-candidates.md",
+        "human request: complete all roadmap modules"
+      ],
+      "applicability": [
+        "Phase 4 candidate gates",
+        "pre-governance validation"
+      ],
+      "risk_level": "high",
+      "rollback_path": "assets/tool-policy-phase4-candidate-gate.md",
+      "capability_dimensions": [
+        "tool grounding",
+        "verification",
+        "recovery"
+      ],
+      "status": "active"
+    },
+    {
+      "asset_id": "playbook.phase5_regression_scenarios",
+      "asset_type": "playbook",
+      "version": "1.0.0",
+      "content_path": "assets/playbook-phase5-regression-scenarios.md",
+      "content_sha256": "87879abe80b259182864f26f563f4b08cf925804ccc764252531b88bce94eadd",
+      "source_refs": [
+        "docs/codex-hl-phase5-scenarios.md",
+        "plugin/commands/civ6-phase5-scenarios.md",
+        "human request: complete all roadmap modules"
+      ],
+      "applicability": [
+        "Phase 5 regression scenario pool",
+        "multi-scenario validation"
+      ],
+      "risk_level": "high",
+      "rollback_path": "assets/playbook-phase5-regression-scenarios.md",
+      "capability_dimensions": [
+        "verification",
+        "memory/state",
+        "recovery"
+      ],
+      "status": "active"
+    },
+    {
+      "asset_id": "tool_policy.governance_auto_merge",
+      "asset_type": "tool_policy",
+      "version": "1.0.0",
+      "content_path": "assets/tool-policy-governance-auto-merge.md",
+      "content_sha256": "3ef52ea81f11c396cbd56e3799983bf0414585c7d0c951aaf5c36b98394e4c22",
+      "source_refs": [
+        "docs/codex-hl-governance.md",
+        "plugin/commands/civ6-governance.md",
+        "human request: complete all roadmap modules"
+      ],
+      "applicability": [
+        "L4/L5 guarded merge",
+        "asset rollback and audit"
+      ],
+      "risk_level": "high",
+      "rollback_path": "assets/tool-policy-governance-auto-merge.md",
+      "capability_dimensions": [
+        "verification",
+        "execution",
+        "recovery"
+      ],
+      "status": "active"
+    }
+  ]
+}

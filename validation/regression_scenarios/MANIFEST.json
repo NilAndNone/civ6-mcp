@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "phase": "Phase 5 Regression Scenario Pool",
+  "generated_at": "2026-05-22T15:20:08+08:00",
+  "pool_root": "O:\\civ6\\codex-hl-civ6\\validation\\regression_scenarios",
+  "scenario_count": 47,
+  "new_or_updated": 4,
+  "source_episode_id": "phase2_auto_continue4_t50_publicguide_20260522092400_c01_e04_t50",
+  "runnable": false,
+  "outputs": {
+    "scenarios": "regression_scenarios.jsonl",
+    "review": "scenario_pool.html"
+  }
+}

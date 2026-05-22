@@ -1,7 +1,7 @@
 {
   "name": "codex-hl-civ6",
   "version": "0.1.0",
-  "description": "用于 Phase 0/1 观测优先 Civ6 游玩的 Codex HL 插件。",
+  "description": "用于观测优先 Civ6 游玩、离线失败标注、资产登记、候选改进、scenario pool、受控资产治理和多局 T20/T50 编排的 Codex HL 插件。",
   "author": {
     "name": "Xiaohan Lu"
   },
@@ -11,13 +11,20 @@
     "civ6",
     "civilization",
     "phase1",
-    "observation"
+    "phase2",
+    "phase3",
+    "phase4",
+    "phase5",
+    "governance",
+    "assets",
+    "observation",
+    "evolution"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Codex HL Civ6",
     "shortDescription": "运行观测优先的 Codex HL Civ6 episode",
-    "longDescription": "Codex HL Civ6 提供一个自包含的 Phase 0/1 Civilization VI 插件。它会在任何长跑继续前，记录真实 Civ6 回合、决策记录、状态快照、存档和中文人工验收报告。",
+    "longDescription": "Codex HL Civ6 提供一个自包含的 Civilization VI 插件。它会在任何长跑继续前记录真实 Civ6 回合、决策记录、状态快照、存档和中文人工验收报告；用户明确开启后，还支持 Phase 2 离线标注、Phase 3 资产 catalog 校验、Phase 4 候选改进包、Phase 5 scenario pool、L4/L5 受控资产治理和多局 T20/T50 自进化编排。",
     "developerName": "Xiaohan Lu",
     "category": "Engineering",
     "capabilities": [

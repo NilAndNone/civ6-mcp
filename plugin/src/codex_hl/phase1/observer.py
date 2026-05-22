@@ -14,6 +14,7 @@ import hashlib
 import html
 import json
 import os
+import re
 import shutil
 import socket
 import subprocess
@@ -31,6 +32,7 @@ ROOT = Path(os.environ.get("CODEX_HL_CIV6_WORKSPACE") or Path.cwd()).resolve()
 if str(PLUGIN_SRC) not in sys.path:
     sys.path.insert(0, str(PLUGIN_SRC))
 
+from codex_hl.phase3.assets import write_active_asset_snapshot  # noqa: E402
 from civ6_connector import game_launcher  # noqa: E402
 from civ6_connector.connection import GameConnection  # noqa: E402
 from civ6_connector.game_lifecycle import load_game_save, save_game  # noqa: E402
@@ -42,7 +44,13 @@ SAVE_DIR = Path(game_launcher.SINGLE_SAVE_DIR)
 DEFAULT_SAVE_NAME = "test 1"
 MIN_SHORT_RUN_TURNS = 3
 MAX_SHORT_RUN_TURNS = 10
+T20_EXPLORATION_TURNS = 20
 T50_OBSERVATION_TURNS = 50
+FIRETUNER_CONNECT_TIMEOUT_SECONDS = 420
+FIRETUNER_LOAD_TIMEOUT_SECONDS = 420
+BASELINE_STRATEGY_PROFILE = "baseline_static"
+EXPLORE_SCOUT_FIRST_STRATEGY_PROFILE = "explore_scout_first"
+STRATEGY_PROFILES = {BASELINE_STRATEGY_PROFILE, EXPLORE_SCOUT_FIRST_STRATEGY_PROFILE}
 ACCEPTED_HUMAN_REPORT_EPISODE = "phase1_test1_short_20260512_130155"
 HUMAN_REPORT_CONTRACT_PATH = (
     PLUGIN_ROOT / "fixtures" / "phase1_human_report_contract" / "contract.json"
@@ -103,6 +111,8 @@ DEFAULT_HUMAN_REPORT_CONTRACT = {
 
 
 def observation_mode(turns: int) -> str:
+    if turns == T20_EXPLORATION_TURNS:
+        return "t20_exploration"
     if turns == T50_OBSERVATION_TURNS:
         return "t50_observation"
     if MIN_SHORT_RUN_TURNS <= turns <= MAX_SHORT_RUN_TURNS:
@@ -111,16 +121,29 @@ def observation_mode(turns: int) -> str:
 
 
 def observation_mode_zh(turns: int) -> str:
-    return "T50 完整观测" if observation_mode(turns) == "t50_observation" else "短跑验收"
+    mode = observation_mode(turns)
+    if mode == "t50_observation":
+        return "T50 完整观测"
+    if mode == "t20_exploration":
+        return "T20 策略探索"
+    return "短跑验收"
 
 
 def observation_episode_prefix(turns: int) -> str:
-    return "phase1_test1_t50" if observation_mode(turns) == "t50_observation" else "phase1_test1_short"
+    mode = observation_mode(turns)
+    if mode == "t50_observation":
+        return "phase1_test1_t50"
+    if mode == "t20_exploration":
+        return "phase1_test1_t20"
+    return "phase1_test1_short"
 
 
 def observation_stop_boundary(turns: int) -> str:
-    if observation_mode(turns) == "t50_observation":
+    mode = observation_mode(turns)
+    if mode == "t50_observation":
         return "Stop after the 50-turn T50 observation. Do not continue to T51+ or Phase 2 without explicit user approval."
+    if mode == "t20_exploration":
+        return "Stop after the 20-turn T20 exploration. Treat results as local candidate evidence, not a long-horizon strategy proof."
     return "Stop after the 3-10 turn short-run. Do not continue to T50 until human acceptance."
 
 
@@ -161,6 +184,59 @@ PRODUCTION_PRIORITY = [
     "UNIT_WARRIOR",
 ]
 
+EXPLORE_SCOUT_FIRST_PRODUCTION_PRIORITY = [
+    "UNIT_SCOUT",
+    "UNIT_SETTLER",
+    "UNIT_TRADER",
+    "UNIT_BUILDER",
+    "DISTRICT_CAMPUS",
+    "BUILDING_MONUMENT",
+    "UNIT_SLINGER",
+    "UNIT_WARRIOR",
+    "BUILDING_GRANARY",
+    "BUILDING_WATER_MILL",
+]
+EXPLORE_SCOUT_FIRST_SCOUT_CAP = 2
+EXPLORE_SCOUT_FIRST_BUILDER_CAP_AFTER_THREE_CITIES = 2
+EXPLORE_SCOUT_FIRST_MIN_COMBAT_AFTER_THREE_CITIES = 3
+EXPLORE_SCOUT_FIRST_TARGET_T50_CITIES = 4
+EXPLORE_SCOUT_FIRST_POST_THREE_CITY_PRIORITY = [
+    "UNIT_BUILDER",
+    "UNIT_TRADER",
+    "DISTRICT_CAMPUS",
+    "BUILDING_MONUMENT",
+    "UNIT_SLINGER",
+    "UNIT_WARRIOR",
+    "BUILDING_GRANARY",
+    "BUILDING_WATER_MILL",
+    "UNIT_SETTLER",
+    "UNIT_SCOUT",
+]
+EXPLORE_SCOUT_FIRST_POST_THREE_CITY_DEFENSE_PRIORITY = [
+    "UNIT_SLINGER",
+    "UNIT_WARRIOR",
+    "UNIT_BUILDER",
+    "UNIT_TRADER",
+    "DISTRICT_CAMPUS",
+    "BUILDING_MONUMENT",
+    "BUILDING_GRANARY",
+    "BUILDING_WATER_MILL",
+    "UNIT_SETTLER",
+    "UNIT_SCOUT",
+]
+EXPLORE_SCOUT_FIRST_POST_THREE_CITY_EXPANSION_PRIORITY = [
+    "UNIT_SETTLER",
+    "UNIT_BUILDER",
+    "UNIT_TRADER",
+    "DISTRICT_CAMPUS",
+    "BUILDING_MONUMENT",
+    "UNIT_SLINGER",
+    "UNIT_WARRIOR",
+    "BUILDING_GRANARY",
+    "BUILDING_WATER_MILL",
+    "UNIT_SCOUT",
+]
+
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
@@ -199,6 +275,41 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: f.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def asset_snapshot_manifest(active_assets_path: Path) -> dict[str, Any]:
+    rel_path = active_assets_path.as_posix()
+    if active_assets_path.exists():
+        try:
+            snapshot = json.loads(active_assets_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            return {
+                "status": "invalid",
+                "path": rel_path,
+                "gap": f"Could not read active asset snapshot: {type(exc).__name__}: {exc}",
+                "next_step": "Regenerate the episode only if historical asset provenance is intentionally being refreshed.",
+            }
+        return {
+            "status": "present",
+            "path": rel_path,
+            "asset_count": snapshot.get("asset_count"),
+            "source_catalog": snapshot.get("source_catalog"),
+            "active_assets": [
+                {
+                    "asset_id": asset.get("asset_id"),
+                    "version": asset.get("version"),
+                    "content_sha256": asset.get("content_sha256"),
+                }
+                for asset in snapshot.get("active_assets", [])
+                if isinstance(asset, dict)
+            ],
+        }
+    return {
+        "status": "missing",
+        "path": rel_path,
+        "gap": "This episode predates Phase 3 active asset snapshots or was recorded without the Phase 3 asset registry.",
+        "next_step": "Do not fabricate historical asset versions; use current catalog only as a low-trust reference.",
+    }
 
 
 def run_git(args: list[str]) -> str:
@@ -350,6 +461,7 @@ class EpisodeRecorder:
         self.agent_report_path = self.outcome / "phase1_agent_audit_report.html"
         self.save_index_path = self.saves_dir / "save_index.jsonl"
         self.manifest_path = self.assets / "manifest.json"
+        self.active_assets_path = self.assets / "active_assets.json"
 
         for path in [
             self.mcp_path,
@@ -365,6 +477,7 @@ class EpisodeRecorder:
         self.human_notes_path.write_text(
             "# Human notes\n\nShort-run acceptance is pending.\n", encoding="utf-8"
         )
+        write_active_asset_snapshot(self.active_assets_path)
 
         self.tool_seq = 0
         self.lua_seq = 0
@@ -626,6 +739,7 @@ class EpisodeRecorder:
                 "tool_errors": self.tool_error_count,
                 "lua_errors": self.lua_error_count,
             },
+            "asset_snapshot": asset_snapshot_manifest(self.active_assets_path),
             "files": files,
         }
         self.manifest_path.write_text(
@@ -687,6 +801,376 @@ def choose_by_priority(options: list[Any], attr: str, priority: list[str]) -> An
         if item in by_name:
             return by_name[item]
     return sorted(options, key=lambda opt: getattr(opt, "turns", 9999))[0]
+
+
+def recorder_strategy_profile(recorder: Any) -> str:
+    return str(getattr(recorder, "strategy_profile", BASELINE_STRATEGY_PROFILE))
+
+
+def snapshot_unit_count(
+    snapshot: dict[str, Any] | None,
+    unit_type: str,
+    extra_units: dict[str, int] | None = None,
+) -> int:
+    if not snapshot:
+        count = 0
+    else:
+        count = sum(
+            1
+            for unit in snapshot.get("units") or []
+            if getattr(unit, "unit_type", None) == unit_type
+            or (isinstance(unit, dict) and unit.get("unit_type") == unit_type)
+        )
+        count += sum(
+            1
+            for city in snapshot.get("cities") or []
+            if getattr(city, "currently_building", None) == unit_type
+            or (isinstance(city, dict) and city.get("currently_building") == unit_type)
+        )
+    if extra_units:
+        count += extra_units.get(unit_type, 0)
+    return count
+
+
+def snapshot_city_count(snapshot: dict[str, Any] | None) -> int:
+    if not snapshot:
+        return 0
+    return len(snapshot.get("cities") or [])
+
+
+def snapshot_combat_unit_count(
+    snapshot: dict[str, Any] | None,
+    extra_units: dict[str, int] | None = None,
+) -> int:
+    combat_types = {"UNIT_WARRIOR", "UNIT_SLINGER", "UNIT_ARCHER"}
+    if not snapshot:
+        count = 0
+    else:
+        count = sum(
+            1
+            for unit in snapshot.get("units") or []
+            if getattr(unit, "unit_type", None) in combat_types
+            or (isinstance(unit, dict) and unit.get("unit_type") in combat_types)
+        )
+        count += sum(
+            1
+            for city in snapshot.get("cities") or []
+            if getattr(city, "currently_building", None) in combat_types
+            or (
+                isinstance(city, dict)
+                and city.get("currently_building") in combat_types
+            )
+        )
+    if extra_units:
+        count += sum(extra_units.get(unit_type, 0) for unit_type in combat_types)
+    return count
+
+
+def cap_post_three_city_builders(
+    priority: list[str],
+    snapshot: dict[str, Any] | None,
+    extra_units: dict[str, int] | None = None,
+) -> list[str]:
+    if (
+        snapshot_unit_count(snapshot, "UNIT_BUILDER", extra_units)
+        < EXPLORE_SCOUT_FIRST_BUILDER_CAP_AFTER_THREE_CITIES
+    ):
+        return priority
+    return [item for item in priority if item != "UNIT_BUILDER"] + ["UNIT_BUILDER"]
+
+
+def production_priority_for(
+    recorder: Any,
+    snapshot: dict[str, Any] | None = None,
+    extra_units: dict[str, int] | None = None,
+) -> list[str]:
+    if recorder_strategy_profile(recorder) == EXPLORE_SCOUT_FIRST_STRATEGY_PROFILE:
+        if (
+            snapshot_unit_count(snapshot, "UNIT_SCOUT", extra_units)
+            >= EXPLORE_SCOUT_FIRST_SCOUT_CAP
+        ):
+            if snapshot_city_count(snapshot) >= 3:
+                if (
+                    snapshot_combat_unit_count(snapshot, extra_units)
+                    < EXPLORE_SCOUT_FIRST_MIN_COMBAT_AFTER_THREE_CITIES
+                ):
+                    return cap_post_three_city_builders(
+                        EXPLORE_SCOUT_FIRST_POST_THREE_CITY_DEFENSE_PRIORITY,
+                        snapshot,
+                        extra_units,
+                    )
+                if (
+                    snapshot_city_count(snapshot)
+                    < EXPLORE_SCOUT_FIRST_TARGET_T50_CITIES
+                    and snapshot_unit_count(snapshot, "UNIT_SETTLER", extra_units) == 0
+                ):
+                    return cap_post_three_city_builders(
+                        EXPLORE_SCOUT_FIRST_POST_THREE_CITY_EXPANSION_PRIORITY,
+                        snapshot,
+                        extra_units,
+                    )
+                return cap_post_three_city_builders(
+                    EXPLORE_SCOUT_FIRST_POST_THREE_CITY_PRIORITY,
+                    snapshot,
+                    extra_units,
+                )
+            if (
+                snapshot_city_count(snapshot) >= 2
+                and snapshot_combat_unit_count(snapshot, extra_units) < 2
+            ):
+                return [
+                    "UNIT_SLINGER",
+                    "UNIT_WARRIOR",
+                    "UNIT_BUILDER",
+                    "BUILDING_MONUMENT",
+                    "UNIT_SETTLER",
+                    "UNIT_TRADER",
+                    "DISTRICT_CAMPUS",
+                    "BUILDING_GRANARY",
+                    "BUILDING_WATER_MILL",
+                    "UNIT_SCOUT",
+                ]
+            return [
+                item
+                for item in EXPLORE_SCOUT_FIRST_PRODUCTION_PRIORITY
+                if item != "UNIT_SCOUT"
+            ] + ["UNIT_SCOUT"]
+        return EXPLORE_SCOUT_FIRST_PRODUCTION_PRIORITY
+    return PRODUCTION_PRIORITY
+
+
+def should_auto_explore_unit(
+    recorder: Any, unit_type: str, snapshot: dict[str, Any] | None = None
+) -> bool:
+    if recorder_strategy_profile(recorder) != EXPLORE_SCOUT_FIRST_STRATEGY_PROFILE:
+        return False
+    if unit_type == "UNIT_SCOUT":
+        return True
+    if unit_type == "UNIT_WARRIOR":
+        return snapshot_unit_count(snapshot, "UNIT_SCOUT") == 0 and snapshot_unit_count(
+            snapshot, "UNIT_SETTLER"
+        ) == 0
+    return False
+
+
+def best_settle_candidate(candidates: list[Any]) -> Any | None:
+    if not candidates:
+        return None
+    return ranked_settle_candidates(candidates)[0]
+
+
+def ranked_settle_candidates(candidates: list[Any]) -> list[Any]:
+    return sorted(candidates, key=lambda item: getattr(item, "score", 0), reverse=True)
+
+
+BUILDER_TASK_PRIORITY_RANK = {"urgent": 0, "high": 1, "normal": 2}
+
+
+def ranked_builder_tasks_for_unit(tasks: list[Any], unit: Any) -> list[Any]:
+    unit_id = getattr(unit, "unit_id", None)
+
+    def task_rank(task: Any) -> tuple[int, int, float]:
+        nearest = getattr(task, "nearest_builder_id", None)
+        priority = str(getattr(task, "priority", "") or "")
+        distance = getattr(task, "distance", 999) or 999
+        return (
+            0 if nearest == unit_id else 1,
+            BUILDER_TASK_PRIORITY_RANK.get(priority, 3),
+            float(distance),
+        )
+
+    return sorted(tasks, key=task_rank)
+
+
+TRADE_YIELD_WEIGHTS = {
+    "Food": 4.0,
+    "Prod": 5.0,
+    "Gold": 2.0,
+    "Sci": 6.0,
+    "Cul": 4.0,
+    "Faith": 1.0,
+}
+
+
+def trade_yield_score(text: str) -> float:
+    score = 0.0
+    for name, raw_value in re.findall(
+        r"(Food|Prod|Gold|Sci|Cul|Faith):([0-9]+(?:\.[0-9]+)?)", text or ""
+    ):
+        score += TRADE_YIELD_WEIGHTS.get(name, 1.0) * float(raw_value)
+    return score
+
+
+def trade_destination_score(destination: Any) -> tuple[float, str, int, int]:
+    origin_score = trade_yield_score(str(getattr(destination, "origin_yields", "") or ""))
+    destination_score = trade_yield_score(str(getattr(destination, "dest_yields", "") or ""))
+    score = origin_score + destination_score
+    if getattr(destination, "has_quest", False):
+        score += 1000.0
+    if getattr(destination, "is_domestic", False):
+        score += 100.0
+    if getattr(destination, "has_trading_post", False):
+        score += 10.0
+    return (
+        -score,
+        str(getattr(destination, "city_name", "")),
+        int(getattr(destination, "x", 0)),
+        int(getattr(destination, "y", 0)),
+    )
+
+
+def ranked_trade_destinations(destinations: list[Any]) -> list[Any]:
+    return sorted(destinations, key=trade_destination_score)
+
+
+def trader_is_already_on_route(trade_routes: Any, unit: Any) -> bool:
+    for trader in getattr(trade_routes, "traders", []) or []:
+        if not getattr(trader, "on_route", False):
+            continue
+        trader_id = getattr(trader, "unit_id", None)
+        if trader_id in {
+            getattr(unit, "unit_id", None),
+            getattr(unit, "unit_index", None),
+        }:
+            return True
+    return False
+
+
+POLICY_PRIORITY_BY_SLOT = {
+    "SLOT_MILITARY": [
+        "POLICY_AGOGE",
+        "POLICY_DISCIPLINE",
+        "POLICY_MANEUVER",
+        "POLICY_SURVEY",
+        "POLICY_CONSCRIPTION",
+    ],
+    "SLOT_ECONOMIC": [
+        "POLICY_URBAN_PLANNING",
+        "POLICY_COLONIZATION",
+        "POLICY_ILKUM",
+        "POLICY_CARAVANSERIES",
+        "POLICY_GOD_KING",
+    ],
+    "SLOT_DIPLOMATIC": [
+        "POLICY_CHARISMATIC_LEADER",
+        "POLICY_DIPLOMATIC_LEAGUE",
+        "POLICY_LIMITANEI",
+    ],
+    "SLOT_WILDCARD": [
+        "POLICY_URBAN_PLANNING",
+        "POLICY_AGOGE",
+        "POLICY_COLONIZATION",
+        "POLICY_ILKUM",
+        "POLICY_CHARISMATIC_LEADER",
+    ],
+    "SLOT_GREAT_PERSON": [
+        "POLICY_URBAN_PLANNING",
+        "POLICY_AGOGE",
+        "POLICY_CHARISMATIC_LEADER",
+    ],
+}
+
+GOVERNOR_PRIORITY = [
+    "GOVERNOR_THE_EDUCATOR",
+    "GOVERNOR_THE_BUILDER",
+    "GOVERNOR_THE_RESOURCE_MANAGER",
+    "GOVERNOR_THE_MERCHANT",
+    "GOVERNOR_THE_AMBASSADOR",
+]
+
+DEDICATION_PRIORITY = [
+    "COMMEMORATION_SCIENTIFIC",
+    "COMMEMORATION_INFRASTRUCTURE",
+    "COMMEMORATION_CULTURAL",
+    "COMMEMORATION_RELIGIOUS",
+    "COMMEMORATION_MILITARY",
+]
+
+PROMOTION_PRIORITY = [
+    "PROMOTION_RANGER",
+    "PROMOTION_ALPINE",
+    "PROMOTION_GARRISON",
+    "PROMOTION_VOLLEY",
+    "PROMOTION_BATTLECRY",
+    "PROMOTION_TORTOISE",
+]
+
+
+def policy_fits_slot(slot: Any, policy: Any) -> bool:
+    slot_type = str(getattr(slot, "slot_type", "") or "")
+    policy_slot_type = str(getattr(policy, "slot_type", "") or "")
+    if slot_type in {"SLOT_WILDCARD", "SLOT_GREAT_PERSON"}:
+        return True
+    return policy_slot_type in {slot_type, "SLOT_WILDCARD"}
+
+
+def priority_index(value: str, priority: list[str]) -> int:
+    try:
+        return priority.index(value)
+    except ValueError:
+        return len(priority)
+
+
+def policy_assignments_for_empty_slots(status: Any) -> dict[int, str]:
+    slots = list(getattr(status, "slots", []) or [])
+    policies = list(getattr(status, "available_policies", []) or [])
+    used = {
+        str(getattr(slot, "current_policy", "") or "")
+        for slot in slots
+        if getattr(slot, "current_policy", None)
+    }
+    assignments: dict[int, str] = {}
+    for slot in sorted(slots, key=lambda item: int(getattr(item, "slot_index", 0))):
+        if getattr(slot, "current_policy", None):
+            continue
+        slot_type = str(getattr(slot, "slot_type", "") or "SLOT_WILDCARD")
+        priority = POLICY_PRIORITY_BY_SLOT.get(slot_type, POLICY_PRIORITY_BY_SLOT["SLOT_WILDCARD"])
+        candidates = [
+            policy
+            for policy in policies
+            if str(getattr(policy, "policy_type", "") or "") not in used
+            and policy_fits_slot(slot, policy)
+        ]
+        if not candidates:
+            continue
+        selected = sorted(
+            candidates,
+            key=lambda policy: (
+                priority_index(str(getattr(policy, "policy_type", "") or ""), priority),
+                str(getattr(policy, "policy_type", "") or ""),
+            ),
+        )[0]
+        policy_type = str(getattr(selected, "policy_type", "") or "")
+        if policy_type:
+            assignments[int(getattr(slot, "slot_index", 0))] = policy_type
+            used.add(policy_type)
+    return assignments
+
+
+def first_by_priority(items: list[Any], attr: str, priority: list[str]) -> Any | None:
+    if not items:
+        return None
+    return sorted(
+        items,
+        key=lambda item: (
+            priority_index(str(getattr(item, attr, "") or ""), priority),
+            str(getattr(item, attr, "") or ""),
+        ),
+    )[0]
+
+
+def snapshot_notification_text(snapshot: dict[str, Any]) -> str:
+    return str(snapshot.get("notifications") or "")
+
+
+def snapshot_mentions_any(snapshot: dict[str, Any], terms: list[str]) -> bool:
+    text = snapshot_notification_text(snapshot).lower()
+    return any(term.lower() in text for term in terms)
+
+
+def unit_can_build_improvement(unit: Any, improvement: str) -> bool:
+    valid = set(getattr(unit, "valid_improvements", []) or [])
+    return not valid or improvement in valid
 
 
 def summarize_overview(overview: Any) -> str:
@@ -950,7 +1434,10 @@ print("---END---");
     return f"Error: timed out waiting for front-end save query for '{save_name}'."
 
 
-async def connect_with_retry(conn: GameConnection, timeout_seconds: int = 180) -> str:
+async def connect_with_retry(
+    conn: GameConnection,
+    timeout_seconds: int = FIRETUNER_CONNECT_TIMEOUT_SECONDS,
+) -> str:
     deadline = time.time() + timeout_seconds
     attempts = 0
     last_error = ""
@@ -995,8 +1482,8 @@ async def ensure_game_loaded(
 
     await recorder.tool_call(
         "connect",
-        {"timeout_seconds": 180},
-        lambda: connect_with_retry(gs.conn, 180),
+        {"timeout_seconds": FIRETUNER_CONNECT_TIMEOUT_SECONDS},
+        lambda: connect_with_retry(gs.conn, FIRETUNER_CONNECT_TIMEOUT_SECONDS),
     )
     used_front_end_load = False
     if gs.conn.gamecore_index is None:
@@ -1026,7 +1513,7 @@ async def ensure_game_loaded(
     await asyncio.sleep(18)
 
     connected = False
-    load_deadline = time.time() + 180
+    load_deadline = time.time() + FIRETUNER_LOAD_TIMEOUT_SECONDS
     keyboard_continue_sent = False
     while time.time() < load_deadline:
         try:
@@ -1293,6 +1780,7 @@ async def maybe_set_city_production(
 ) -> None:
     cities = snapshot.get("cities") or []
     production = snapshot.get("production") or {}
+    planned_units: dict[str, int] = {}
     for city in cities:
         city_id = getattr(city, "city_id", None)
         if city_id is None:
@@ -1331,7 +1819,11 @@ async def maybe_set_city_production(
         if repairs:
             selected = sorted(repairs, key=lambda opt: getattr(opt, "turns", 9999))[0]
         else:
-            selected = choose_by_priority(options, "item_name", PRODUCTION_PRIORITY)
+            selected = choose_by_priority(
+                options,
+                "item_name",
+                production_priority_for(recorder, snapshot, planned_units),
+            )
         if selected is None:
             recorder.add_gap(
                 f"production.city_{city_id}.selection",
@@ -1407,6 +1899,12 @@ async def maybe_set_city_production(
             turn=turn,
         )
         related_calls.append(call_id)
+        if (
+            selected.category == "UNIT"
+            and isinstance(result, str)
+            and not result.startswith(("Error", "ERR", "FAILED"))
+        ):
+            planned_units[selected.item_name] = planned_units.get(selected.item_name, 0) + 1
         recorder.record_decision(
             {
                 "turn": turn,
@@ -1416,9 +1914,12 @@ async def maybe_set_city_production(
                 "current_goal": "Resolve mandatory production blocker while recording all candidate actions.",
                 "available_actions": actions,
                 "selected_action": f"{selected.category} {selected.item_name}",
-                "rationale": "Use repair first if needed, otherwise a static conservative priority list. This does not update the main strategy.",
+                "rationale": (
+                    "Use repair first if needed, otherwise select from the active "
+                    f"{recorder_strategy_profile(recorder)} production priority."
+                ),
                 "why_not_alternatives": {
-                    "other production options": "Recorded as available actions but lower in the static blocker-resolution priority.",
+                    "other production options": "Recorded as available actions but lower in the active production priority.",
                     "leave idle": "End turn may be blocked and the city would waste production.",
                 },
                 "execution": {"tool": "set_city_production", "params": params, "result": result},
@@ -1428,6 +1929,226 @@ async def maybe_set_city_production(
                 "related_save_ids": [],
             }
         )
+
+
+async def maybe_handle_governance_blockers(
+    recorder: EpisodeRecorder,
+    gs: GameState,
+    turn: int,
+    state_id: str,
+    snapshot: dict[str, Any],
+) -> None:
+    policy_status = snapshot.get("policies")
+    if policy_status is not None:
+        assignments = policy_assignments_for_empty_slots(policy_status)
+        if assignments:
+            actions = [
+                f"slot {slot_index} -> {policy_type}"
+                for slot_index, policy_type in assignments.items()
+            ]
+            call_id, result = await recorder.tool_call(
+                "set_policies",
+                {"assignments": assignments},
+                lambda assignments=assignments: gs.set_policies(assignments),
+                turn=turn,
+            )
+            recorder.record_decision(
+                {
+                    "turn": turn,
+                    "trigger": "empty policy slot blocker",
+                    "importance": "high",
+                    "background": background_from_snapshot(snapshot),
+                    "current_goal": "Fill mandatory policy slots so T50 automation can keep advancing.",
+                    "available_actions": actions,
+                    "selected_action": "set policy assignments",
+                    "rationale": "Use conservative early-game policy priorities for empty slots instead of leaving end_turn blocked.",
+                    "why_not_alternatives": {
+                        "leave slots empty": "Would leave a required civic blocker unresolved.",
+                        "manual policy planning": "This run needs deterministic blocker resolution without human intervention.",
+                    },
+                    "execution": {
+                        "tool": "set_policies",
+                        "assignments": assignments,
+                        "result": result,
+                    },
+                    "outcome": short_text(result),
+                    "related_tool_call_ids": [call_id],
+                    "related_state_snapshot_ids": [state_id],
+                    "related_save_ids": [],
+                }
+            )
+
+    if snapshot_mentions_any(
+        snapshot,
+        [
+            "dedication",
+            "commemoration",
+            "着力点",
+            "纪念",
+            "COMMEMORATION",
+        ],
+    ):
+        try:
+            call_id, status = await recorder.tool_call(
+                "get_dedications", {}, gs.get_dedications, turn=turn
+            )
+            choices = list(getattr(status, "choices", []) or [])
+            selected = first_by_priority(choices, "name", DEDICATION_PRIORITY)
+            if selected is not None:
+                choose_id, result = await recorder.tool_call(
+                    "choose_dedication",
+                    {"dedication_index": int(getattr(selected, "index", 0))},
+                    lambda selected=selected: gs.choose_dedication(
+                        int(getattr(selected, "index", 0))
+                    ),
+                    turn=turn,
+                )
+                recorder.record_decision(
+                    {
+                        "turn": turn,
+                        "trigger": "dedication blocker",
+                        "importance": "high",
+                        "background": background_from_snapshot(snapshot),
+                        "current_goal": "Resolve era dedication selection before ending the turn.",
+                        "available_actions": [
+                            f"{getattr(choice, 'index', '?')}: {getattr(choice, 'name', '')}"
+                            for choice in choices
+                        ],
+                        "selected_action": f"choose {getattr(selected, 'name', '')}",
+                        "rationale": "Pick a deterministic economy/science-friendly dedication to avoid a midgame blocker.",
+                        "why_not_alternatives": {
+                            "other dedications": "Lower current priority for the automated T50 strategy profile.",
+                            "leave unset": "End turn can remain blocked until a dedication is chosen.",
+                        },
+                        "execution": {
+                            "tool": "choose_dedication",
+                            "dedication_index": int(getattr(selected, "index", 0)),
+                            "result": result,
+                        },
+                        "outcome": short_text(result),
+                        "related_tool_call_ids": [call_id, choose_id],
+                        "related_state_snapshot_ids": [state_id],
+                        "related_save_ids": [],
+                    }
+                )
+        except Exception as exc:  # noqa: BLE001
+            recorder.add_gap(
+                "governance.dedication",
+                f"{type(exc).__name__}: {exc}",
+                "Repair dedication auto-selection if era blockers recur in T50 runs.",
+            )
+
+    if snapshot_mentions_any(
+        snapshot,
+        ["governor", "总督", "GOVERNOR_APPOINTMENT", "GOVERNOR_PROMOTION"],
+    ):
+        try:
+            call_id, status = await recorder.tool_call(
+                "get_governors", {}, gs.get_governors, turn=turn
+            )
+            available = list(getattr(status, "available_to_appoint", []) or [])
+            selected = first_by_priority(available, "governor_type", GOVERNOR_PRIORITY)
+            if getattr(status, "can_appoint", False) and selected is not None:
+                gov_type = str(getattr(selected, "governor_type", "") or "")
+                appoint_id, result = await recorder.tool_call(
+                    "appoint_governor",
+                    {"governor_type": gov_type},
+                    lambda gov_type=gov_type: gs.appoint_governor(gov_type),
+                    turn=turn,
+                )
+                recorder.record_decision(
+                    {
+                        "turn": turn,
+                        "trigger": "governor appointment blocker",
+                        "importance": "high",
+                        "background": background_from_snapshot(snapshot),
+                        "current_goal": "Spend available governor appointment so end_turn does not stall.",
+                        "available_actions": [
+                            getattr(gov, "governor_type", "") for gov in available
+                        ],
+                        "selected_action": f"appoint {gov_type}",
+                        "rationale": "Prefer early science/economy governors, with deterministic fallback to the first available governor.",
+                        "why_not_alternatives": {
+                            "other governors": "Lower priority for the current automated opening profile.",
+                            "leave point unused": "Governor appointment notifications can block or delay turn advancement.",
+                        },
+                        "execution": {
+                            "tool": "appoint_governor",
+                            "governor_type": gov_type,
+                            "result": result,
+                        },
+                        "outcome": short_text(result),
+                        "related_tool_call_ids": [call_id, appoint_id],
+                        "related_state_snapshot_ids": [state_id],
+                        "related_save_ids": [],
+                    }
+                )
+        except Exception as exc:  # noqa: BLE001
+            recorder.add_gap(
+                "governance.governor",
+                f"{type(exc).__name__}: {exc}",
+                "Repair governor auto-appointment if governor blockers recur in T50 runs.",
+            )
+
+    units = list(snapshot.get("units") or [])
+    for unit in units:
+        if not getattr(unit, "needs_promotion", False):
+            continue
+        unit_id = getattr(unit, "unit_id", 0)
+        try:
+            call_id, status = await recorder.tool_call(
+                "get_unit_promotions",
+                {"unit_id": unit_id},
+                lambda unit_id=unit_id: gs.get_unit_promotions(unit_id),
+                turn=turn,
+            )
+            promotions = list(getattr(status, "promotions", []) or [])
+            selected = first_by_priority(promotions, "promotion_type", PROMOTION_PRIORITY)
+            if selected is None:
+                continue
+            promotion_type = str(getattr(selected, "promotion_type", "") or "")
+            promote_id, result = await recorder.tool_call(
+                "promote_unit",
+                {"unit_id": unit_id, "promotion_type": promotion_type},
+                lambda unit_id=unit_id, promotion_type=promotion_type: gs.promote_unit(
+                    unit_id, promotion_type
+                ),
+                turn=turn,
+            )
+            recorder.record_decision(
+                {
+                    "turn": turn,
+                    "trigger": f"unit promotion blocker {unit_id}",
+                    "importance": "high",
+                    "background": f"{getattr(unit, 'unit_type', '')} has a pending promotion.",
+                    "current_goal": "Resolve promotion blockers before unit movement and end_turn.",
+                    "available_actions": [
+                        getattr(promo, "promotion_type", "") for promo in promotions
+                    ],
+                    "selected_action": f"promote {promotion_type}",
+                    "rationale": "Pick a deterministic combat/scout-safe promotion to clear the pending promotion prompt.",
+                    "why_not_alternatives": {
+                        "other promotions": "Lower generic priority for automated blocker resolution.",
+                        "leave unpromoted": "A pending promotion can block turn completion.",
+                    },
+                    "execution": {
+                        "tool": "promote_unit",
+                        "unit_id": unit_id,
+                        "promotion_type": promotion_type,
+                        "result": result,
+                    },
+                    "outcome": short_text(result),
+                    "related_tool_call_ids": [call_id, promote_id],
+                    "related_state_snapshot_ids": [state_id],
+                    "related_save_ids": [],
+                }
+            )
+        except Exception as exc:  # noqa: BLE001
+            recorder.add_gap(
+                f"units.promotion.{unit_id}",
+                f"{type(exc).__name__}: {exc}",
+                "Repair unit promotion auto-selection if promotion blockers recur in T50 runs.",
+            )
 
 
 async def handle_units(
@@ -1518,12 +2239,143 @@ async def handle_units(
             city_count += 1
             continue
 
+        if unit_type == "UNIT_SETTLER":
+            actions = [
+                "found_city on current tile",
+                "move toward best settle candidate",
+                "skip settler",
+            ]
+            related_calls: list[str] = []
+            found_id, found_result = await recorder.tool_call(
+                "unit_action",
+                {"unit_id": unit_id, "action": "found_city"},
+                lambda unit_index=unit_index: gs.found_city(unit_index),
+                turn=turn,
+            )
+            related_calls.append(found_id)
+            selected = "found_city on current tile"
+            execution: dict[str, Any] = {
+                "tool": "unit_action",
+                "action": "found_city",
+                "result": found_result,
+            }
+            outcome = short_text(found_result)
+            rationale = (
+                "A produced settler should convert exploration into expansion as soon as the current tile is legal."
+            )
+            if not str(found_result).startswith("FOUNDED|"):
+                scan_id, candidates = await recorder.tool_call(
+                    "get_global_settle_scan", {}, gs.get_global_settle_scan, turn=turn
+                )
+                related_calls.append(scan_id)
+                candidate_list = ranked_settle_candidates(list(candidates or []))
+                if candidate_list:
+                    move_attempts: list[dict[str, Any]] = []
+                    move_result = ""
+                    candidate = candidate_list[0]
+                    target_x = int(getattr(candidate, "x"))
+                    target_y = int(getattr(candidate, "y"))
+                    for candidate in candidate_list[:3]:
+                        target_x = int(getattr(candidate, "x"))
+                        target_y = int(getattr(candidate, "y"))
+                        move_id, move_result = await recorder.tool_call(
+                            "unit_action",
+                            {
+                                "unit_id": unit_id,
+                                "action": "move",
+                                "target_x": target_x,
+                                "target_y": target_y,
+                            },
+                            lambda unit_index=unit_index, target_x=target_x, target_y=target_y: gs.move_unit(
+                                unit_index, target_x, target_y
+                            ),
+                            turn=turn,
+                        )
+                        related_calls.append(move_id)
+                        move_attempts.append(
+                            {
+                                "target": {
+                                    "x": target_x,
+                                    "y": target_y,
+                                    "score": getattr(candidate, "score", None),
+                                    "water_type": getattr(candidate, "water_type", None),
+                                },
+                                "result": move_result,
+                                "tool_call_id": move_id,
+                            }
+                        )
+                        if "BLOCKED" not in str(move_result):
+                            break
+                    selected = "move toward best settle candidate"
+                    execution = {
+                        "tool": "unit_action",
+                        "action": "move",
+                        "target": {
+                            "x": target_x,
+                            "y": target_y,
+                            "score": getattr(candidate, "score", None),
+                            "water_type": getattr(candidate, "water_type", None),
+                        },
+                        "found_result": found_result,
+                        "move_result": move_result,
+                        "move_attempts": move_attempts,
+                    }
+                    outcome = short_text(move_result)
+                    rationale = (
+                        "The settler could not found on its current tile, so the runner moved it toward the highest-scored revealed settle candidate."
+                    )
+                else:
+                    skip_id, skip_result = await recorder.tool_call(
+                        "unit_action",
+                        {"unit_id": unit_id, "action": "skip"},
+                        lambda unit_index=unit_index: gs.skip_unit(unit_index),
+                        turn=turn,
+                    )
+                    related_calls.append(skip_id)
+                    selected = "skip settler"
+                    execution = {
+                        "tool": "unit_action",
+                        "action": "skip",
+                        "found_result": found_result,
+                        "settle_candidates": [],
+                        "skip_result": skip_result,
+                    }
+                    outcome = short_text(skip_result)
+                    rationale = (
+                        "The current tile was illegal and the settle scan returned no target, so the settler was skipped to avoid blocking end_turn."
+                    )
+            else:
+                city_count += 1
+            recorder.record_decision(
+                {
+                    "turn": turn,
+                    "trigger": f"expansion settler action {unit_id}",
+                    "importance": "critical",
+                    "background": f"UNIT_SETTLER at ({getattr(unit, 'x', '?')},{getattr(unit, 'y', '?')}); current cities={city_count}.",
+                    "current_goal": "Convert produced settlers into real city expansion during the T50 run.",
+                    "available_actions": actions,
+                    "selected_action": selected,
+                    "rationale": rationale,
+                    "why_not_alternatives": {
+                        "wait for more map information": "The T50 strategy needs expansion pressure, not indefinite settler idling.",
+                        "ignore settler": "Leaving a settler with moves can block end_turn and wastes production.",
+                    },
+                    "execution": execution,
+                    "outcome": outcome,
+                    "related_tool_call_ids": related_calls,
+                    "related_state_snapshot_ids": [state_id],
+                    "related_save_ids": [],
+                }
+            )
+            continue
+
         if unit_type == "UNIT_BUILDER":
             same_tile_tasks = [
                 t
                 for t in builder_tasks
                 if getattr(t, "x", None) == getattr(unit, "x", None)
                 and getattr(t, "y", None) == getattr(unit, "y", None)
+                and unit_can_build_improvement(unit, str(getattr(t, "improvement", "") or ""))
             ]
             if same_tile_tasks:
                 task = same_tile_tasks[0]
@@ -1562,6 +2414,211 @@ async def handle_units(
                     }
                 )
                 continue
+            target_tasks = [
+                task
+                for task in ranked_builder_tasks_for_unit(builder_tasks, unit)
+                if (
+                    getattr(task, "x", None) != getattr(unit, "x", None)
+                    or getattr(task, "y", None) != getattr(unit, "y", None)
+                    or unit_can_build_improvement(
+                        unit, str(getattr(task, "improvement", "") or "")
+                    )
+                )
+            ]
+            if target_tasks:
+                task = target_tasks[0]
+                target_x = int(getattr(task, "x"))
+                target_y = int(getattr(task, "y"))
+                improvement = getattr(task, "improvement", "")
+                priority = getattr(task, "priority", "")
+                city_name = getattr(task, "city_name", "")
+                call_id, result = await recorder.tool_call(
+                    "unit_action",
+                    {
+                        "unit_id": unit_id,
+                        "action": "move",
+                        "target_x": target_x,
+                        "target_y": target_y,
+                        "improvement": improvement,
+                    },
+                    lambda unit_index=unit_index, target_x=target_x, target_y=target_y: gs.move_unit(
+                        unit_index, target_x, target_y
+                    ),
+                    turn=turn,
+                )
+                recorder.record_decision(
+                    {
+                        "turn": turn,
+                        "trigger": f"builder move toward task for {unit_id}",
+                        "importance": "high",
+                        "background": (
+                            f"Builder at ({getattr(unit, 'x', '?')},{getattr(unit, 'y', '?')}); "
+                            f"target {improvement} at ({target_x},{target_y}) near {city_name}."
+                        ),
+                        "current_goal": "Convert builder production into tile improvements during the T50 run.",
+                        "available_actions": [
+                            f"move to {improvement} target",
+                            "skip builder",
+                            "wait for better task",
+                        ],
+                        "selected_action": f"move to {improvement} target",
+                        "rationale": (
+                            f"The builder is not on an improvement tile yet, so it moves toward the best "
+                            f"{priority or 'known'} builder task instead of idling."
+                        ),
+                        "why_not_alternatives": {
+                            "skip builder": "Would repeat the observed failure where builders accumulated without improving tiles.",
+                            "wait": "The task list already provides a concrete target from current game state.",
+                        },
+                        "execution": {
+                            "tool": "unit_action",
+                            "action": "move",
+                            "target": {
+                                "x": target_x,
+                                "y": target_y,
+                                "improvement": improvement,
+                                "priority": priority,
+                            },
+                            "result": result,
+                        },
+                        "outcome": short_text(result),
+                        "related_tool_call_ids": [*builder_tasks_call_ids, call_id],
+                        "related_state_snapshot_ids": [state_id],
+                        "related_save_ids": [],
+                    }
+                )
+                continue
+
+        if unit_type == "UNIT_TRADER":
+            trade_routes = snapshot.get("trade_routes")
+            actions = [
+                "start best trade route",
+                "skip trader",
+                "wait for more route information",
+            ]
+            if trader_is_already_on_route(trade_routes, unit):
+                recorder.record_decision(
+                    {
+                        "turn": turn,
+                        "trigger": f"trader route review {unit_id}",
+                        "importance": "medium",
+                        "background": f"UNIT_TRADER at ({getattr(unit, 'x', '?')},{getattr(unit, 'y', '?')}) is already on an active route.",
+                        "current_goal": "Avoid issuing redundant commands to an active trade route.",
+                        "available_actions": actions,
+                        "selected_action": "already on active trade route",
+                        "rationale": "The trade route snapshot already records this trader as assigned.",
+                        "why_not_alternatives": {
+                            "start route": "A trader already on a route cannot start another one.",
+                            "skip": "No unit command is needed when the route is active.",
+                        },
+                        "execution": {"tool": "none", "result": "active trade route"},
+                        "outcome": "No change.",
+                        "related_tool_call_ids": [],
+                        "related_state_snapshot_ids": [state_id],
+                        "related_save_ids": [],
+                    }
+                )
+                continue
+            related_calls: list[str] = []
+            destinations: list[Any] = []
+            route_gap = ""
+            try:
+                dest_id, destinations = await recorder.tool_call(
+                    "get_trade_destinations",
+                    {"unit_id": unit_id},
+                    lambda unit_index=unit_index: gs.get_trade_destinations(unit_index),
+                    turn=turn,
+                )
+                related_calls.append(dest_id)
+            except Exception as exc:  # noqa: BLE001
+                route_gap = f"{type(exc).__name__}: {exc}"
+                recorder.add_gap(
+                    "units.trade_destinations",
+                    route_gap,
+                    "Repair get_trade_destinations if trader automation must be observed in T50.",
+                )
+            ranked_destinations = ranked_trade_destinations(list(destinations or []))
+            if ranked_destinations:
+                destination = ranked_destinations[0]
+                target_x = int(getattr(destination, "x"))
+                target_y = int(getattr(destination, "y"))
+                call_id, result = await recorder.tool_call(
+                    "unit_action",
+                    {
+                        "unit_id": unit_id,
+                        "action": "trade_route",
+                        "target_x": target_x,
+                        "target_y": target_y,
+                    },
+                    lambda unit_index=unit_index, target_x=target_x, target_y=target_y: gs.make_trade_route(
+                        unit_index, target_x, target_y
+                    ),
+                    turn=turn,
+                )
+                related_calls.append(call_id)
+                selected = "start best trade route"
+                execution = {
+                    "tool": "unit_action",
+                    "action": "trade_route",
+                    "target": {
+                        "x": target_x,
+                        "y": target_y,
+                        "city_name": getattr(destination, "city_name", ""),
+                        "owner_name": getattr(destination, "owner_name", ""),
+                        "is_domestic": getattr(destination, "is_domestic", False),
+                        "has_quest": getattr(destination, "has_quest", False),
+                        "origin_yields": getattr(destination, "origin_yields", ""),
+                        "dest_yields": getattr(destination, "dest_yields", ""),
+                    },
+                    "result": result,
+                }
+                outcome = short_text(result)
+                rationale = (
+                    "An idle trader should convert the route slot into food/production/gold "
+                    "instead of being repeatedly skipped during the T50 run."
+                )
+            else:
+                call_id, result = await recorder.tool_call(
+                    "unit_action",
+                    {"unit_id": unit_id, "action": "skip"},
+                    lambda unit_index=unit_index: gs.skip_unit(unit_index),
+                    turn=turn,
+                )
+                related_calls.append(call_id)
+                selected = "skip trader"
+                execution = {
+                    "tool": "unit_action",
+                    "action": "skip",
+                    "route_destinations": [],
+                    "route_gap": route_gap,
+                    "result": result,
+                }
+                outcome = short_text(result)
+                rationale = (
+                    "No legal trade destination was available from the current city, so the runner skipped the trader rather than blocking end_turn."
+                )
+            recorder.record_decision(
+                {
+                    "turn": turn,
+                    "trigger": f"trader route review {unit_id}",
+                    "importance": "high",
+                    "background": f"UNIT_TRADER at ({getattr(unit, 'x', '?')},{getattr(unit, 'y', '?')}); route capacity snapshot={trade_routes}.",
+                    "current_goal": "Turn idle trader production into an active route during the T50 run.",
+                    "available_actions": actions,
+                    "selected_action": selected,
+                    "rationale": rationale,
+                    "why_not_alternatives": {
+                        "skip trader": "Would repeat the observed T41/T42 idle trader failure when destinations exist.",
+                        "wait": "The destination query provides concrete current-game route candidates.",
+                    },
+                    "execution": execution,
+                    "outcome": outcome,
+                    "related_tool_call_ids": related_calls,
+                    "related_state_snapshot_ids": [state_id],
+                    "related_save_ids": [],
+                }
+            )
+            continue
 
         if getattr(unit, "health", 100) < max(1, getattr(unit, "max_health", 100)) * 0.6:
             call_id, result = await recorder.tool_call(
@@ -1572,6 +2629,22 @@ async def handle_units(
             )
             selected = "heal"
             rationale = "The unit is badly damaged; preserving it is safer than moving during an observation run."
+        elif should_auto_explore_unit(recorder, unit_type, snapshot):
+            call_id, result = await recorder.tool_call(
+                "unit_action",
+                {
+                    "unit_id": unit_id,
+                    "action": "automate_explore",
+                    "strategy_profile": recorder_strategy_profile(recorder),
+                },
+                lambda unit_index=unit_index: gs.automate_explore(unit_index),
+                turn=turn,
+            )
+            selected = "automate_explore"
+            rationale = (
+                "The explore_scout_first profile treats early map knowledge as "
+                "higher value than repeated fortify/hold during T20 exploration."
+            )
         elif "COMBAT" in unit_type or unit_type in {
             "UNIT_WARRIOR",
             "UNIT_SLINGER",
@@ -1688,12 +2761,212 @@ async def end_turn_with_record(
             }
         )
         result = retry_result
+    if end_turn_result_requests_diplomacy_response(result):
+        result = await resolve_end_turn_diplomacy_blocker(
+            recorder, gs, turn, state_id, snapshot, result
+        )
     save_id = await save_checkpoint(
         recorder, gs, turn, f"after_turn_{turn:04d}", decision_id=decision_id
     )
     if save_id:
         recorder.timeline(f"- T{turn} end-turn decision linked to save `{save_id}`.")
     return str(result)
+
+
+def end_turn_result_requests_diplomacy_response(result: Any) -> bool:
+    text = str(result).lower()
+    return any(
+        fragment in text
+        for fragment in (
+            "respond_to_diplomacy",
+            "respond_to_trade",
+            "diplomacy encounter pending",
+            "diplomatic proposal",
+        )
+    )
+
+
+def describe_diplomacy_session(session: Any) -> str:
+    civ = getattr(session, "other_civ_name", "?")
+    leader = getattr(session, "other_leader_name", "?")
+    player_id = getattr(session, "other_player_id", "?")
+    if getattr(session, "deal_summary", ""):
+        phase = "deal"
+    elif getattr(session, "is_at_war", False):
+        phase = "war"
+    elif str(getattr(session, "buttons", "")).upper() == "GOODBYE":
+        phase = "goodbye"
+    else:
+        phase = "active"
+    return f"{civ} ({leader}, player {player_id}) [{phase}]"
+
+
+async def respond_to_diplomacy_session(
+    recorder: EpisodeRecorder,
+    gs: GameState,
+    session: Any,
+    turn: int,
+) -> tuple[list[str], list[dict[str, Any]]]:
+    related_tool_call_ids: list[str] = []
+    responses: list[dict[str, Any]] = []
+    other_player_id = int(getattr(session, "other_player_id"))
+    description = describe_diplomacy_session(session)
+    deal_summary = str(getattr(session, "deal_summary", "") or "")
+    buttons = str(getattr(session, "buttons", "") or "").upper()
+    is_war = bool(getattr(session, "is_at_war", False))
+
+    if deal_summary:
+        call_id, result = await recorder.tool_call(
+            "respond_to_trade_decline_for_end_turn",
+            {"other_player_id": other_player_id, "accept": False},
+            lambda: gs.respond_to_deal(other_player_id, False),
+            turn=turn,
+        )
+        related_tool_call_ids.append(call_id)
+        responses.append(
+            {
+                "session": description,
+                "selected_response": "decline incoming trade deal",
+                "result": result,
+                "rationale": "Observation-mode automation keeps AI-initiated deals deterministic unless a strategy asset explicitly authorizes acceptance.",
+            }
+        )
+        return related_tool_call_ids, responses
+
+    response = "EXIT" if is_war or buttons == "GOODBYE" else "POSITIVE"
+    call_id, result = await recorder.tool_call(
+        "respond_to_diplomacy_for_end_turn",
+        {"other_player_id": other_player_id, "response": response},
+        lambda: gs.diplomacy_respond(other_player_id, response),
+        turn=turn,
+    )
+    related_tool_call_ids.append(call_id)
+    responses.append(
+        {
+            "session": description,
+            "selected_response": response,
+            "result": result,
+            "rationale": (
+                "Friendly first-contact acknowledgement preserves scouting momentum."
+                if response == "POSITIVE"
+                else "The session is already informational or in goodbye phase, so it can be closed."
+            ),
+        }
+    )
+    if response != "EXIT" and "SESSION_CONTINUES" in str(result):
+        exit_id, exit_result = await recorder.tool_call(
+            "respond_to_diplomacy_exit_for_end_turn",
+            {"other_player_id": other_player_id, "response": "EXIT"},
+            lambda: gs.diplomacy_respond(other_player_id, "EXIT"),
+            turn=turn,
+        )
+        related_tool_call_ids.append(exit_id)
+        responses.append(
+            {
+                "session": description,
+                "selected_response": "EXIT",
+                "result": exit_result,
+                "rationale": "The positive response was accepted but the leader screen stayed open, so the runner closed the goodbye phase before retrying end_turn.",
+            }
+        )
+    return related_tool_call_ids, responses
+
+
+async def resolve_end_turn_diplomacy_blocker(
+    recorder: EpisodeRecorder,
+    gs: GameState,
+    turn: int,
+    state_id: str,
+    snapshot: dict[str, Any],
+    blocker_result: Any,
+) -> str:
+    current_result = blocker_result
+    for attempt in range(1, 5):
+        sessions_id, sessions = await recorder.tool_call(
+            "get_diplomacy_sessions_for_end_turn",
+            {"attempt": attempt},
+            gs.get_diplomacy_sessions,
+            turn=turn,
+        )
+        related_tool_call_ids = [sessions_id]
+        response_rows: list[dict[str, Any]] = []
+        for session in sessions or []:
+            ids, rows = await respond_to_diplomacy_session(recorder, gs, session, turn)
+            related_tool_call_ids.extend(ids)
+            response_rows.extend(rows)
+
+        if not response_rows:
+            recorder.record_decision(
+                {
+                    "turn": turn,
+                    "trigger": "diplomacy blocker detected",
+                    "importance": "critical",
+                    "background": short_text(current_result),
+                    "current_goal": "Advance the turn after resolving the diplomacy UI blocker.",
+                    "available_actions": [
+                        "pause for human",
+                        "retry end_turn",
+                        "query diplomacy sessions again",
+                    ],
+                    "selected_action": "pause for human",
+                    "rationale": "end_turn reported a diplomacy blocker, but no open diplomacy session was returned.",
+                    "why_not_alternatives": {
+                        "retry end_turn": "No blocker was actually resolved.",
+                        "query diplomacy sessions again": "A fresh query was already captured for this decision.",
+                    },
+                    "execution": {
+                        "tool": "get_diplomacy_sessions_for_end_turn",
+                        "attempt": attempt,
+                        "result": sessions,
+                    },
+                    "outcome": "No open session available to auto-handle.",
+                    "related_tool_call_ids": related_tool_call_ids,
+                    "related_state_snapshot_ids": [state_id],
+                    "related_save_ids": [],
+                }
+            )
+            return str(current_result)
+
+        retry_id, retry_result = await recorder.tool_call(
+            "end_turn_after_diplomacy", {"attempt": attempt}, gs.end_turn, turn=turn
+        )
+        related_tool_call_ids.append(retry_id)
+        recorder.record_decision(
+            {
+                "turn": turn,
+                "trigger": "diplomacy blocker detected",
+                "importance": "critical",
+                "background": short_text(current_result),
+                "current_goal": "Advance the same Civ6 turn after automatically handling the diplomacy screen.",
+                "available_actions": [
+                    "respond positively and continue",
+                    "decline trade deal and continue",
+                    "close goodbye/war screen and continue",
+                    "pause for human",
+                ],
+                "selected_action": "auto-resolve diplomacy blocker and retry end_turn",
+                "rationale": "The run is an automated observation/evolution pass; unresolved leader screens otherwise prevent the real turn counter from advancing.",
+                "why_not_alternatives": {
+                    "pause": "The blocker type is deterministic and covered by existing connector APIs.",
+                    "ignore": "Repeated end_turn calls would keep capturing the same game turn.",
+                },
+                "execution": {
+                    "tool": "diplomacy + end_turn_after_diplomacy",
+                    "attempt": attempt,
+                    "responses": response_rows,
+                    "retry_result": retry_result,
+                },
+                "outcome": short_text(retry_result),
+                "related_tool_call_ids": related_tool_call_ids,
+                "related_state_snapshot_ids": [state_id],
+                "related_save_ids": [],
+            }
+        )
+        if not end_turn_result_requests_diplomacy_response(retry_result):
+            return str(retry_result)
+        current_result = retry_result
+
+    return str(current_result)
 
 
 def load_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -1745,6 +3018,7 @@ class ExistingEpisodeReportView:
         self.derived = self.root / "derived"
         self.outcome = self.root / "outcome"
         self.assets = self.root / "assets_snapshot"
+        self.assets.mkdir(parents=True, exist_ok=True)
         self.header_path = self.root / "header.json"
         self.mcp_path = self.raw / "mcp.jsonl"
         self.tool_calls_path = self.raw / "tool_calls.jsonl"
@@ -1758,6 +3032,7 @@ class ExistingEpisodeReportView:
         self.agent_report_path = self.outcome / "phase1_agent_audit_report.html"
         self.save_index_path = self.saves_dir / "save_index.jsonl"
         self.manifest_path = self.assets / "manifest.json"
+        self.active_assets_path = self.assets / "active_assets.json"
 
         self.header = self._load_header()
         self.save_name = self.header.get("save_name", DEFAULT_SAVE_NAME)
@@ -1838,6 +3113,14 @@ class ExistingEpisodeReportView:
                             "next_step": str(gap.get("next_step", "")),
                         }
                     )
+        if not self.active_assets_path.exists():
+            gaps.append(
+                {
+                    "field": "assets_snapshot.active_assets",
+                    "reason": "This episode has no Phase 3 active asset snapshot.",
+                    "next_step": "Do not fabricate historical asset versions; use current catalog only as a low-trust reference.",
+                }
+            )
         return gaps
 
     def _build_turn_summaries(
@@ -1906,6 +3189,7 @@ class ExistingEpisodeReportView:
                 "tool_errors": self.tool_error_count,
                 "lua_errors": self.lua_error_count,
             },
+            "asset_snapshot": asset_snapshot_manifest(self.active_assets_path),
             "files": files,
         }
         self.manifest_path.write_text(
@@ -3080,11 +4364,12 @@ def build_agent_handoff(report_pack: dict[str, Any]) -> str:
     evidence = report_pack["evidence_status"]
     paths = report_pack["paths"]
     run = report_pack["run"]
-    boundary_line = (
-        "- T50 observation complete. Stop before T51+ or Phase 2 unless the user explicitly asks to continue."
-        if run.get("mode") == "t50_observation"
-        else "- Stop before T50 until a human accepts the human HTML."
-    )
+    if run.get("mode") == "t50_observation":
+        boundary_line = "- T50 observation complete. Stop before T51+ or Phase 2 unless the user explicitly asks to continue."
+    elif run.get("mode") == "t20_exploration":
+        boundary_line = "- T20 exploration complete. Treat this as local candidate evidence before longer validation."
+    else:
+        boundary_line = "- Stop before T50 until a human accepts the human HTML."
     status_rows = "\n".join(
         f"- {name}: {data['status']} ({data['expectation']})"
         for name, data in evidence.items()
@@ -3227,26 +4512,27 @@ def build_human_report(
     tool_error_count = sum(1 for row in tool_rows if row.get("success") is False or "error" in row)
     lua_error_count = sum(1 for row in lua_rows if row.get("success") is False or "error" in row)
     mode_zh = observation_mode_zh(actual_turns)
-    is_t50 = observation_mode(actual_turns) == "t50_observation"
-    summary_text = (
-        f"本次 T50 完整观测从 T{html.escape(str(start_turn))} 推进到 T{html.escape(str(final_turn))}，实际推进 {actual_turns} 回合。我的操作只用于解除必要阻塞并完整记录 Phase 1 证据，已停在 T50，没有继续 T51+、Phase 2、策略学习、失败归因、Replay Arena 或资产 promote/reject。"
-        if is_t50
-        else f"本次短跑从 T{html.escape(str(start_turn))} 推进到 T{html.escape(str(final_turn))}，实际推进 {actual_turns} 回合。我的操作只用于解除短跑中的必要阻塞并验证记录链路，没有继续 T50，没有做策略学习、失败归因、Replay Arena 或资产 promote/reject。"
-    )
-    first_read_item = (
-        "先看四个 PASS 卡片，确认这次 T50 完整观测有没有达到 Phase 1 的 50 回合证据门槛。"
-        if is_t50
-        else "先看四个 PASS 卡片，确认这次短跑有没有达到 Phase 1 的最低证据门槛。"
-    )
-    final_read_item = (
-        "最后看证据边界、存档关联和缺口清单，决定是否允许进入后续阶段。"
-        if is_t50
-        else "最后看证据边界、存档关联和缺口清单，决定是否允许同一套机制继续 T50。"
-    )
+    mode = observation_mode(actual_turns)
+    is_t50 = mode == "t50_observation"
+    is_t20 = mode == "t20_exploration"
+    if is_t50:
+        summary_text = f"本次 T50 完整观测从 T{html.escape(str(start_turn))} 推进到 T{html.escape(str(final_turn))}，实际推进 {actual_turns} 回合。我的操作只用于解除必要阻塞并完整记录 Phase 1 证据，已停在 T50，没有继续 T51+、Phase 2、策略学习、失败归因、Replay Arena 或资产 promote/reject。"
+        first_read_item = "先看四个 PASS 卡片，确认这次 T50 完整观测有没有达到 Phase 1 的 50 回合证据门槛。"
+        final_read_item = "最后看证据边界、存档关联和缺口清单，决定是否允许进入后续阶段。"
+    elif is_t20:
+        summary_text = f"本次 T20 策略探索从 T{html.escape(str(start_turn))} 推进到 T{html.escape(str(final_turn))}，实际推进 {actual_turns} 回合。它用于比较局部开局表现和暴露策略候选问题，不是长期战略证明，也不直接触发资产 promote/reject。"
+        first_read_item = "先看四个 PASS 卡片，确认这次 T20 探索有没有达到 Phase 1 的局部证据门槛。"
+        final_read_item = "最后看证据边界、存档关联和缺口清单，决定是否进入多局 T20/T50 对比或 Phase 2 标注。"
+    else:
+        summary_text = f"本次短跑从 T{html.escape(str(start_turn))} 推进到 T{html.escape(str(final_turn))}，实际推进 {actual_turns} 回合。我的操作只用于解除短跑中的必要阻塞并验证记录链路，没有继续 T50，没有做策略学习、失败归因、Replay Arena 或资产 promote/reject。"
+        first_read_item = "先看四个 PASS 卡片，确认这次短跑有没有达到 Phase 1 的最低证据门槛。"
+        final_read_item = "最后看证据边界、存档关联和缺口清单，决定是否允许同一套机制继续 T50。"
     evidence_boundary_rows = [
         (
             "这次 T50 完整观测证明记录链路能覆盖 50 回合，但仍不宣称这些开局选择是最优策略。"
             if is_t50
+            else "这次 T20 探索提供了局部策略比较材料，但不能单独证明策略变强。"
+            if is_t20
             else "这次短跑证明记录链路可用，但并不证明这些开局选择是最优策略。"
         ),
         "每回合开始都有状态快照；非 end-turn 决策后主要依赖 tool 返回、decision outcome 和后续回合快照来确认结果。",
@@ -3507,7 +4793,13 @@ def generate_report(recorder: Any) -> None:
     ]
     if not gaps:
         mode_zh = observation_mode_zh(actual_turns)
-        next_step = "停在 T50，等待用户决定是否进入后续阶段。" if observation_mode(actual_turns) == "t50_observation" else "人工验收后再继续 T50。"
+        mode = observation_mode(actual_turns)
+        if mode == "t50_observation":
+            next_step = "停在 T50，等待用户决定是否进入后续阶段。"
+        elif mode == "t20_exploration":
+            next_step = "进入 Phase 2 候选标注或继续多局 T20/T50 对比。"
+        else:
+            next_step = "人工验收后再继续 T50。"
         gaps = [
             {
                 "field": "none",
@@ -3801,7 +5093,13 @@ def generate_reports(recorder: Any) -> None:
     ]
     if not gaps:
         mode_zh = observation_mode_zh(actual_turns)
-        next_step = "停在 T50，等待用户决定是否进入后续阶段。" if observation_mode(actual_turns) == "t50_observation" else "人工验收后再继续 T50。"
+        mode = observation_mode(actual_turns)
+        if mode == "t50_observation":
+            next_step = "停在 T50，等待用户决定是否进入后续阶段。"
+        elif mode == "t20_exploration":
+            next_step = "进入 Phase 2 候选标注或继续多局 T20/T50 对比。"
+        else:
+            next_step = "人工验收后再继续 T50。"
         gaps = [
             {
                 "field": "none",
@@ -3937,6 +5235,7 @@ async def run_short(args: argparse.Namespace) -> int:
     recorder = EpisodeRecorder(episode_id, save_name)
     recorder.requested_turns = args.turns
     recorder.observation_mode = mode
+    recorder.strategy_profile = args.strategy_profile
     hostname = os.environ.get("COMPUTERNAME")
     if not hostname and hasattr(os, "uname"):
         hostname = os.uname().nodename
@@ -3973,16 +5272,23 @@ async def run_short(args: argparse.Namespace) -> int:
         "requested_turns": args.turns,
         "observation_mode": mode,
         "observation_mode_zh": mode_zh,
+        "strategy_profile": args.strategy_profile,
         "route_map": f"{PHASE_LABEL} - {mode_zh}",
         "phase_rules": [
-            "short run only before human acceptance" if mode == "short_validation" else "T50 observation only after human short-run acceptance",
+            (
+                "short run only before human acceptance"
+                if mode == "short_validation"
+                else "T20 local strategy exploration by explicit user request"
+                if mode == "t20_exploration"
+                else "T50 observation only after human short-run acceptance"
+            ),
             "no failure attribution",
             "no Replay Arena",
             "no candidate strategy improvement",
             "no learning loop",
             "no asset promote/reject",
             "single-player test 1 save only",
-            "stop at T50; no T51+ without explicit user approval" if mode == "t50_observation" else "stop before T50 until human acceptance",
+            observation_stop_boundary(args.turns),
         ],
     }
     recorder.write_header(header)
@@ -4035,6 +5341,7 @@ async def run_short(args: argparse.Namespace) -> int:
             await maybe_choose_research(recorder, gs, turn, state_id, snapshot)
             await maybe_choose_civic(recorder, gs, turn, state_id, snapshot)
             await maybe_set_city_production(recorder, gs, turn, state_id, snapshot)
+            await maybe_handle_governance_blockers(recorder, gs, turn, state_id, snapshot)
             await handle_units(recorder, gs, turn, state_id, snapshot)
             end_result = await end_turn_with_record(recorder, gs, turn, state_id, snapshot)
             recorder.turn_summaries.append(
@@ -4045,15 +5352,26 @@ async def run_short(args: argparse.Namespace) -> int:
                 }
             )
 
-        final_label = "t50_final" if mode == "t50_observation" else "short_run_final"
+        if mode == "t50_observation":
+            final_label = "t50_final"
+        elif mode == "t20_exploration":
+            final_label = "t20_final"
+        else:
+            final_label = "short_run_final"
         final_turn, final_state_id, _final_snapshot = await capture_state(recorder, gs, final_label)
         recorder.final_turn = final_turn
         await save_checkpoint(recorder, gs, final_turn, final_label)
         recorder.codex_output(
-            "t50_pause" if mode == "t50_observation" else "short_run_pause",
+            "t50_pause" if mode == "t50_observation" else "t20_pause" if mode == "t20_exploration" else "short_run_pause",
             final_turn,
             {
-                "message": "T50 observation complete. Stop before T51+ or Phase 2." if mode == "t50_observation" else "Short run complete. Pausing for human acceptance before any T50 run.",
+                "message": (
+                    "T50 observation complete. Stop before T51+ or Phase 2."
+                    if mode == "t50_observation"
+                    else "T20 exploration complete. Use results as local candidate evidence before longer validation."
+                    if mode == "t20_exploration"
+                    else "Short run complete. Pausing for human acceptance before any T50 run."
+                ),
                 "final_state_snapshot_id": final_state_id,
                 "report_path": str(recorder.report_path),
             },
@@ -4089,6 +5407,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--turns", type=int, default=3)
     parser.add_argument("--episode-id")
     parser.add_argument(
+        "--strategy-profile",
+        default=BASELINE_STRATEGY_PROFILE,
+        choices=sorted(STRATEGY_PROFILES),
+        help="Runtime strategy profile. Non-baseline profiles are explicit T20 exploration experiments.",
+    )
+    parser.add_argument(
         "--report-only",
         help="Regenerate the HTML report and manifest for an existing episode without running Civ6.",
     )
@@ -4105,7 +5429,7 @@ def parse_args() -> argparse.Namespace:
     args = parser.parse_args()
     if not args.report_only and not valid_observation_turns(args.turns):
         parser.error(
-            f"--turns must be {MIN_SHORT_RUN_TURNS}-{MAX_SHORT_RUN_TURNS} for Phase 1 short-run validation or {T50_OBSERVATION_TURNS} for T50 observation"
+            f"--turns must be {MIN_SHORT_RUN_TURNS}-{MAX_SHORT_RUN_TURNS} for Phase 1 short-run validation, {T20_EXPLORATION_TURNS} for T20 exploration, or {T50_OBSERVATION_TURNS} for T50 observation"
         )
     return args
 

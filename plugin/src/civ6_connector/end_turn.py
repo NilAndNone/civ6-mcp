@@ -1175,12 +1175,15 @@ async def execute_end_turn(gs: GameState) -> str:
             advanced = True
             break
 
-    # Phase 2: Slow polling (5 min) — AI can take 1-5 min on large maps,
-    # especially during wars with many units. GameCore-only queries.
+    # Phase 2: Slow polling — AI can take time on large maps, but real T50
+    # automation should fail over quickly when the game stays responsive while
+    # the turn number never advances.
     if not advanced:
-        # 10 min total: AI can take several minutes on large maps with wars.
-        # Quick polls early (catch fast turns), then escalate to 30s intervals.
+        # ~3 min total. Server-level HANG recovery can restart/load the save
+        # if this was a genuine AI stall; waiting ~9 min per failure makes
+        # multi-episode evolution impractical.
         diplomacy_probed = False
+        gameover_checked = False
         cumulative_wait = 4.0  # Phase 1 already waited ~4s
         for delay in [
             2.0,
@@ -1192,28 +1195,14 @@ async def execute_end_turn(gs: GameState) -> str:
             10.0,
             10.0,
             10.0,
-            10.0,
-            10.0,
-            10.0,  # 80s: mid wait
+            10.0,  # 60s: mid wait
             15.0,
             15.0,
             15.0,
-            15.0,  # 140s
+            15.0,  # 120s
             20.0,
             20.0,
-            20.0,
-            20.0,  # 220s
-            30.0,
-            30.0,
-            30.0,
-            30.0,
-            30.0,
-            30.0,
-            30.0,  # 430s
-            30.0,
-            30.0,
-            30.0,
-            30.0,  # 550s (~9 min)
+            20.0,  # 180s
         ]:
             await asyncio.sleep(delay)
             cumulative_wait += delay
@@ -1228,7 +1217,12 @@ async def execute_end_turn(gs: GameState) -> str:
             # Check for game-over during longer polling intervals.
             # An opponent victory (Science, Culture, etc.) fires during
             # their turn — without this we'd wait the full 9-min timeout.
-            if delay >= 10.0:
+            if (
+                not gameover_checked
+                and delay >= 10.0
+                and cumulative_wait >= 180.0
+            ):
+                gameover_checked = True
                 gameover = await gs.check_game_over()
                 if gameover is not None:
                     gs._pending_end_turn = False
@@ -1250,12 +1244,12 @@ async def execute_end_turn(gs: GameState) -> str:
                             f"GAME OVER — VICTORY! You won a {vtype} victory! "
                             f"The game has ended."
                         )
-            # Early diplomacy probe — ONE InGame query after ~45s of silence.
+            # Early diplomacy probe — ONE InGame query after a short silence.
             # The CRITICAL constraint (Games 1-5) was about REPEATED InGame
-            # queries in a tight loop. A single probe after 45s is safe: if
+            # queries in a tight loop. A single probe after ~15s is safe: if
             # the AI paused for a trade deal, the game is idle. If the AI is
             # still processing, the query may be slow/fail (caught below).
-            if not diplomacy_probed and cumulative_wait >= 45:
+            if not diplomacy_probed and cumulative_wait >= 15:
                 diplomacy_probed = True
                 diplo_msg, diplo_advanced = await _check_mid_turn_diplomacy(
                     gs, lua, turn_before
@@ -1280,6 +1274,34 @@ async def execute_end_turn(gs: GameState) -> str:
             return diplo_msg
         if diplo_advanced:
             advanced = True
+
+    if not advanced:
+        # If the UI still says the turn can end, the original request did not
+        # submit cleanly. Re-send once before treating it as an AI hang.
+        try:
+            can_lines = await gs.conn.execute_write(
+                'local can = UI.CanEndTurn(); '
+                'print(can and "CAN_END" or "CANNOT_END"); '
+                f'print("{lq.SENTINEL}")'
+            )
+            if any(line.strip() == "CAN_END" for line in can_lines):
+                gs._pending_end_turn = False
+                gs._pending_end_turn_from = None
+                await gs.conn.execute_write(lua)
+                gs._pending_end_turn = True
+                gs._pending_end_turn_from = turn_before
+                for _ in range(10):
+                    await asyncio.sleep(2.0)
+                    turn_after = await _get_turn_number(gs)
+                    if (
+                        turn_after is not None
+                        and turn_before is not None
+                        and turn_after > turn_before
+                    ):
+                        advanced = True
+                        break
+        except Exception:
+            log.debug("Post-timeout UI.CanEndTurn retry failed", exc_info=True)
 
     if not advanced:
         # Check for incoming trade deals

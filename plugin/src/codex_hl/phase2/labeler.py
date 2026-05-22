@@ -56,7 +56,8 @@ CAPABILITY_CATEGORIES = {
     "unmapped",
 }
 FAILURE_TYPES = {"incident", "degradation", "misjudgment", "evidence_gap"}
-EPISODE_MODES = {"short_validation", "t50_observation", "multi_episode_followup"}
+LOCAL_FRAGMENT_MODES = {"short_validation", "t20_exploration"}
+EPISODE_MODES = LOCAL_FRAGMENT_MODES | {"t50_observation", "multi_episode_followup"}
 CONFIRMATION_ACTIONS = {"accept", "reject", "modify"}
 MODIFIABLE_FIELDS = {
     "capability_category",
@@ -135,7 +136,7 @@ def json_dumps(data: Any, *, indent: int | None = 2) -> str:
 
 def read_json(path: Path) -> dict[str, Any]:
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(path.read_text(encoding="utf-8-sig"))
     except json.JSONDecodeError as exc:
         raise Phase2Error(f"Invalid JSON in {path}: {exc}") from exc
 
@@ -144,7 +145,7 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     if not path.exists():
         return rows
-    for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+    for line_no, line in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), start=1):
         if not line.strip():
             continue
         try:
@@ -303,6 +304,8 @@ def detect_episode_mode(
     if mode not in EPISODE_MODES:
         if actual_turns == 50:
             mode = "t50_observation"
+        elif actual_turns == 20:
+            mode = "t20_exploration"
         elif isinstance(actual_turns, int) and actual_turns <= 20:
             mode = "short_validation"
         else:
@@ -315,6 +318,10 @@ def detect_episode_mode(
     else:
         turn_target = "T10"
     return mode, turn_target, start_turn, final_turn, actual_turns
+
+
+def is_local_fragment_mode(mode: Any) -> bool:
+    return str(mode) in LOCAL_FRAGMENT_MODES
 
 
 def load_phase1_bundle(
@@ -437,6 +444,76 @@ def refs_for_report(bundle: Phase1Bundle, *, reason: str) -> list[dict[str, Any]
     ]
 
 
+def state_turn(state: dict[str, Any]) -> int:
+    value = state.get("turn")
+    return value if isinstance(value, int) else -1
+
+
+def latest_state_entry(bundle: Phase1Bundle) -> tuple[str, dict[str, Any]] | tuple[None, None]:
+    if not bundle.states:
+        return None, None
+    return max(bundle.states.items(), key=lambda item: state_turn(item[1]))
+
+
+def state_overview(state: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(state, dict):
+        return {}
+    overview = state.get("overview")
+    if isinstance(overview, dict):
+        return overview
+    snapshot = state.get("snapshot")
+    if isinstance(snapshot, dict) and isinstance(snapshot.get("overview"), dict):
+        return snapshot["overview"]
+    return {}
+
+
+def state_units(state: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if not isinstance(state, dict):
+        return []
+    units = state.get("units")
+    if isinstance(units, list):
+        return [unit for unit in units if isinstance(unit, dict)]
+    snapshot = state.get("snapshot")
+    if isinstance(snapshot, dict) and isinstance(snapshot.get("units"), list):
+        return [unit for unit in snapshot["units"] if isinstance(unit, dict)]
+    return []
+
+
+def count_unit_type(state: dict[str, Any] | None, unit_type: str) -> int:
+    return sum(1 for unit in state_units(state) if unit.get("unit_type") == unit_type)
+
+
+def state_city_count(state: dict[str, Any] | None) -> int | None:
+    count = state_overview(state).get("num_cities")
+    return count if isinstance(count, int) else None
+
+
+def max_city_count_entry(
+    bundle: Phase1Bundle,
+) -> tuple[str | None, dict[str, Any] | None, int | None]:
+    best_id: str | None = None
+    best_state: dict[str, Any] | None = None
+    best_count: int | None = None
+    for state_id, state in bundle.states.items():
+        count = state_city_count(state)
+        if isinstance(count, int) and (best_count is None or count > best_count):
+            best_id = state_id
+            best_state = state
+            best_count = count
+    return best_id, best_state, best_count
+
+
+def ref_for_state(state_id: str | None, state: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not state_id:
+        return None
+    return {
+        "kind": "state_snapshot",
+        "id": state_id,
+        "path": f"raw/civ6_states/{state_id}.json",
+        "turn": state_turn(state or {}),
+    }
+
+
 def make_candidate(
     bundle: Phase1Bundle,
     *,
@@ -494,7 +571,7 @@ def make_candidate(
         "human_baseline_missing": bundle.human_baseline_missing,
         "created_at": now_iso(),
     }
-    if bundle.episode_mode == "short_validation" and capability_category == "planning":
+    if is_local_fragment_mode(bundle.episode_mode) and capability_category == "planning":
         candidate["claim_scope"] = "local_episode_fragment"
         candidate["not_a_long_horizon_conclusion"] = True
         candidate["not_evidence_for_asset_change"] = True
@@ -523,7 +600,7 @@ def generate_rule_candidates(
     session_id: str | None,
 ) -> list[dict[str, Any]]:
     candidates: list[dict[str, Any]] = []
-    if bundle.episode_mode == "short_validation" and bundle.human_baseline_missing:
+    if is_local_fragment_mode(bundle.episode_mode) and bundle.human_baseline_missing:
         candidates.append(
             make_candidate(
                 bundle,
@@ -652,6 +729,232 @@ def generate_rule_candidates(
                 prompt_hash=prompt_hash,
                 session_id=session_id,
                 extra_identity=decision_ids,
+            )
+        )
+
+    latest_state_id, latest_state = latest_state_entry(bundle)
+    overview = state_overview(latest_state)
+    scout_count = count_unit_type(latest_state, "UNIT_SCOUT")
+    city_count = overview.get("num_cities")
+    scout_production_decisions = [
+        d
+        for d in bundle.decisions
+        if "unit_scout" in text_blob(d.get("selected_action"))
+        and "production" in text_blob(d.get("trigger"))
+    ]
+    if (
+        bundle.episode_mode == "t50_observation"
+        and isinstance(city_count, int)
+        and city_count <= 1
+        and scout_count >= 4
+        and scout_production_decisions
+    ):
+        refs = refs_for_decisions(bundle, scout_production_decisions[-6:])
+        state_ref = ref_for_state(latest_state_id, latest_state)
+        if state_ref:
+            refs.append(state_ref)
+        candidates.append(
+            make_candidate(
+                bundle,
+                rule_id="t50_over_scout_no_expansion_review",
+                title="T50 过度生产侦察兵导致扩张停滞",
+                description=(
+                    "T50 最终状态显示城市数仍为 1，且单位构成中过多侦察兵；"
+                    "生产决策多次继续选择 UNIT_SCOUT，需要确认探索收益是否已经压过扩张节奏。"
+                ),
+                capability_category="planning",
+                failure_type="misjudgment",
+                confidence="medium",
+                confidence_rationale=(
+                    f"T50 final: cities={city_count}, scouts={scout_count}; "
+                    f"scout production decisions={len(scout_production_decisions)}."
+                ),
+                evidence_refs=unique_refs(refs),
+                expected_behavior=(
+                    "完整 T50 运行中，开局探索应有上限；达到基本地图信息后应转向 settler/builder "
+                    "或其他扩张、成长、科研节奏。"
+                ),
+                failed_behavior=(
+                    f"T50 仍只有 {city_count} 城且有 {scout_count} 个侦察兵，"
+                    "证据显示 production selector 没有从探索切换到扩张。"
+                ),
+                turn_range=decision_turn_range(scout_production_decisions, bundle),
+                source_analyzer_run_id=analyzer_run_id,
+                prompt_hash=prompt_hash,
+                session_id=session_id,
+                extra_identity={
+                    "latest_state_id": latest_state_id,
+                    "city_count": city_count,
+                    "scout_count": scout_count,
+                    "decision_ids": [
+                        d.get("decision_id") for d in scout_production_decisions[-6:]
+                    ],
+                },
+            )
+        )
+
+    settler_count = count_unit_type(latest_state, "UNIT_SETTLER")
+    blocked_settler_decisions = [
+        d
+        for d in bundle.decisions
+        if "expansion settler action" in text_blob(d.get("trigger"))
+        and "blocked" in text_blob(d.get("outcome"))
+    ]
+    if (
+        bundle.episode_mode == "t50_observation"
+        and isinstance(city_count, int)
+        and city_count < 3
+        and (settler_count > 0 or len(blocked_settler_decisions) >= 2)
+    ):
+        refs = refs_for_decisions(bundle, blocked_settler_decisions[-6:])
+        if not blocked_settler_decisions:
+            refs = refs_for_report(bundle, reason="settler_unsettled_at_t50")
+        state_ref = ref_for_state(latest_state_id, latest_state)
+        if state_ref:
+            refs.append(state_ref)
+        candidates.append(
+            make_candidate(
+                bundle,
+                rule_id="t50_settler_pathing_or_unsettled_review",
+                title="T50 settler 扩张路径未稳定转化为第三城",
+                description=(
+                    "T50 证据显示城市数仍低于 3，且 settler 仍未落城或扩张路径多次 BLOCKED；"
+                    "需要审阅 settle target 选择、路径阻塞处理和护送风险。"
+                ),
+                capability_category="planning",
+                failure_type="misjudgment",
+                confidence="medium",
+                confidence_rationale=(
+                    f"T50 final: cities={city_count}, settlers={settler_count}, "
+                    f"blocked_settler_moves={len(blocked_settler_decisions)}."
+                ),
+                evidence_refs=unique_refs(refs),
+                expected_behavior=(
+                    "T50 扩张策略应把至少一个后续 settler 稳定转化为新增城市；"
+                    "遇到 BLOCKED 路径时应切换候选目标或保守重规划。"
+                ),
+                failed_behavior=(
+                    f"T50 仍只有 {city_count} 城，settler_count={settler_count}，"
+                    f"blocked settler move decisions={len(blocked_settler_decisions)}。"
+                ),
+                turn_range=decision_turn_range(blocked_settler_decisions, bundle),
+                source_analyzer_run_id=analyzer_run_id,
+                prompt_hash=prompt_hash,
+                session_id=session_id,
+                extra_identity={
+                    "latest_state_id": latest_state_id,
+                    "city_count": city_count,
+                    "settler_count": settler_count,
+                    "blocked_decision_ids": [
+                        d.get("decision_id") for d in blocked_settler_decisions[-6:]
+                    ],
+                },
+            )
+        )
+
+    builder_count = count_unit_type(latest_state, "UNIT_BUILDER")
+    builder_skip_decisions = [
+        d
+        for d in bundle.decisions
+        if "unit action review unit_builder" in text_blob(d.get("trigger"))
+        and "skip" in text_blob(d.get("selected_action"))
+    ]
+    if (
+        bundle.episode_mode == "t50_observation"
+        and builder_count >= 3
+        and len(builder_skip_decisions) >= 3
+    ):
+        refs = refs_for_decisions(bundle, builder_skip_decisions[-8:])
+        state_ref = ref_for_state(latest_state_id, latest_state)
+        if state_ref:
+            refs.append(state_ref)
+        candidates.append(
+            make_candidate(
+                bundle,
+                rule_id="t50_idle_builder_overproduction_review",
+                title="T50 builder 过量且未转化为改良",
+                description=(
+                    "T50 证据显示多个 builder 留在单位列表中，并且多次 builder 行动被 skip；"
+                    "需要确认生产上限和 builder 任务执行是否把建造者转化为实际地块改良。"
+                ),
+                capability_category="planning",
+                failure_type="misjudgment",
+                confidence="medium",
+                confidence_rationale=(
+                    f"T50 final: builders={builder_count}; "
+                    f"builder skip decisions={len(builder_skip_decisions)}."
+                ),
+                evidence_refs=unique_refs(refs),
+                expected_behavior=(
+                    "T50 中期以后 builder 应有生产上限，并应移动到高价值任务格执行改良；"
+                    "若任务不可达，应转向 trader/district/building，而不是继续堆积 builder。"
+                ),
+                failed_behavior=(
+                    f"T50 仍有 {builder_count} 个 builder，且记录到 "
+                    f"{len(builder_skip_decisions)} 次 builder skip。"
+                ),
+                turn_range=decision_turn_range(builder_skip_decisions, bundle),
+                source_analyzer_run_id=analyzer_run_id,
+                prompt_hash=prompt_hash,
+                session_id=session_id,
+                extra_identity={
+                    "latest_state_id": latest_state_id,
+                    "builder_count": builder_count,
+                    "builder_skip_decision_ids": [
+                        d.get("decision_id") for d in builder_skip_decisions[-8:]
+                    ],
+                },
+            )
+        )
+
+    max_city_state_id, max_city_state, max_city_count = max_city_count_entry(bundle)
+    if (
+        bundle.episode_mode == "t50_observation"
+        and isinstance(city_count, int)
+        and isinstance(max_city_count, int)
+        and max_city_count > city_count
+        and max_city_count >= 3
+    ):
+        refs = refs_for_report(bundle, reason="city_count_regressed_before_t50")
+        max_ref = ref_for_state(max_city_state_id, max_city_state)
+        final_ref = ref_for_state(latest_state_id, latest_state)
+        if max_ref:
+            refs.append(max_ref)
+        if final_ref:
+            refs.append(final_ref)
+        candidates.append(
+            make_candidate(
+                bundle,
+                rule_id="t50_city_count_regressed_review",
+                title="T50 前已扩张城市数回落",
+                description=(
+                    "Episode 中曾达到至少 3 城，但 T50 最终城市数更低；"
+                    "需要审阅新城防守、敌军威胁、settler/escort 和中期生产节奏。"
+                ),
+                capability_category="planning",
+                failure_type="misjudgment",
+                confidence="medium",
+                confidence_rationale=(
+                    f"max_cities={max_city_count}; final_cities={city_count}; "
+                    f"max_state={max_city_state_id}; final_state={latest_state_id}."
+                ),
+                evidence_refs=unique_refs(refs),
+                expected_behavior=(
+                    "T50 策略不仅要落第三城，还要通过足够的防守、驻军或保守扩张维持城市数。"
+                ),
+                failed_behavior=(
+                    f"城市数曾达到 {max_city_count}，但 T50 结算只有 {city_count}。"
+                ),
+                turn_range=[bundle.start_turn, bundle.final_turn],
+                source_analyzer_run_id=analyzer_run_id,
+                prompt_hash=prompt_hash,
+                session_id=session_id,
+                extra_identity={
+                    "max_state_id": max_city_state_id,
+                    "latest_state_id": latest_state_id,
+                    "max_city_count": max_city_count,
+                    "final_city_count": city_count,
+                },
             )
         )
 
@@ -948,7 +1251,7 @@ def apply_modified_fields(candidate: dict[str, Any], modified_fields: dict[str, 
 
 
 def enforce_short_planning_caveat(row: dict[str, Any]) -> dict[str, Any]:
-    if row.get("episode_mode") == "short_validation" and row.get("capability_category") == "planning":
+    if is_local_fragment_mode(row.get("episode_mode")) and row.get("capability_category") == "planning":
         row["claim_scope"] = "local_episode_fragment"
         row["not_a_long_horizon_conclusion"] = True
         row["not_evidence_for_asset_change"] = True
@@ -1111,10 +1414,11 @@ def build_manifest(
         "confirmation_file_hash": confirmation_file_hash,
         "apply_timestamp": apply_timestamp,
         "short_validation": bundle.episode_mode == "short_validation",
+        "local_episode_fragment": is_local_fragment_mode(bundle.episode_mode),
         "episode_mode": bundle.episode_mode,
         "turn_target": bundle.turn_target,
         "high_confidence_local_planning_failure": any(
-            failure.get("episode_mode") == "short_validation"
+            is_local_fragment_mode(failure.get("episode_mode"))
             and failure.get("capability_category") == "planning"
             and failure.get("confidence") == "high"
             for failure in failures
@@ -1194,7 +1498,7 @@ def render_review_html(
         status = candidate_status(candidate, confirmations)
         caveat = ""
         if (
-            candidate.get("episode_mode") == "short_validation"
+            is_local_fragment_mode(candidate.get("episode_mode"))
             and candidate.get("capability_category") == "planning"
         ):
             caveat = f'<p class="caveat">{html.escape(CAVEAT_TEXT)}</p>'
@@ -1238,7 +1542,7 @@ def render_review_html(
     confirmed = sum(1 for row in confirmations.values() if row.get("action") in {"accept", "modify"})
     pending = max(0, len(candidates) - rejected - confirmed)
     high_planning = any(
-        failure.get("episode_mode") == "short_validation"
+        is_local_fragment_mode(failure.get("episode_mode"))
         and failure.get("capability_category") == "planning"
         and failure.get("confidence") == "high"
         for failure in failures
@@ -1338,7 +1642,7 @@ def build_phase2_summary(
     high_local_planning = [
         failure["failure_id"]
         for failure in failures
-        if failure.get("episode_mode") == "short_validation"
+        if is_local_fragment_mode(failure.get("episode_mode"))
         and failure.get("capability_category") == "planning"
         and failure.get("confidence") == "high"
     ]

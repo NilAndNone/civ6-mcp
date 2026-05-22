@@ -6,7 +6,12 @@ typed dataclasses. These tests verify the parsing logic with realistic fixtures.
 
 import pytest
 
-from civ6_connector.lua.overview import parse_gameover_response, parse_overview_response
+from civ6_connector.lua.overview import (
+    build_gameover_check,
+    build_gameover_check_gamecore,
+    parse_gameover_response,
+    parse_overview_response,
+)
 from civ6_connector.lua.units import (
     parse_combat_estimate,
     parse_threat_scan_response,
@@ -55,6 +60,10 @@ class TestParseGameover:
         assert result is not None
         assert result.winner_name == "Unknown"
         assert result.victory_type == "Unknown"
+
+    def test_lua_gameover_checks_normalize_nil_winning_team(self):
+        assert build_gameover_check_gamecore().count("tonumber(winTeam) or -1") == 1
+        assert build_gameover_check().count("tonumber(winTeam) or -1") == 2
 
 
 # ---------------------------------------------------------------------------
