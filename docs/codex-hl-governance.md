@@ -1,24 +1,26 @@
-# Codex HL L4/L5 资产治理
+# L4/L5 资产治理
 
-L4/L5 治理负责在多场景验证通过后执行受控 asset merge，并在退化时回滚。
+Governance 负责审计候选资产是否可以合并，并在显式允许且所有 gate 通过时
+执行合并或回滚。
 
-## 默认行为
+默认行为是 audit-only，不改资产。
 
-默认只做 audit-only evaluation，不改资产。只有显式传入 `--allow-merge` 且所有 gate 通过，才写 asset file、catalog 和 ledger。
+## 输入
 
-## Merge gate
+审计输入：
 
-- 至少两个 scenario。
-- 所有 scenario pass。
-- T50 主指标至少一个变好。
-- T50 主指标无退化。
-- 无 regression records。
-- 目标资产当前 hash 匹配候选记录。
-- 候选包含 source failure、rollback plan，且仍是 `candidate_only`。
+- Phase 4 candidate package。
+- validation report。
+- Phase 3 asset catalog。
 
-## 命令
+回滚输入：
 
-审计：
+- 已存在的 merge audit 目录。
+- 回滚原因。
+
+## 处理过程
+
+审计候选：
 
 ```powershell
 $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-governance --evaluate --candidate-package <candidate.json> --validation-report <validation_report.json>
@@ -36,16 +38,47 @@ $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-go
 $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-governance --rollback --audit-dir <automation/audits/decision_id> --reason "<reason>"
 ```
 
-## 产物
+## 输出
 
-- `automation/audits/<decision_id>/merge_decision.json`
-- `automation/audits/<decision_id>/rollback_snapshot.json`
-- `automation/audits/<decision_id>/merge_result.json`
-- `automation/audits/<decision_id>/rollback_result.json`
+审计输出：
 
-## 验收
-
-```powershell
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run python -m py_compile plugin/src/codex_hl/governance/automation.py
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run pytest tests/test_phase4_5_governance.py -q
+```text
+automation/audits/<decision_id>/merge_decision.json
 ```
+
+合并时还会写：
+
+- `rollback_snapshot.json`
+- 更新后的 asset 正文。
+- 更新后的 `catalog.json`。
+- `change_ledger.jsonl` 新记录。
+
+回滚时会恢复 asset 正文和 catalog hash，并追加 rollback ledger。
+
+## 验收看什么
+
+合并 gate：
+
+- 至少两个 scenario。
+- 所有 scenario pass。
+- 至少一个 T50 主指标变好。
+- 无 T50 主指标退化。
+- 无 regression records。
+- 目标资产 hash 和候选记录匹配。
+- 候选有 source failure。
+- 候选有 rollback plan。
+- 候选不是 premerged 状态。
+
+本地检查：
+
+```bash
+uv run pytest tests/test_phase4_5_governance.py -q
+```
+
+## 最容易错的地方
+
+- 忘记默认是 audit-only。
+- 没有 `--allow-merge` 却以为会写资产。
+- validation report 不是候选运行时产生的，却拿来合并候选。
+- 合并前没有保存 rollback snapshot。
+- 回滚只改正文，不恢复 catalog hash。

@@ -1,28 +1,52 @@
 # /civ6-phase2-label
 
-对已有 Phase 1 episode 做 Phase 2 v1 离线失败标注。规则主体在 Phase 3 资产中。
+## 用途
 
-## 必读资产
+对已有 Phase 1 episode 做离线失败标注。先生成候选 failure，人工确认后才
+写正式 failure 和被动 regression seed。
 
-- `prompt.default_boundary`
-- `memory.low_trust_policy`
-- `playbook.phase2_offline_labeling`
-- `tool_policy.phase2_confirmation_apply`
+## 输入
 
-## 生成候选
+- `--episode-id <episode_id>`：已有 Phase 1 episode。
+- `--apply-confirmation <path>`：可选，人工确认文件路径。
 
-```powershell
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-phase2-label --episode-id <episode_id>
-```
-
-产物位于 `episodes/<episode_id>/phase2/`，其中 `phase2_review.html` 是人工审阅入口，`candidates.jsonl` 只是候选。
-
-## 人工确认和 apply
-
-确认文件默认位于：
+确认文件默认位置：
 
 ```text
 episodes/<episode_id>/phase2/confirmation/confirmation.jsonl
+```
+
+## 输出
+
+候选阶段：
+
+- `phase2/candidates.jsonl`
+- `phase2/candidate_summary.json`
+- `phase2/phase2_review.html`
+
+apply 后：
+
+- `phase2/failures.jsonl`
+- `phase2/regression_seeds.jsonl`
+- `phase2/phase2_summary.md`
+- `phase2/phase2_summary.json`
+- `phase2/confirmation_audit.jsonl`
+
+## 边界
+
+- 不启动 Civ6。
+- 不加载 save。
+- 不推进 turn。
+- 不写资产修改。
+- 不生成 rerun、replay 或策略补丁。
+- 人工确认前不写正式 failure。
+
+## 示例
+
+生成候选：
+
+```powershell
+$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-phase2-label --episode-id <episode_id>
 ```
 
 显式 apply：
@@ -30,5 +54,3 @@ episodes/<episode_id>/phase2/confirmation/confirmation.jsonl
 ```powershell
 $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-phase2-label --episode-id <episode_id> --apply-confirmation episodes\<episode_id>\phase2\confirmation\confirmation.jsonl
 ```
-
-Phase 2 输出仍是失败证据和被动 seed，不是资产修改或重跑命令。

@@ -1,6 +1,6 @@
 [project]
 name = "codex-hl-civ6"
-version = "0.1.0"
+version = "0.0.1"
 description = "Codex HL Civ6 plugin for observation-first Civ6 play, offline failure labeling, asset registry validation, candidate improvements, scenario pools, guarded asset governance, and multi-T50 evolution orchestration"
 readme = "README.md"
 license = "MIT"

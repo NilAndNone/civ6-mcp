@@ -1,39 +1,69 @@
-# codex-hl-civ6 插件架构
+# codex-hl-civ6 架构说明
 
-本仓库现在分成两层：开发层和插件层。
+当前仓库分成两层：开发层和插件层。
 
 ## 开发层
 
-仓库根目录用于开发和验证插件：
+开发层在仓库根目录，负责说明、测试和发布：
 
-- `AGENTS.md` 定义开发时的职责边界和任务路由。
-- `docs/` 保存路线图、架构说明和验收契约。
-- `tests/` 验证插件结构、连接器行为、报告契约、Phase 2 离线标注、Phase 3 资产库、Phase 4/5 和 L4/L5 治理。
-- `archive/legacy/` 保存旧资产，避免混入当前主线。
+- `README.md`：项目总入口。
+- `AGENTS.md`：本仓库开发约束和任务路由。
+- `docs/`：路线图、阶段说明、版本审批和架构说明。
+- `tests/`：本地验收测试。
+- `validation/`：回归场景池等验证资产。
+- `archive/legacy/`：旧资料归档，不参与当前主线。
+
+开发层回答的是：这个项目要解决什么问题、当前版本承诺什么、怎么判断可以发布。
 
 ## 插件层
 
-`plugin/` 是可安装、可复制的插件目录：
+`plugin/` 是可安装的 Codex 插件成品目录：
 
-- `.codex-plugin/plugin.json` 暴露插件信息。
-- `AGENTS.md` 告诉 Codex 安装插件后怎么使用。
-- `commands/` 只保留批准过的用户入口：Phase 1 observe/report、Phase 2 label、Phase 3 assets、Phase 4 candidates、Phase 5 scenarios、governance、evolve 和 debug。
-- `skills/` 保存 Phase 1 观测工作流的入口；规则主体逐步沉淀到 Phase 3 资产。
-- `assets/codex_hl/phase3/` 保存 prompt、playbook、tool policy 和低信任 memory 的版本化 catalog、账本和正文。
-- `src/codex_hl/` 保存 Phase 0/1 逻辑、显式启用的 Phase 2/3/4/5 和 L4/L5 治理逻辑。
-- `src/civ6_connector/` 保存最底层 Civ6 连接层。
-- `fixtures/` 保存报告契约测试需要的夹具。
+- `.codex-plugin/plugin.json`：插件元信息和版本。
+- `README.md`：插件使用总览。
+- `AGENTS.md`：插件安装后 Codex 先读的说明。
+- `commands/`：用户可见命令入口。
+- `skills/`：技能入口，目前主要是 Phase 1 观测。
+- `assets/codex_hl/phase3/`：版本化 prompt、playbook、tool policy 和 memory。
+- `src/codex_hl/`：Phase 1-5、governance、evolution 的流程层。
+- `src/civ6_connector/`：Civ6 底层连接层。
+- `fixtures/`：测试夹具。
+
+插件层回答的是：安装后 Codex 怎么使用这些能力。
 
 ## 运行链路
 
-Codex 安装插件后，先读插件内的说明和 Phase 3 active asset，再通过少量命令进入对应流程。Phase 1 只通过 `civ6_connector` 接触 Civ6。
+真实游戏只由 `civ6_connector` 接触。它负责连接 FireTuner、执行 Lua 查询、
+读取游戏状态、发出动作、推进回合和做排障。
 
-短跑结束后必须生成 episode 和报告，并在 T50 之前暂停，等待人工验收。
+`codex_hl` 不直接碰底层连接细节。它负责把底层能力组织成阶段流程：
 
-Phase 2 默认只生成候选和审计页；正式 failure/seed 必须由人工 confirmation 和显式 apply 生成。
+1. Phase 1 记录真实 episode 和报告。
+2. Phase 2 只读已有 episode，生成候选失败，人工确认后写正式 failure。
+3. Phase 3 校验资产库，只读比较已有 T50。
+4. Phase 4 从正式 failure 生成候选改进包。
+5. Phase 5 把正式 failure 登记成被动回归场景。
+6. Governance 做候选合并审计、显式合并和回滚。
+7. Evolution 编排多局运行和后续阶段，但策略改进效果留到 `v0.0.2` 验证。
 
-Phase 3 只校验资产库、列出 active assets、只读比较已有 T50 指标。比较结果只能作为候选证据，不能触发 asset diff、merge、rollback、replay 或 Civ6 运行。
+## 产物链路
 
-Phase 4 只生成候选改进包，不直接修改资产。Phase 5 只登记 regression scenarios，不 replay。L4/L5 governance 默认 audit-only；只有显式 `--allow-merge` 且多场景 gate 全部通过时才写资产，并必须保留 rollback snapshot。
+一条完整证据链大致是：
 
-`/civ6-evolve` 是多局 T20/T50 编排层。默认只写 plan manifest；显式 `--execute` 才启动 Civ6。它可以生成 validation report 和 governance 审计，但不会在缺少 `--candidate-runtime-applied` 的情况下自动合并，因为当前 Phase 1 runner 仍以静态 blocker-resolution 优先级为主，资产候选是否影响运行时策略必须单独证明。
+```text
+真实 Civ6 对局
+  -> episodes/<episode_id>/ Phase 1 证据和报告
+  -> phase2/ candidates, failures, regression seeds
+  -> phase4/ candidate packages
+  -> validation/regression_scenarios/
+  -> governance audits
+```
+
+每一步都要能回到前一步的证据，不能只留下结论。
+
+## 边界
+
+- `v0.0.1` 冻结入口、边界和本地验收，不承诺策略已经变强。
+- `/civ6-evolve` 是正式入口，但 playbook 驱动的策略改进要到 `v0.0.2` 验证。
+- `episodes/` 是本地运行产物，默认不提交。
+- `archive/legacy/` 只能作为旧资料查看，不是当前运行路径。

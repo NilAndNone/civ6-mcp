@@ -1,81 +1,85 @@
-# Codex HL Phase 3 资产体系
+# Phase 3 资产体系
 
-这个文档记录当前 Phase 3 v1 的实现契约。它不修改路线图；路线图仍以
-`docs/codex-hl-evolution-roadmap.md` 为准。
+Phase 3 管理 prompt、playbook、tool policy 和低信任 memory 的版本化资产。
+它还可以只读比较已有 T50 episode 的主指标。
 
-## 边界
+Phase 3 不生成候选资产改动，不启动 Civ6，不 replay，不 merge，不 rollback。
 
-Phase 3 v1 只建立资产体系：
+## 输入
 
-- 管理 `prompt`、`playbook`、`tool_policy`、低信任 `memory` 的版本、来源、风险、适用范围和回滚路径。
-- 记录首批资产迁移的来源和人工判断。
-- 只读比较已有 T50 episode 的主指标，结果只能作为候选证据。
-
-Phase 3 v1 不做这些事：
-
-- 不生成候选资产改动。
-- 不写 `asset_diff`。
-- 不自动 merge 或 rollback。
-- 不启动 Civ6、不加载 save、不 replay。
-- 不从单个 `test 1` 结果宣称通用变强。
-
-## 资产目录
-
-资产库位于：
+资产库：
 
 ```text
 plugin/assets/codex_hl/phase3/
 ```
 
-核心文件：
+关键文件：
 
-- `catalog.json`：登记 active assets。
-- `change_ledger.jsonl`：记录首批迁移来源和判断。
-- `assets/*.md`：资产正文。
+- `catalog.json`
+- `change_ledger.jsonl`
+- `assets/*.md`
 
-每个 catalog asset 必须包含固定字段：
+只读比较 T50 时，还需要两个已有 episode。
 
-```text
-asset_id, asset_type, version, content_path, content_sha256,
-source_refs, applicability, risk_level, rollback_path,
-capability_dimensions, status
-```
-
-## 命令
+## 处理过程
 
 校验资产库：
 
-```powershell
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-phase3-assets --check
+```bash
+uv run codex-hl-civ6-phase3-assets --check
 ```
 
 列出 active assets：
 
-```powershell
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-phase3-assets --list
+```bash
+uv run codex-hl-civ6-phase3-assets --list
 ```
 
-比较两个已记录 T50 episode：
+比较两个 T50 episode：
 
-```powershell
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-phase3-assets --compare-t50 --baseline-episode <baseline_id> --candidate-episode <candidate_id>
+```bash
+uv run codex-hl-civ6-phase3-assets --compare-t50 --baseline-episode <baseline_id> --candidate-episode <candidate_id>
 ```
 
-## Phase 1 快照
+比较只读取已记录状态。它不会触发资产 diff、merge、rollback、replay 或 Civ6
+运行。
 
-新的 Phase 1 episode 会写：
+## 输出
 
-```text
-episodes/<episode_id>/assets_snapshot/active_assets.json
+资产校验输出：
+
+- 资产数量。
+- active asset 数量。
+- asset id 列表。
+- hash 和字段校验结果。
+
+T50 比较输出：
+
+- baseline episode。
+- candidate episode。
+- final state 来源。
+- 城市数、科技、市政、科学、文化等主指标 delta。
+
+## 验收看什么
+
+- `catalog.json` 字段是否完整。
+- `content_sha256` 是否和正文一致。
+- `change_ledger.jsonl` 是否存在并可解析。
+- active assets 是否能被安装后的 Codex 找到。
+- T50 比较是否只基于已有 evidence。
+
+本地检查：
+
+```bash
+uv run codex-hl-civ6-phase3-assets --check
+uv run pytest tests/test_phase3_assets.py -q
 ```
 
-旧 episode 在 report-only 模式下不会被补写历史资产快照；缺失时只在报告/manifest
-里记录 gap。
+## 最容易错的地方
 
-## 本地检查
+- 把单个 T50 变好写成通用策略改进。
+- 在 Phase 3 生成资产 diff。
+- 在 Phase 3 触发 Civ6 运行。
+- 只改资产正文，不更新 catalog hash。
 
-```powershell
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run python -m py_compile plugin/src/codex_hl/phase3/assets.py
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-phase3-assets --check
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run pytest tests/test_phase3_assets.py -q
-```
+`v0.0.2` 才会验证 playbook 是否真正驱动 runner 并改善 T50 主指标。

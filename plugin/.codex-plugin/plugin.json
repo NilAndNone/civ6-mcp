@@ -1,6 +1,6 @@
 {
   "name": "codex-hl-civ6",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "用于观测优先 Civ6 游玩、离线失败标注、资产登记、候选改进、scenario pool、受控资产治理和多局 T20/T50 编排的 Codex HL 插件。",
   "author": {
     "name": "Xiaohan Lu"

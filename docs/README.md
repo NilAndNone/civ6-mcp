@@ -1,27 +1,36 @@
-# 开发文档
+# 开发文档入口
 
-这里的文档只服务 `codex-hl-civ6` 的开发、设计和验收，不是插件安装后的使用说明。
+这里的文档服务 `codex-hl-civ6` 的开发、审批和验收。插件安装后的使用说明在
+`plugin/` 下。
 
-## 当前主线文档
+## 先读什么
 
-- [Codex HL Evolution Roadmap](codex-hl-evolution-roadmap.md)：路线图唯一权威来源。
-- [Codex HL Evolution Roadmap HTML](codex-hl-evolution-roadmap.html)：路线图的人类审阅对照版本。
-- [插件架构说明](plugin-architecture.md)：当前开发侧和插件使用侧如何隔离。
-- [Phase 1 观测流程](codex-hl-phase1-observation.md)：当前 Phase 1 的开发和验收契约。
-- [Phase 2 v1 离线失败标注](codex-hl-phase2-v1-labeling.md)：用户显式开启 Phase 2 后的候选失败、人工确认和被动 seed 契约。
-- [Phase 3 资产体系](codex-hl-phase3-assets.md)：首批 prompt、playbook、tool policy、低信任 memory 的版本化管理和 T50 只读指标比较。
-- [Phase 4 候选改进包](codex-hl-phase4-candidates.md)：从正式 failure 生成候选资产改进包，但不直接 merge。
-- [Phase 5 Regression Scenario Pool](codex-hl-phase5-scenarios.md)：把真实 failure 沉淀成 passive regression scenarios。
-- [L4/L5 资产治理](codex-hl-governance.md)：多场景 gate、显式 merge、rollback 和审计契约。
+- `v0.0.1-release.md`：第一个正式版本的审批说明。
+- `v0.0.2-strategy-improvement.md`：下一版策略改进验证目标。
+- `plugin-architecture.md`：当前仓库和插件如何分层。
+- `codex-hl-evolution-roadmap.md`：长期路线图的唯一权威 Markdown。
+- `codex-hl-evolution-roadmap.html`：路线图的人类审阅版，内容应与 Markdown 同步。
 
-## 插件使用说明
+## 阶段文档
 
-插件安装后的使用说明放在：
+每份阶段文档都按同一逻辑写：输入是什么、怎么处理、输出什么、验收看什么、
+哪一步最容易错。
 
-- `plugin/AGENTS.md`
-- `plugin/commands/`
-- `plugin/skills/`
+- `codex-hl-phase1-observation.md`：真实 Civ6 观测、episode 证据和报告。
+- `codex-hl-phase2-v1-labeling.md`：离线失败标注和人工确认。
+- `codex-hl-phase3-assets.md`：版本化资产库和 T50 只读比较。
+- `codex-hl-phase4-candidates.md`：从正式 failure 生成候选改进包。
+- `codex-hl-phase5-scenarios.md`：把 failure 沉淀成被动回归场景池。
+- `codex-hl-governance.md`：候选资产的审计、显式合并和回滚。
 
-## 旧文档
+## 插件说明
 
-旧 CivBench、网页、评测、开发日志、通用 MCP、研究和 Hotseat 文档都已归档到 `archive/legacy/docs/`。
+- `../plugin/README.md`：插件使用总览。
+- `../plugin/AGENTS.md`：安装后 Codex 先读的说明。
+- `../plugin/commands/`：每个命令的用途、输入、输出和边界。
+- `../plugin/skills/`：插件技能入口。
+
+## 旧资料
+
+旧 CivBench、网页、评测、开发日志、通用 MCP、研究和 Hotseat 文档都在
+`../archive/legacy/`。不要让当前主线从这里导入代码或默认读取资料。
