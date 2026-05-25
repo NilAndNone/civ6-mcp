@@ -28,6 +28,7 @@ def test_plugin_is_self_contained_codex_package():
         "civ6-phase5-scenarios.md",
         "civ6-governance.md",
         "civ6-evolve.md",
+        "civ6-v002-acceptance.md",
         "civ6-debug.md",
     ]:
         assert (PLUGIN / "commands" / command).exists()
@@ -47,6 +48,7 @@ def test_plugin_runtime_modules_import_from_plugin_src():
         assert importlib.import_module("codex_hl.phase5.scenarios")
         assert importlib.import_module("codex_hl.governance.automation")
         assert importlib.import_module("codex_hl.evolution.orchestrator")
+        assert importlib.import_module("codex_hl.evolution.acceptance")
         assert importlib.import_module("civ6_connector.game_state")
     finally:
         sys.path.remove(plugin_src)
@@ -63,6 +65,7 @@ def test_project_metadata_includes_phase3_asset_surface():
     assert project["scripts"]["codex-hl-civ6-phase5-scenarios"] == "codex_hl.phase5.scenarios:main"
     assert project["scripts"]["codex-hl-civ6-governance"] == "codex_hl.governance.automation:main"
     assert project["scripts"]["codex-hl-civ6-evolve"] == "codex_hl.evolution.orchestrator:main"
+    assert project["scripts"]["codex-hl-civ6-v002-acceptance"] == "codex_hl.evolution.acceptance:main"
     assert pyproject["tool"]["hatch"]["build"]["targets"]["wheel"]["force-include"][
         "plugin/assets"
     ] == "assets"

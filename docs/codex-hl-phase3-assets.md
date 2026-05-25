@@ -82,4 +82,4 @@ uv run pytest tests/test_phase3_assets.py -q
 - 在 Phase 3 触发 Civ6 运行。
 - 只改资产正文，不更新 catalog hash。
 
-`v0.0.2` 才会验证 playbook 是否真正驱动 runner 并改善 T50 主指标。
+`v0.0.2` 使用独立验收报告验证 playbook 是否真正驱动 runner 并改善 T50 主指标。

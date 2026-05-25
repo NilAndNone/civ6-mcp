@@ -6,7 +6,7 @@
 ## 先读什么
 
 - `v0.0.1-release.md`：第一个正式版本的审批说明。
-- `v0.0.2-strategy-improvement.md`：下一版策略改进验证目标。
+- `v0.0.2-strategy-improvement.md`：策略改进验证目标和验收标准。
 - `plugin-architecture.md`：当前仓库和插件如何分层。
 - `codex-hl-evolution-roadmap.md`：长期路线图的唯一权威 Markdown。
 - `codex-hl-evolution-roadmap.html`：路线图的人类审阅版，内容应与 Markdown 同步。

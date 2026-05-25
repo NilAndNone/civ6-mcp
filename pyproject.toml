@@ -1,6 +1,6 @@
 [project]
 name = "codex-hl-civ6"
-version = "0.0.1"
+version = "0.0.2"
 description = "Codex HL Civ6 plugin for observation-first Civ6 play, offline failure labeling, asset registry validation, candidate improvements, scenario pools, guarded asset governance, and multi-T50 evolution orchestration"
 readme = "README.md"
 license = "MIT"
@@ -49,6 +49,7 @@ codex-hl-civ6-phase4-candidates = "codex_hl.phase4.improvements:main"
 codex-hl-civ6-phase5-scenarios = "codex_hl.phase5.scenarios:main"
 codex-hl-civ6-governance = "codex_hl.governance.automation:main"
 codex-hl-civ6-evolve = "codex_hl.evolution.orchestrator:main"
+codex-hl-civ6-v002-acceptance = "codex_hl.evolution.acceptance:main"
 codex-hl-civ6-debug = "codex_hl.debug:main"
 civ6-connector = "civ6_connector.server:main"
 

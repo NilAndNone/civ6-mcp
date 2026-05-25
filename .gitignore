@@ -37,6 +37,7 @@ archive/legacy/notebooks/.env
 # Local Codex HL Phase 1 observation run artifacts
 /episodes/
 /evolution/runs/
+/automation/audits/
 
 # CivBench eval artifacts
 archive/legacy/evals/.resume_context.md

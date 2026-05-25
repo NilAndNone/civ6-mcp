@@ -2,7 +2,7 @@
 
 这个目录是可安装的 Codex 插件成品。
 
-当前插件版本：`0.0.1`
+当前插件版本：`0.0.2`
 
 ## 先读什么
 
@@ -29,12 +29,14 @@
 - `/civ6-phase5-scenarios`：把正式 failure 登记为被动 regression scenario。
 - `/civ6-governance`：审计候选资产，显式允许且 gate 通过才合并。
 
-### 3. 自动化编排待验入口
+### 3. 自动化编排和验收入口
 
 - `/civ6-evolve`：编排多局 T20/T50 和后续阶段。
+- `/civ6-v002-acceptance`：只读验证 `5 baseline T50 + 5 candidate T50` 的
+  `v0.0.2` 策略改进验收。
 
-`/civ6-evolve` 是 `v0.0.1` 的正式入口，但策略改进效果不在 `v0.0.1`
-承诺内。`v0.0.2` 会验证候选 playbook 是否真实驱动 runner 并改善 T50 主指标。
+`/civ6-evolve` 可以把 Phase 4 candidate package 作为只读运行时输入传给
+Phase 1 runner；候选包不会自动合并资产，合并仍然必须走 governance gate。
 
 ## 核心边界
 

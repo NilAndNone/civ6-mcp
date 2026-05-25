@@ -25,7 +25,7 @@ from typing import Any
 
 ROOT = Path(os.environ.get("CODEX_HL_CIV6_WORKSPACE") or Path.cwd()).resolve()
 PHASE_NAME = "Phase 2 v1 Offline Failure Labeling"
-TOOL_VERSION = "0.0.1"
+TOOL_VERSION = "0.0.2"
 CAVEAT_TEXT = (
     "该 high confidence 只适用于 T10/T20 local_episode_fragment；"
     "不是长期战略结论，不是资产修改证据，需要 T50 或 multi-episode follow-up。"

@@ -5,7 +5,8 @@
 编排多局 T20/T50、Phase 2 候选、可选自动确认、Phase 4/5 产物和 governance
 审计。
 
-`/civ6-evolve` 是 `v0.0.1` 的正式入口，但策略改进效果留到 `v0.0.2` 验证。
+`/civ6-evolve` 可以编排 baseline T50，也可以把 Phase 4 candidate package
+作为只读运行时输入传给 Phase 1 runner，用于 `v0.0.2` 策略改进验收。
 
 ## 输入
 
@@ -19,6 +20,7 @@
 - `--allow-auto-confirmation`：允许自动确认候选。
 - `--auto-iterate-strategy`：允许自动切换运行策略。
 - `--allow-merge`：允许进入治理合并路径。
+- `--candidate-package <candidate.json>`：把候选 playbook 包传入验证流程。
 - `--candidate-runtime-applied`：声明 validation report 来自候选运行时。
 
 ## 输出
@@ -38,7 +40,7 @@
 - 自动策略迭代必须显式开启。
 - 自动合并必须显式开启。
 - `--allow-merge` 还必须配合候选运行时证据。
-- `v0.0.1` 不承诺 evolve 已经证明策略变强。
+- 候选包运行时只读，不直接修改 Phase 3 assets。
 
 ## 示例
 
@@ -60,5 +62,8 @@ $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-ev
 $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-evolve --execute --turns 50 --save-name "test 1" --cycles 1 --episodes-per-cycle 3
 ```
 
-下一版 `v0.0.2` 会围绕候选 playbook 运行 `5 baseline T50 + 5 candidate T50`
-并验证 T50 主指标。
+候选运行时 T50：
+
+```powershell
+$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-evolve --execute --turns 50 --save-name "test 1" --cycles 1 --episodes-per-cycle 5 --candidate-package <candidate.json> --candidate-runtime-applied
+```

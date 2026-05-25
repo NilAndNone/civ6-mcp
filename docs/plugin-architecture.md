@@ -44,7 +44,7 @@
 4. Phase 4 从正式 failure 生成候选改进包。
 5. Phase 5 把正式 failure 登记成被动回归场景。
 6. Governance 做候选合并审计、显式合并和回滚。
-7. Evolution 编排多局运行和后续阶段，但策略改进效果留到 `v0.0.2` 验证。
+7. Evolution 编排多局运行和后续阶段，并可把候选 playbook 作为只读运行时输入验证。
 
 ## 产物链路
 
@@ -63,7 +63,7 @@
 
 ## 边界
 
-- `v0.0.1` 冻结入口、边界和本地验收，不承诺策略已经变强。
-- `/civ6-evolve` 是正式入口，但 playbook 驱动的策略改进要到 `v0.0.2` 验证。
+- `v0.0.2` 已证明候选 playbook 可以进入 Phase 1 runner 决策路径并改善 T50 主指标。
+- `/civ6-evolve` 可以运行 baseline/candidate T50；`/civ6-v002-acceptance` 只读生成验收报告。
 - `episodes/` 是本地运行产物，默认不提交。
 - `archive/legacy/` 只能作为旧资料查看，不是当前运行路径。

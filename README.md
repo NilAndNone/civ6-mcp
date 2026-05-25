@@ -3,26 +3,29 @@
 `codex-hl-civ6` 是一个让 Codex 以“先观测、再验收”的方式玩
 Civilization VI 的插件项目。
 
-`v0.0.1` 是当前仓库的第一个正式版本。它要冻结的是现有系统的入口、
-边界、证据产物和本地验收方式，而不是承诺策略已经被自动优化。
+`v0.0.2` 是当前仓库的策略改进验收版本。它在 `v0.0.1` 冻结入口、边界、
+证据产物和本地验收方式的基础上，证明候选 playbook 能进入 Phase 1 runner
+决策路径，并在 Windows 真机 T50 对比中改善主指标。
 
 ## 一句话结论
 
 这套系统现在已经具备从真实 Civ6 对局记录证据、离线标注失败、管理策略
-资产、生成候选改进、沉淀回归场景、执行治理审计和编排多局运行的正式入口。
+资产、生成候选改进、沉淀回归场景、执行治理审计、编排多局运行，以及生成
+`v0.0.2` 策略改进验收报告的正式入口。
 
-但 `v0.0.1` 只证明这些入口、边界和本地检查成立；“候选 playbook 真的让
-策略变好”留给 `v0.0.2` 用 Windows 真机多局 T50 对比验证。
+`v0.0.2` 已通过 `5 baseline T50 + 5 candidate T50` 的本地 Windows 真机验收：
+候选 playbook 来自正式 failure，runner 读取候选包并产生可审计行为差异，
+T50 科技、科学和文化主指标改善，且没有明显主指标退化。
 
 ## 当前正式版本
 
-- 当前版本：`0.0.1`
-- 目标标签：`v0.0.1`
-- 审批入口：`docs/v0.0.1-release.md`
-- 下一版目标：`docs/v0.0.2-strategy-improvement.md`
+- 当前版本：`0.0.2`
+- 目标标签：`v0.0.2`
+- `v0.0.1` 审批入口：`docs/v0.0.1-release.md`
+- `v0.0.2` 验收目标：`docs/v0.0.2-strategy-improvement.md`
 - 长期路线图：`docs/codex-hl-evolution-roadmap.md`
 
-## v0.0.1 包含什么
+## v0.0.2 包含什么
 
 ### 1. 基础观测与报告
 
@@ -45,9 +48,11 @@ Civilization VI 的插件项目。
 ### 3. 自动化编排待验入口
 
 - `/civ6-evolve`：编排多局 T20/T50、Phase 2、Phase 4/5 和 governance 审计。
+- `/civ6-v002-acceptance`：只读验证 `5 baseline T50 + 5 candidate T50`，
+  生成 `v0.0.2` 策略改进验收报告。
 
-这个入口纳入 `v0.0.1`，但策略改进效果不在 `v0.0.1` 承诺内。`v0.0.2`
-会专门验证 playbook 候选是否真实影响 runner，并改善 T50 主指标。
+`/civ6-evolve` 现在可以把 Phase 4 candidate package 作为只读运行时输入传给
+Phase 1 runner。候选包不会自动合并资产；合并仍然必须走 governance gate。
 
 ## 仓库结构
 
@@ -85,22 +90,22 @@ Civilization VI 的插件项目。
 
 ## 本地验收
 
-`v0.0.1` 打标前使用本地检查：
+交付前使用本地检查：
 
 ```bash
 uv run codex-hl-civ6-phase3-assets --check
 uv run python -m py_compile plugin/src/codex_hl/phase1/observer.py plugin/src/civ6_connector/server.py
 uv run python -m py_compile plugin/src/codex_hl/phase2/labeler.py plugin/src/codex_hl/phase3/assets.py
 uv run python -m py_compile plugin/src/codex_hl/phase4/improvements.py plugin/src/codex_hl/phase5/scenarios.py plugin/src/codex_hl/governance/automation.py
-uv run python -m py_compile plugin/src/codex_hl/evolution/orchestrator.py
+uv run python -m py_compile plugin/src/codex_hl/evolution/orchestrator.py plugin/src/codex_hl/evolution/acceptance.py
 uv run pytest tests -q
 git diff --check
 ```
 
-Windows 真实 Civ6 短跑仍然是端到端验收要求，但不是 `v0.0.1` 打标前的硬门槛。
+Windows 真实 Civ6 端到端验收仍然要用真实 `test 1` 存档运行，不能用模拟数据替代。
 
-## 下一步
+`v0.0.2` 策略改进验收使用：
 
-`v0.0.2` 的目标是策略改进验证：系统自动从正式 failure 生成候选 playbook，
-让 playbook 直接驱动 Phase 1 runner，并在 Windows 真机上用
-`5 baseline T50 + 5 candidate T50` 对比 T50 主指标。
+```powershell
+$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-v002-acceptance --candidate-package <candidate.json> --baseline-episodes <5 baseline ids> --candidate-episodes <5 candidate ids>
+```
