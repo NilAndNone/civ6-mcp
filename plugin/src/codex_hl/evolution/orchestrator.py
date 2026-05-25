@@ -32,7 +32,13 @@ T50_TURNS = 50
 DEFAULT_OBSERVATION_TURNS = T50_TURNS
 SUPPORTED_OBSERVATION_TURNS = {T20_TURNS, T50_TURNS}
 DEFAULT_STRATEGY_PROFILE = "baseline_static"
-SUPPORTED_STRATEGY_PROFILES = {DEFAULT_STRATEGY_PROFILE, "explore_scout_first"}
+EXPLORE_SCOUT_FIRST_STRATEGY_PROFILE = "explore_scout_first"
+SCIENCE_CULTURE_T50_STRATEGY_PROFILE = "science_culture_t50"
+SUPPORTED_STRATEGY_PROFILES = {
+    DEFAULT_STRATEGY_PROFILE,
+    EXPLORE_SCOUT_FIRST_STRATEGY_PROFILE,
+    SCIENCE_CULTURE_T50_STRATEGY_PROFILE,
+}
 DEFAULT_EXTRA_ATTEMPT_SLOTS = 5
 CONFIDENCE_ORDER = {"low": 0, "medium": 1, "high": 2}
 DEFAULT_AUTO_CONFIRM_CATEGORIES = {"planning", "execution", "verification", "recovery"}
@@ -218,25 +224,25 @@ def run_phase1_observation(
     turns: int,
     strategy_profile: str,
     asset_root: Path | None,
+    candidate_package: Path | None = None,
 ) -> dict[str, Any]:
     env = {"CODEX_HL_CIV6_WORKSPACE": str(workspace)}
     if asset_root is not None:
         env["CODEX_HL_CIV6_PHASE3_ASSET_ROOT"] = str(asset_root)
-    result = runner(
-        python_module_command(
-            "codex_hl.phase1.observer",
-            "--save-name",
-            save_name,
-            "--turns",
-            str(turns),
-            "--episode-id",
-            episode_id,
-            "--strategy-profile",
-            strategy_profile,
-        ),
-        workspace,
-        env,
+    command = python_module_command(
+        "codex_hl.phase1.observer",
+        "--save-name",
+        save_name,
+        "--turns",
+        str(turns),
+        "--episode-id",
+        episode_id,
+        "--strategy-profile",
+        strategy_profile,
     )
+    if candidate_package is not None:
+        command.extend(["--candidate-package", str(candidate_package.resolve())])
+    result = runner(command, workspace, env)
     require_success(result, step=f"phase1_t{turns}:{episode_id}", command_log=command_log)
     payload = parse_stdout_json(result.stdout, step=f"phase1_t{turns}")
     payload.setdefault("episode_id", episode_id)
@@ -358,13 +364,29 @@ def next_strategy_profile_from_phase2(
     )
     reasons: list[str] = []
     next_profile = current_profile
-    if current_profile == DEFAULT_STRATEGY_PROFILE and (
+    if current_profile in {DEFAULT_STRATEGY_PROFILE, EXPLORE_SCOUT_FIRST_STRATEGY_PROFILE} and (
+        "科学" in text
+        or "文化" in text
+        or "学院" in text
+        or "写作" in text
+        or "蛮族" in text
+        or "时代得分" in text
+        or "黄金时代" in text
+        or "science" in text.lower()
+        or "culture" in text.lower()
+        or "campus" in text.lower()
+        or "writing" in text.lower()
+        or "barbarian" in text.lower()
+    ):
+        next_profile = SCIENCE_CULTURE_T50_STRATEGY_PROFILE
+        reasons.append("phase2_t50_science_culture_or_security_candidate")
+    elif current_profile == DEFAULT_STRATEGY_PROFILE and (
         "早期单位持续驻守" in text
         or "侦察兵" in text
         or "探索价值" in text
         or "建造者而非侦察兵" in text
     ):
-        next_profile = "explore_scout_first"
+        next_profile = EXPLORE_SCOUT_FIRST_STRATEGY_PROFILE
         reasons.append("phase2_repeated_opening_exploration_candidate")
     return {
         "from_profile": current_profile,
@@ -507,12 +529,17 @@ def build_t50_validation_report(
         "baseline": baseline_metrics,
         "candidate_package": str(candidate_package) if candidate_package else None,
         "candidate_runtime_applied": candidate_runtime_applied,
-        "strategy_runtime_coupled": False,
+        "strategy_runtime_coupled": bool(candidate_runtime_applied and candidate_package),
         "strategy_runtime_note": (
-            "Current Phase 1 runner still uses static blocker-resolution priorities. "
-            f"This report can validate observed T{target_turns} metrics, but it is not proof that a "
-            "Phase 4 asset candidate changed gameplay behavior unless the caller supplies "
-            "--candidate-runtime-applied after running with a strategy-aware runtime."
+            "Candidate package was supplied to the Phase 1 runner and the caller asserted "
+            "--candidate-runtime-applied for this validation."
+            if candidate_runtime_applied and candidate_package
+            else (
+                "This report can validate observed T"
+                f"{target_turns} metrics, but it is not proof that a Phase 4 asset candidate "
+                "changed gameplay behavior unless the caller supplies a candidate package and "
+                "--candidate-runtime-applied after running with a strategy-aware runtime."
+            )
         ),
         "scenario_results": scenario_results,
         "regressions": regressions,
@@ -581,8 +608,12 @@ def validate_args(args: argparse.Namespace) -> None:
             "--allow-merge requires --candidate-runtime-applied. "
             "Do not merge from a report that only observed the current runtime."
         )
+    if args.candidate_runtime_applied and not args.candidate_package:
+        raise EvolutionError("--candidate-runtime-applied requires --candidate-package")
     if args.allow_merge and not args.candidate_package:
         raise EvolutionError("--allow-merge requires --candidate-package")
+    if args.candidate_package and not args.candidate_package.exists():
+        raise EvolutionError(f"--candidate-package does not exist: {args.candidate_package}")
 
 
 def run_evolution(args: argparse.Namespace, *, runner: CommandRunner = run_subprocess) -> dict[str, Any]:
@@ -687,6 +718,7 @@ def run_evolution(args: argparse.Namespace, *, runner: CommandRunner = run_subpr
                     turns=args.turns,
                     strategy_profile=current_strategy_profile,
                     asset_root=asset_root,
+                    candidate_package=args.candidate_package if args.candidate_runtime_applied else None,
                 )
                 observation["strategy_profile"] = current_strategy_profile
                 observation["slot"] = slot

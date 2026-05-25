@@ -57,6 +57,127 @@ def test_phase1_observe_accepts_explicit_strategy_profile(monkeypatch):
     assert args.strategy_profile == "explore_scout_first"
 
 
+def test_phase1_observe_accepts_science_culture_t50_profile(monkeypatch):
+    module = load_runner_module()
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "codex-hl-civ6-phase1-observe",
+            "--turns",
+            "50",
+            "--strategy-profile",
+            "science_culture_t50",
+        ],
+    )
+
+    args = module.parse_args()
+
+    assert args.strategy_profile == "science_culture_t50"
+
+
+def test_phase1_observe_accepts_candidate_package(monkeypatch, tmp_path):
+    module = load_runner_module()
+    candidate = tmp_path / "candidate.json"
+    candidate.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "codex-hl-civ6-phase1-observe",
+            "--turns",
+            "50",
+            "--candidate-package",
+            str(candidate),
+        ],
+    )
+
+    args = module.parse_args()
+
+    assert args.candidate_package == candidate
+
+
+def test_candidate_package_runtime_drives_expansion_priority(tmp_path):
+    module = load_runner_module()
+    candidate = tmp_path / "candidate.json"
+    candidate.write_text(
+        json.dumps(
+            {
+                "candidate_id": "impr_test",
+                "status": "candidate_only",
+                "source_episode_ids": ["ep1"],
+                "source_failure_ids": ["fail_city_count"],
+                "source_failure": {
+                    "title": "T50 前已扩张城市数回落",
+                    "capability_category": "planning",
+                },
+                "target_asset": {
+                    "asset_id": "playbook.phase1_observation",
+                    "asset_type": "playbook",
+                    "current_version": "1.0.0",
+                    "proposed_version": "1.0.1",
+                    "content_path": "assets/playbook-phase1-observation.md",
+                },
+                "proposed_change": {
+                    "content_appendix": "需要通过 scout、settler、defense 维持城市扩张。",
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    runtime = module.load_candidate_runtime(candidate)
+
+    class Recorder:
+        strategy_profile = "baseline_static"
+        candidate_runtime = runtime
+
+    priority = module.production_priority_for(Recorder(), {"cities": [], "units": []})
+
+    assert runtime["status"] == "applied"
+    assert runtime["candidate_id"] == "impr_test"
+    assert priority.index("UNIT_SCOUT") < priority.index("UNIT_SETTLER")
+    assert module.should_auto_explore_unit(Recorder(), "UNIT_SCOUT", {"units": []})
+
+
+def test_candidate_package_runtime_detects_user_t50_strategy_terms(tmp_path):
+    module = load_runner_module()
+    candidate = tmp_path / "candidate.json"
+    candidate.write_text(
+        json.dumps(
+            {
+                "candidate_id": "impr_user_notes",
+                "status": "candidate_only",
+                "source_episode_ids": ["ep1"],
+                "source_failure_ids": ["fail_user_notes"],
+                "source_failure": {
+                    "title": "T50 science and culture below target",
+                    "capability_category": "planning",
+                },
+                "target_asset": {"asset_type": "playbook"},
+                "proposed_change": {
+                    "content_appendix": (
+                        "Settle along river/fresh water, clear barbarian camps, "
+                        "research Writing, build Campus, use Horsemen, and pursue "
+                        "10+ science/culture plus golden age era score."
+                    )
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    runtime = module.load_candidate_runtime(candidate)
+
+    assert {
+        "river_settlement",
+        "barbarian_clearance",
+        "science_culture_push",
+        "horseman_pressure",
+        "era_score_push",
+    }.issubset(set(runtime["runtime_effects"]))
+
+
 def test_end_turn_result_requests_diplomacy_response():
     module = load_runner_module()
 
@@ -387,6 +508,96 @@ def test_explore_profile_caps_builders_after_three_cities():
     assert priority.index("DISTRICT_CAMPUS") < priority.index("UNIT_BUILDER")
 
 
+def test_science_culture_profile_prioritizes_writing_path():
+    module = load_runner_module()
+
+    class Recorder:
+        strategy_profile = "science_culture_t50"
+
+    priority = module.tech_priority_for(Recorder())
+
+    assert priority.index("TECH_WRITING") < priority.index("TECH_MINING")
+    assert priority.index("TECH_ARCHERY") < priority.index("TECH_HORSEBACK_RIDING")
+
+
+def test_science_culture_profile_prioritizes_barbarian_defense_when_threat_visible():
+    module = load_runner_module()
+
+    class Recorder:
+        strategy_profile = "science_culture_t50"
+
+    class Threat:
+        owner_id = 63
+        owner_name = "Barbarian"
+
+    priority = module.production_priority_for(
+        Recorder(),
+        {
+            "overview": {"science_yield": 4.0, "culture_yield": 3.0},
+            "cities": [{"name": "A"}, {"name": "B"}],
+            "units": [{"unit_type": "UNIT_SCOUT"}, {"unit_type": "UNIT_WARRIOR"}],
+            "threats": [Threat()],
+        },
+    )
+
+    assert priority.index("UNIT_SLINGER") < priority.index("DISTRICT_CAMPUS")
+    assert priority.index("UNIT_ARCHER") < priority.index("BUILDING_MONUMENT")
+
+
+def test_science_culture_profile_stops_ranged_overproduction_after_clearance_cap():
+    module = load_runner_module()
+
+    class Recorder:
+        strategy_profile = "science_culture_t50"
+
+    class Threat:
+        owner_id = 63
+        owner_name = "Barbarian"
+
+    priority = module.production_priority_for(
+        Recorder(),
+        {
+            "overview": {"science_yield": 5.4, "culture_yield": 4.3},
+            "cities": [{"name": "A"}, {"name": "B"}, {"name": "C"}],
+            "units": [
+                {"unit_type": "UNIT_SLINGER"},
+                {"unit_type": "UNIT_SLINGER"},
+                {"unit_type": "UNIT_ARCHER"},
+                {"unit_type": "UNIT_ARCHER"},
+                {"unit_type": "UNIT_WARRIOR"},
+            ],
+            "threats": [Threat()],
+        },
+    )
+
+    assert priority.index("BUILDING_MONUMENT") < priority.index("UNIT_SLINGER")
+    assert priority.index("DISTRICT_CAMPUS") < priority.index("UNIT_ARCHER")
+
+
+def test_science_culture_profile_prioritizes_campus_and_monument_below_yield_floor():
+    module = load_runner_module()
+
+    class Recorder:
+        strategy_profile = "science_culture_t50"
+
+    priority = module.production_priority_for(
+        Recorder(),
+        {
+            "overview": {"science_yield": 6.4, "culture_yield": 5.9},
+            "cities": [{"name": "A"}, {"name": "B"}, {"name": "C"}],
+            "units": [
+                {"unit_type": "UNIT_SLINGER"},
+                {"unit_type": "UNIT_ARCHER"},
+                {"unit_type": "UNIT_WARRIOR"},
+            ],
+            "threats": [],
+        },
+    )
+
+    assert priority.index("BUILDING_MONUMENT") < priority.index("UNIT_SETTLER")
+    assert priority.index("DISTRICT_CAMPUS") < priority.index("UNIT_SETTLER")
+
+
 def test_builder_tasks_prefer_assigned_urgent_target():
     module = load_runner_module()
 
@@ -439,6 +650,259 @@ def test_best_settle_candidate_prefers_highest_score():
     assert (selected.x, selected.y) == (2, 2)
 
 
+def test_ranked_settle_candidates_can_prefer_fresh_water_for_river_strategy():
+    module = load_runner_module()
+
+    class Candidate:
+        def __init__(self, x, y, score, water_type):
+            self.x = x
+            self.y = y
+            self.score = score
+            self.water_type = water_type
+
+    selected = module.best_settle_candidate(
+        [
+            Candidate(1, 1, 8.0, "none"),
+            Candidate(2, 2, 6.5, "fresh"),
+            Candidate(3, 3, 7.0, "coast"),
+        ],
+        prefer_fresh=True,
+    )
+
+    assert (selected.x, selected.y) == (2, 2)
+
+
+def test_ranked_settle_candidates_prefers_fresh_water_over_higher_raw_score():
+    module = load_runner_module()
+
+    class Candidate:
+        def __init__(self, x, y, score, water_type):
+            self.x = x
+            self.y = y
+            self.score = score
+            self.water_type = water_type
+
+    selected = module.best_settle_candidate(
+        [
+            Candidate(69, 44, 140.0, "none"),
+            Candidate(70, 45, 94.0, "fresh"),
+        ],
+        prefer_fresh=True,
+    )
+
+    assert (selected.x, selected.y) == (70, 45)
+
+
+def test_handle_units_moves_opening_settler_toward_fresh_water_candidate():
+    module = load_runner_module()
+
+    class Unit:
+        unit_id = 20
+        unit_index = 20
+        unit_type = "UNIT_SETTLER"
+        x = 10
+        y = 10
+        moves_remaining = 2
+
+    class Candidate:
+        def __init__(self, x, y, score, water_type):
+            self.x = x
+            self.y = y
+            self.score = score
+            self.water_type = water_type
+
+    class FakeRecorder:
+        strategy_profile = "science_culture_t50"
+
+        def __init__(self):
+            self.calls = []
+            self.decisions = []
+
+        async def tool_call(self, name, params, fn, turn=None):
+            result = await fn()
+            self.calls.append((name, params, result, turn))
+            return f"tool-{len(self.calls)}", result
+
+        def record_decision(self, row):
+            self.decisions.append(row)
+            return f"decision-{len(self.decisions)}"
+
+        def add_gap(self, *_args):
+            raise AssertionError("opening settle scan should not fail")
+
+    class FakeGameState:
+        async def get_global_settle_scan(self):
+            return [
+                Candidate(10, 10, 8.0, "none"),
+                Candidate(11, 10, 5.0, "fresh"),
+            ]
+
+        async def move_unit(self, unit_index, target_x, target_y):
+            return f"MOVED|{unit_index}|{target_x},{target_y}"
+
+        async def found_city(self, unit_index):
+            raise AssertionError("opening settler should move before founding")
+
+    recorder = FakeRecorder()
+
+    asyncio.run(
+        module.handle_units(
+            recorder,
+            FakeGameState(),
+            1,
+            "state-0001",
+            {"units": [Unit()], "cities": [], "threats": []},
+        )
+    )
+
+    assert recorder.calls[1][0] == "unit_action"
+    assert recorder.calls[1][1]["action"] == "move"
+    assert recorder.calls[1][1]["target_x"] == 11
+    assert recorder.decisions[0]["selected_action"] == "move settler toward fresh water"
+
+
+def test_handle_units_founds_opening_city_when_current_tile_is_fresh_water():
+    module = load_runner_module()
+
+    class Unit:
+        unit_id = 20
+        unit_index = 20
+        unit_type = "UNIT_SETTLER"
+        x = 10
+        y = 10
+        moves_remaining = 2
+
+    class Candidate:
+        def __init__(self, x, y, score, water_type):
+            self.x = x
+            self.y = y
+            self.score = score
+            self.water_type = water_type
+
+    class FakeRecorder:
+        strategy_profile = "science_culture_t50"
+
+        def __init__(self):
+            self.calls = []
+            self.decisions = []
+
+        async def tool_call(self, name, params, fn, turn=None):
+            result = await fn()
+            self.calls.append((name, params, result, turn))
+            return f"tool-{len(self.calls)}", result
+
+        def record_decision(self, row):
+            self.decisions.append(row)
+            return f"decision-{len(self.decisions)}"
+
+        def add_gap(self, *_args):
+            raise AssertionError("opening settle scan should not fail")
+
+    class FakeGameState:
+        async def get_global_settle_scan(self):
+            return [
+                Candidate(10, 10, 6.0, "fresh"),
+                Candidate(11, 10, 8.0, "none"),
+            ]
+
+        async def move_unit(self, unit_index, target_x, target_y):
+            raise AssertionError("current fresh-water tile should be founded")
+
+        async def found_city(self, unit_index):
+            return "FOUNDED|10,10"
+
+    recorder = FakeRecorder()
+
+    asyncio.run(
+        module.handle_units(
+            recorder,
+            FakeGameState(),
+            1,
+            "state-0001",
+            {"units": [Unit()], "cities": [], "threats": []},
+        )
+    )
+
+    assert recorder.calls[1][0] == "unit_action"
+    assert recorder.calls[1][1]["action"] == "found_city"
+    assert recorder.decisions[0]["selected_action"] == "found_city on current tile"
+
+
+def test_handle_units_holds_unescorted_settler_when_barbarian_blocks_long_path():
+    module = load_runner_module()
+
+    class Unit:
+        unit_id = 40
+        unit_index = 40
+        unit_type = "UNIT_SETTLER"
+        x = 10
+        y = 10
+        moves_remaining = 2
+
+    class Candidate:
+        x = 18
+        y = 14
+        score = 120.0
+        water_type = "fresh"
+
+    class Threat:
+        owner_id = 63
+        owner_name = "Barbarian"
+        x = 13
+        y = 11
+
+    class FakeRecorder:
+        strategy_profile = "science_culture_t50"
+
+        def __init__(self):
+            self.calls = []
+            self.decisions = []
+
+        async def tool_call(self, name, params, fn, turn=None):
+            result = await fn()
+            self.calls.append((name, params, result, turn))
+            return f"tool-{len(self.calls)}", result
+
+        def record_decision(self, row):
+            self.decisions.append(row)
+            return f"decision-{len(self.decisions)}"
+
+        def add_gap(self, *_args):
+            raise AssertionError("settle scan should not fail")
+
+    class FakeGameState:
+        async def found_city(self, unit_index):
+            return "FAILED|too close"
+
+        async def get_global_settle_scan(self):
+            return [Candidate()]
+
+        async def move_unit(self, unit_index, target_x, target_y):
+            raise AssertionError("unsafe settler path should not be moved")
+
+        async def skip_unit(self, unit_index):
+            return "SKIPPED"
+
+    recorder = FakeRecorder()
+
+    asyncio.run(
+        module.handle_units(
+            recorder,
+            FakeGameState(),
+            28,
+            "state-0028",
+            {
+                "units": [Unit()],
+                "cities": [{"name": "Capital"}],
+                "threats": [Threat()],
+            },
+        )
+    )
+
+    assert recorder.calls[-1][1]["action"] == "skip"
+    assert recorder.decisions[0]["selected_action"] == "hold settler for barbarian safety"
+
+
 def test_ranked_trade_destinations_prefers_quest_and_yields():
     module = load_runner_module()
 
@@ -473,6 +937,197 @@ def test_ranked_trade_destinations_prefers_quest_and_yields():
 
     assert ranked[0].city_name == "Quest"
     assert ranked[1].city_name == "Domestic"
+
+
+def test_handle_units_repositions_adjacent_ranged_barbarian_target_for_science_culture_profile():
+    module = load_runner_module()
+
+    class Unit:
+        unit_id = 12
+        unit_index = 12
+        unit_type = "UNIT_SLINGER"
+        x = 10
+        y = 10
+        moves_remaining = 2
+        health = 100
+        max_health = 100
+        targets = ["UNIT_SCOUT@11,10(35hp)"]
+
+    class Threat:
+        unit_type = "UNIT_SCOUT"
+        x = 11
+        y = 10
+        hp = 35
+        max_hp = 100
+        distance = 1
+        owner_id = 63
+        owner_name = "Barbarian"
+        is_city_state = False
+
+    class FakeRecorder:
+        strategy_profile = "science_culture_t50"
+
+        def __init__(self):
+            self.calls = []
+            self.decisions = []
+
+        async def tool_call(self, name, params, fn, turn=None):
+            result = await fn()
+            self.calls.append((name, params, result, turn))
+            return f"tool-{len(self.calls)}", result
+
+        def record_decision(self, row):
+            self.decisions.append(row)
+            return f"decision-{len(self.decisions)}"
+
+    class FakeGameState:
+        async def move_unit(self, unit_index, target_x, target_y):
+            return f"MOVED|{unit_index}|{target_x},{target_y}"
+
+        async def attack_unit(self, unit_index, target_x, target_y):
+            return f"RANGE_ATTACK|{unit_index}|{target_x},{target_y}"
+
+    recorder = FakeRecorder()
+
+    asyncio.run(
+        module.handle_units(
+            recorder,
+            FakeGameState(),
+            18,
+            "state-0018",
+            {"units": [Unit()], "cities": [{"name": "Capital"}], "threats": [Threat()]},
+        )
+    )
+
+    assert recorder.calls[0][0] == "unit_action"
+    assert recorder.calls[0][1]["action"] == "move"
+    assert recorder.calls[0][1]["target_x"] == 9
+    assert recorder.calls[0][1]["target_y"] == 10
+    assert recorder.decisions[0]["selected_action"] == "reposition ranged unit"
+
+
+def test_handle_units_attacks_non_adjacent_barbarian_target_for_science_culture_profile():
+    module = load_runner_module()
+
+    class Unit:
+        unit_id = 12
+        unit_index = 12
+        unit_type = "UNIT_ARCHER"
+        x = 10
+        y = 10
+        moves_remaining = 2
+        health = 100
+        max_health = 100
+        targets = ["UNIT_SCOUT@12,10(35hp)"]
+
+    class Threat:
+        unit_type = "UNIT_SCOUT"
+        x = 12
+        y = 10
+        hp = 35
+        max_hp = 100
+        distance = 2
+        owner_id = 63
+        owner_name = "Barbarian"
+        is_city_state = False
+
+    class FakeRecorder:
+        strategy_profile = "science_culture_t50"
+
+        def __init__(self):
+            self.calls = []
+            self.decisions = []
+
+        async def tool_call(self, name, params, fn, turn=None):
+            result = await fn()
+            self.calls.append((name, params, result, turn))
+            return f"tool-{len(self.calls)}", result
+
+        def record_decision(self, row):
+            self.decisions.append(row)
+            return f"decision-{len(self.decisions)}"
+
+    class FakeGameState:
+        async def attack_unit(self, unit_index, target_x, target_y):
+            return f"RANGE_ATTACK|{unit_index}|{target_x},{target_y}"
+
+    recorder = FakeRecorder()
+
+    asyncio.run(
+        module.handle_units(
+            recorder,
+            FakeGameState(),
+            18,
+            "state-0018",
+            {"units": [Unit()], "cities": [{"name": "Capital"}], "threats": [Threat()]},
+        )
+    )
+
+    assert recorder.calls[0][0] == "unit_action"
+    assert recorder.calls[0][1]["action"] == "attack"
+    assert recorder.calls[0][1]["target_x"] == 12
+    assert recorder.decisions[0]["selected_action"] == "attack target"
+
+
+def test_handle_units_moves_clearing_unit_toward_visible_barbarian_without_attack_target():
+    module = load_runner_module()
+
+    class Unit:
+        unit_id = 12
+        unit_index = 12
+        unit_type = "UNIT_SLINGER"
+        x = 10
+        y = 10
+        moves_remaining = 2
+        health = 100
+        max_health = 100
+        targets = []
+
+    class Threat:
+        unit_type = "UNIT_WARRIOR"
+        x = 14
+        y = 10
+        hp = 100
+        max_hp = 100
+        owner_id = 63
+        owner_name = "Barbarian"
+        is_city_state = False
+
+    class FakeRecorder:
+        strategy_profile = "science_culture_t50"
+
+        def __init__(self):
+            self.calls = []
+            self.decisions = []
+
+        async def tool_call(self, name, params, fn, turn=None):
+            result = await fn()
+            self.calls.append((name, params, result, turn))
+            return f"tool-{len(self.calls)}", result
+
+        def record_decision(self, row):
+            self.decisions.append(row)
+            return f"decision-{len(self.decisions)}"
+
+    class FakeGameState:
+        async def move_unit(self, unit_index, target_x, target_y):
+            return f"MOVING_TO|{target_x},{target_y}"
+
+    recorder = FakeRecorder()
+
+    asyncio.run(
+        module.handle_units(
+            recorder,
+            FakeGameState(),
+            30,
+            "state-0030",
+            {"units": [Unit()], "cities": [{"name": "Capital"}], "threats": [Threat()]},
+        )
+    )
+
+    assert recorder.calls[0][1]["action"] == "move"
+    assert recorder.calls[0][1]["target_x"] == 14
+    assert recorder.decisions[0]["selected_action"] == "move toward barbarian threat"
 
 
 def test_handle_units_starts_idle_trader_route():

@@ -187,6 +187,21 @@ def test_parse_stdout_json_accepts_pretty_json():
     assert payload == {"ok": True, "candidates": 2}
 
 
+def test_strategy_iteration_can_select_science_culture_t50_profile():
+    iteration = orchestrator.next_strategy_profile_from_phase2(
+        current_profile="explore_scout_first",
+        candidates=[
+            {
+                "title": "T50 科学文化低于目标",
+                "expected_behavior": "及时研究写作并建设学院，清理蛮族，争取黄金时代。",
+            }
+        ],
+    )
+
+    assert iteration["to_profile"] == "science_culture_t50"
+    assert iteration["changed"] is True
+
+
 def test_build_t50_validation_report_records_strategy_runtime_boundary(tmp_path):
     make_t50_episode(tmp_path, "baseline", cities=1, techs=2, civics=1)
     make_t50_episode(tmp_path, "candidate_a", cities=2, techs=3, civics=1)
@@ -203,6 +218,26 @@ def test_build_t50_validation_report_records_strategy_runtime_boundary(tmp_path)
     assert report["scenario_results"][0]["status"] == "pass"
     assert report["scenario_results"][0]["t50_delta"]["num_cities"] == 1
     assert report["scenario_results"][1]["t50_delta"]["completed_tech_count"] == 2
+
+
+def test_build_t50_validation_report_records_candidate_runtime_coupling(tmp_path):
+    make_t50_episode(tmp_path, "baseline", cities=1, techs=2, civics=1)
+    make_t50_episode(tmp_path, "candidate_a", cities=2, techs=3, civics=1)
+    candidate = tmp_path / "candidate.json"
+    write_json(candidate, {"candidate_id": "impr_test"})
+
+    report = orchestrator.build_t50_validation_report(
+        workspace=tmp_path,
+        output_path=tmp_path / "report.json",
+        baseline_episode="baseline",
+        candidate_episodes=["candidate_a"],
+        candidate_package=candidate,
+        candidate_runtime_applied=True,
+    )
+
+    assert report["candidate_runtime_applied"] is True
+    assert report["strategy_runtime_coupled"] is True
+    assert report["candidate_package"] == str(candidate)
 
 
 def test_build_t20_validation_report_uses_t20_gate(tmp_path):
@@ -293,4 +328,12 @@ def test_allow_merge_requires_candidate_runtime_applied(tmp_path):
     args.candidate_package = tmp_path / "candidate.json"
 
     with pytest.raises(orchestrator.EvolutionError, match="candidate-runtime-applied"):
+        orchestrator.run_evolution(args)
+
+
+def test_candidate_runtime_applied_requires_candidate_package(tmp_path):
+    args = base_args(tmp_path, execute=False)
+    args.candidate_runtime_applied = True
+
+    with pytest.raises(orchestrator.EvolutionError, match="candidate-package"):
         orchestrator.run_evolution(args)

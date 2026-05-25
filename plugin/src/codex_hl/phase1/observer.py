@@ -50,11 +50,17 @@ FIRETUNER_CONNECT_TIMEOUT_SECONDS = 420
 FIRETUNER_LOAD_TIMEOUT_SECONDS = 420
 BASELINE_STRATEGY_PROFILE = "baseline_static"
 EXPLORE_SCOUT_FIRST_STRATEGY_PROFILE = "explore_scout_first"
-STRATEGY_PROFILES = {BASELINE_STRATEGY_PROFILE, EXPLORE_SCOUT_FIRST_STRATEGY_PROFILE}
+SCIENCE_CULTURE_T50_STRATEGY_PROFILE = "science_culture_t50"
+STRATEGY_PROFILES = {
+    BASELINE_STRATEGY_PROFILE,
+    EXPLORE_SCOUT_FIRST_STRATEGY_PROFILE,
+    SCIENCE_CULTURE_T50_STRATEGY_PROFILE,
+}
 ACCEPTED_HUMAN_REPORT_EPISODE = "phase1_test1_short_20260512_130155"
 HUMAN_REPORT_CONTRACT_PATH = (
     PLUGIN_ROOT / "fixtures" / "phase1_human_report_contract" / "contract.json"
 )
+CANDIDATE_RUNTIME_KIND = "phase4_candidate_playbook"
 
 DEFAULT_HUMAN_REPORT_CONTRACT = {
     "reference_episode": ACCEPTED_HUMAN_REPORT_EPISODE,
@@ -162,6 +168,19 @@ TECH_PRIORITY = [
     "TECH_IRON_WORKING",
 ]
 
+SCIENCE_CULTURE_T50_TECH_PRIORITY = [
+    "TECH_POTTERY",
+    "TECH_WRITING",
+    "TECH_ARCHERY",
+    "TECH_ANIMAL_HUSBANDRY",
+    "TECH_HORSEBACK_RIDING",
+    "TECH_MINING",
+    "TECH_BRONZE_WORKING",
+    "TECH_THE_WHEEL",
+    "TECH_CURRENCY",
+    "TECH_IRON_WORKING",
+]
+
 CIVIC_PRIORITY = [
     "CIVIC_CODE_OF_LAWS",
     "CIVIC_FOREIGN_TRADE",
@@ -187,10 +206,10 @@ PRODUCTION_PRIORITY = [
 EXPLORE_SCOUT_FIRST_PRODUCTION_PRIORITY = [
     "UNIT_SCOUT",
     "UNIT_SETTLER",
+    "BUILDING_MONUMENT",
     "UNIT_TRADER",
     "UNIT_BUILDER",
     "DISTRICT_CAMPUS",
-    "BUILDING_MONUMENT",
     "UNIT_SLINGER",
     "UNIT_WARRIOR",
     "BUILDING_GRANARY",
@@ -202,9 +221,9 @@ EXPLORE_SCOUT_FIRST_MIN_COMBAT_AFTER_THREE_CITIES = 3
 EXPLORE_SCOUT_FIRST_TARGET_T50_CITIES = 4
 EXPLORE_SCOUT_FIRST_POST_THREE_CITY_PRIORITY = [
     "UNIT_BUILDER",
+    "BUILDING_MONUMENT",
     "UNIT_TRADER",
     "DISTRICT_CAMPUS",
-    "BUILDING_MONUMENT",
     "UNIT_SLINGER",
     "UNIT_WARRIOR",
     "BUILDING_GRANARY",
@@ -215,10 +234,10 @@ EXPLORE_SCOUT_FIRST_POST_THREE_CITY_PRIORITY = [
 EXPLORE_SCOUT_FIRST_POST_THREE_CITY_DEFENSE_PRIORITY = [
     "UNIT_SLINGER",
     "UNIT_WARRIOR",
+    "BUILDING_MONUMENT",
     "UNIT_BUILDER",
     "UNIT_TRADER",
     "DISTRICT_CAMPUS",
-    "BUILDING_MONUMENT",
     "BUILDING_GRANARY",
     "BUILDING_WATER_MILL",
     "UNIT_SETTLER",
@@ -226,16 +245,164 @@ EXPLORE_SCOUT_FIRST_POST_THREE_CITY_DEFENSE_PRIORITY = [
 ]
 EXPLORE_SCOUT_FIRST_POST_THREE_CITY_EXPANSION_PRIORITY = [
     "UNIT_SETTLER",
+    "BUILDING_MONUMENT",
     "UNIT_BUILDER",
     "UNIT_TRADER",
     "DISTRICT_CAMPUS",
-    "BUILDING_MONUMENT",
     "UNIT_SLINGER",
     "UNIT_WARRIOR",
     "BUILDING_GRANARY",
     "BUILDING_WATER_MILL",
     "UNIT_SCOUT",
 ]
+SCIENCE_CULTURE_T50_YIELD_TARGET = 10.0
+SCIENCE_CULTURE_T50_TARGET_CITIES = 4
+SCIENCE_CULTURE_T50_RANGED_CLEARING_CAP = 4
+SCIENCE_CULTURE_T50_MIN_COMBAT_AFTER_TWO_CITIES = 2
+SCIENCE_CULTURE_T50_MIN_COMBAT_AFTER_THREE_CITIES = 3
+SCIENCE_CULTURE_T50_DEFENSE_PRIORITY = [
+    "UNIT_SLINGER",
+    "UNIT_ARCHER",
+    "UNIT_HORSEMAN",
+    "UNIT_WARRIOR",
+    "BUILDING_MONUMENT",
+    "DISTRICT_CAMPUS",
+    "UNIT_BUILDER",
+    "UNIT_TRADER",
+    "UNIT_SETTLER",
+    "BUILDING_WATER_MILL",
+    "BUILDING_GRANARY",
+    "UNIT_SCOUT",
+]
+SCIENCE_CULTURE_T50_EARLY_EXPANSION_PRIORITY = [
+    "UNIT_SETTLER",
+    "UNIT_SLINGER",
+    "BUILDING_MONUMENT",
+    "UNIT_BUILDER",
+    "DISTRICT_CAMPUS",
+    "UNIT_TRADER",
+    "UNIT_ARCHER",
+    "UNIT_HORSEMAN",
+    "BUILDING_WATER_MILL",
+    "BUILDING_GRANARY",
+    "UNIT_WARRIOR",
+    "UNIT_SCOUT",
+]
+SCIENCE_CULTURE_T50_LOW_YIELD_PRIORITY = [
+    "BUILDING_MONUMENT",
+    "DISTRICT_CAMPUS",
+    "UNIT_TRADER",
+    "UNIT_BUILDER",
+    "BUILDING_WATER_MILL",
+    "UNIT_SLINGER",
+    "UNIT_ARCHER",
+    "UNIT_HORSEMAN",
+    "UNIT_SETTLER",
+    "BUILDING_GRANARY",
+    "UNIT_WARRIOR",
+    "UNIT_SCOUT",
+]
+BARBARIAN_CLEARING_UNIT_TYPES = {
+    "UNIT_WARRIOR",
+    "UNIT_SLINGER",
+    "UNIT_ARCHER",
+    "UNIT_HORSEMAN",
+}
+HORSEMAN_PRESSURE_START_TURN = 30
+SETTLER_MAX_UNESCORTED_DISTANCE_WITH_BARBARIANS = 6
+
+
+def read_json_object(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8-sig"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in {path}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise ValueError(f"Expected JSON object in {path}")
+    return value
+
+
+def candidate_text_blob(candidate: dict[str, Any]) -> str:
+    source_failure = candidate.get("source_failure") or {}
+    proposed_change = candidate.get("proposed_change") or {}
+    target_asset = candidate.get("target_asset") or {}
+    parts = [
+        candidate.get("candidate_id"),
+        candidate.get("status"),
+        source_failure.get("title") if isinstance(source_failure, dict) else "",
+        source_failure.get("failure_type") if isinstance(source_failure, dict) else "",
+        source_failure.get("capability_category") if isinstance(source_failure, dict) else "",
+        proposed_change.get("content_appendix") if isinstance(proposed_change, dict) else "",
+        proposed_change.get("rationale") if isinstance(proposed_change, dict) else "",
+        target_asset.get("asset_id") if isinstance(target_asset, dict) else "",
+        target_asset.get("asset_type") if isinstance(target_asset, dict) else "",
+    ]
+    return "\n".join(str(part or "") for part in parts)
+
+
+def candidate_runtime_effects(candidate: dict[str, Any]) -> list[str]:
+    text = candidate_text_blob(candidate).lower()
+    effects: list[str] = []
+    if any(term in text for term in ["scout", "侦察", "explor"]):
+        effects.append("scouting_pressure")
+    if any(term in text for term in ["settler", "city", "城市", "扩张", "落第三城"]):
+        effects.append("expansion_pressure")
+    if any(term in text for term in ["defense", "escort", "防守", "驻军", "维持城市"]):
+        effects.append("defense_before_extra_expansion")
+    if any(term in text for term in ["river", "fresh water", "沿河", "淡水"]):
+        effects.append("river_settlement")
+    if any(term in text for term in ["barbarian", "barb", "蛮族", "清理蛮"]):
+        effects.append("barbarian_clearance")
+    if any(term in text for term in ["writing", "campus", "学院", "science", "科学", "culture", "文化"]):
+        effects.append("science_culture_push")
+    if any(term in text for term in ["horseman", "horsemen", "骑手", "邻国", "neighbor"]):
+        effects.append("horseman_pressure")
+    if any(term in text for term in ["era score", "golden age", "时代得分", "黄金时代"]):
+        effects.append("era_score_push")
+    if not effects and "playbook" in text:
+        effects.append("playbook_loaded")
+    return effects
+
+
+def load_candidate_runtime(candidate_package: Path | None) -> dict[str, Any]:
+    if candidate_package is None:
+        return {"status": "not_supplied", "runtime_effects": []}
+    path = candidate_package.expanduser().resolve()
+    if not path.exists():
+        raise FileNotFoundError(f"Candidate package not found: {path}")
+    candidate = read_json_object(path)
+    source_failure_ids = candidate.get("source_failure_ids") or []
+    if not source_failure_ids:
+        raise ValueError(f"Candidate package has no source_failure_ids: {path}")
+    target_asset = candidate.get("target_asset") or {}
+    if not isinstance(target_asset, dict) or target_asset.get("asset_type") != "playbook":
+        raise ValueError(f"Candidate package does not target a playbook asset: {path}")
+    effects = candidate_runtime_effects(candidate)
+    return {
+        "status": "applied" if effects else "loaded_without_effects",
+        "kind": CANDIDATE_RUNTIME_KIND,
+        "package_path": str(path),
+        "package_sha256": sha256_file(path),
+        "candidate_id": candidate.get("candidate_id"),
+        "candidate_status": candidate.get("status"),
+        "source_episode_ids": candidate.get("source_episode_ids") or [],
+        "source_failure_ids": source_failure_ids,
+        "target_asset": {
+            "asset_id": target_asset.get("asset_id"),
+            "asset_type": target_asset.get("asset_type"),
+            "current_version": target_asset.get("current_version"),
+            "proposed_version": target_asset.get("proposed_version"),
+            "content_path": target_asset.get("content_path"),
+            "current_sha256": target_asset.get("current_sha256"),
+            "proposed_sha256": target_asset.get("proposed_sha256"),
+        },
+        "runtime_effects": effects,
+        "runtime_note": (
+            "Candidate package is read-only input for this episode. It may alter "
+            "runtime priorities, but it does not mutate Phase 3 assets or mark the "
+            "candidate accepted."
+        ),
+    }
 
 
 def now_iso() -> str:
@@ -807,6 +974,73 @@ def recorder_strategy_profile(recorder: Any) -> str:
     return str(getattr(recorder, "strategy_profile", BASELINE_STRATEGY_PROFILE))
 
 
+def recorder_candidate_runtime(recorder: Any) -> dict[str, Any]:
+    runtime = getattr(recorder, "candidate_runtime", None)
+    return runtime if isinstance(runtime, dict) else {"status": "not_supplied", "runtime_effects": []}
+
+
+def candidate_runtime_has(recorder: Any, effect: str) -> bool:
+    runtime = recorder_candidate_runtime(recorder)
+    return effect in (runtime.get("runtime_effects") or [])
+
+
+def uses_science_culture_t50_runtime(recorder: Any) -> bool:
+    return (
+        recorder_strategy_profile(recorder) == SCIENCE_CULTURE_T50_STRATEGY_PROFILE
+        or candidate_runtime_has(recorder, "science_culture_push")
+        or candidate_runtime_has(recorder, "era_score_push")
+    )
+
+
+def uses_barbarian_clearance_runtime(recorder: Any) -> bool:
+    return (
+        recorder_strategy_profile(recorder) == SCIENCE_CULTURE_T50_STRATEGY_PROFILE
+        or candidate_runtime_has(recorder, "barbarian_clearance")
+    )
+
+
+def uses_river_settlement_runtime(recorder: Any) -> bool:
+    return (
+        recorder_strategy_profile(recorder) == SCIENCE_CULTURE_T50_STRATEGY_PROFILE
+        or candidate_runtime_has(recorder, "river_settlement")
+    )
+
+
+def uses_horseman_pressure_runtime(recorder: Any) -> bool:
+    return (
+        recorder_strategy_profile(recorder) == SCIENCE_CULTURE_T50_STRATEGY_PROFILE
+        or candidate_runtime_has(recorder, "horseman_pressure")
+    )
+
+
+def uses_expansion_runtime(recorder: Any) -> bool:
+    return (
+        recorder_strategy_profile(recorder) == EXPLORE_SCOUT_FIRST_STRATEGY_PROFILE
+        or recorder_strategy_profile(recorder) == SCIENCE_CULTURE_T50_STRATEGY_PROFILE
+        or candidate_runtime_has(recorder, "expansion_pressure")
+        or candidate_runtime_has(recorder, "scouting_pressure")
+        or candidate_runtime_has(recorder, "river_settlement")
+    )
+
+
+def strategy_context(recorder: Any) -> dict[str, Any]:
+    runtime = recorder_candidate_runtime(recorder)
+    return {
+        "strategy_profile": recorder_strategy_profile(recorder),
+        "candidate_runtime_status": runtime.get("status"),
+        "candidate_id": runtime.get("candidate_id"),
+        "source_failure_ids": runtime.get("source_failure_ids", []),
+        "runtime_effects": runtime.get("runtime_effects", []),
+    }
+
+
+def strategy_priority_label(recorder: Any) -> str:
+    runtime = recorder_candidate_runtime(recorder)
+    if runtime.get("status") == "applied":
+        return f"candidate playbook {runtime.get('candidate_id')}"
+    return f"{recorder_strategy_profile(recorder)} profile"
+
+
 def snapshot_unit_count(
     snapshot: dict[str, Any] | None,
     unit_type: str,
@@ -842,7 +1076,7 @@ def snapshot_combat_unit_count(
     snapshot: dict[str, Any] | None,
     extra_units: dict[str, int] | None = None,
 ) -> int:
-    combat_types = {"UNIT_WARRIOR", "UNIT_SLINGER", "UNIT_ARCHER"}
+    combat_types = {"UNIT_WARRIOR", "UNIT_SLINGER", "UNIT_ARCHER", "UNIT_HORSEMAN"}
     if not snapshot:
         count = 0
     else:
@@ -866,6 +1100,56 @@ def snapshot_combat_unit_count(
     return count
 
 
+def snapshot_ranged_clearing_unit_count(
+    snapshot: dict[str, Any] | None,
+    extra_units: dict[str, int] | None = None,
+) -> int:
+    ranged_types = {"UNIT_SLINGER", "UNIT_ARCHER"}
+    if not snapshot:
+        count = 0
+    else:
+        count = sum(
+            1
+            for unit in snapshot.get("units") or []
+            if value_from(unit, "unit_type") in ranged_types
+        )
+        count += sum(
+            1
+            for city in snapshot.get("cities") or []
+            if value_from(city, "currently_building") in ranged_types
+        )
+    if extra_units:
+        count += sum(extra_units.get(unit_type, 0) for unit_type in ranged_types)
+    return count
+
+
+def value_from(value: Any, key: str, default: Any = None) -> Any:
+    if isinstance(value, dict):
+        return value.get(key, default)
+    return getattr(value, key, default)
+
+
+def snapshot_overview_number(snapshot: dict[str, Any] | None, key: str) -> float | None:
+    if not snapshot:
+        return None
+    raw = value_from(snapshot.get("overview") or {}, key)
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    return None
+
+
+def threat_is_barbarian(threat: Any) -> bool:
+    owner_name = str(value_from(threat, "owner_name", "") or "").lower()
+    owner_id = value_from(threat, "owner_id", None)
+    return owner_id == 63 or "barbarian" in owner_name or "蛮" in owner_name
+
+
+def visible_barbarian_threat_count(snapshot: dict[str, Any] | None) -> int:
+    if not snapshot:
+        return 0
+    return sum(1 for threat in snapshot.get("threats") or [] if threat_is_barbarian(threat))
+
+
 def cap_post_three_city_builders(
     priority: list[str],
     snapshot: dict[str, Any] | None,
@@ -879,12 +1163,45 @@ def cap_post_three_city_builders(
     return [item for item in priority if item != "UNIT_BUILDER"] + ["UNIT_BUILDER"]
 
 
+def science_culture_t50_priority_for(
+    snapshot: dict[str, Any] | None,
+    extra_units: dict[str, int] | None = None,
+) -> list[str]:
+    city_count = snapshot_city_count(snapshot)
+    combat_count = snapshot_combat_unit_count(snapshot, extra_units)
+    ranged_count = snapshot_ranged_clearing_unit_count(snapshot, extra_units)
+    settler_count = snapshot_unit_count(snapshot, "UNIT_SETTLER", extra_units)
+    science = snapshot_overview_number(snapshot, "science_yield") or 0.0
+    culture = snapshot_overview_number(snapshot, "culture_yield") or 0.0
+    if (
+        visible_barbarian_threat_count(snapshot) > 0
+        and ranged_count < SCIENCE_CULTURE_T50_RANGED_CLEARING_CAP
+    ):
+        return SCIENCE_CULTURE_T50_DEFENSE_PRIORITY
+    if (
+        city_count >= 3
+        and combat_count < SCIENCE_CULTURE_T50_MIN_COMBAT_AFTER_THREE_CITIES
+    ):
+        return SCIENCE_CULTURE_T50_DEFENSE_PRIORITY
+    if city_count >= 2 and combat_count < SCIENCE_CULTURE_T50_MIN_COMBAT_AFTER_TWO_CITIES:
+        return SCIENCE_CULTURE_T50_DEFENSE_PRIORITY
+    if city_count < 3 and settler_count == 0:
+        return SCIENCE_CULTURE_T50_EARLY_EXPANSION_PRIORITY
+    if science < SCIENCE_CULTURE_T50_YIELD_TARGET or culture < SCIENCE_CULTURE_T50_YIELD_TARGET:
+        return SCIENCE_CULTURE_T50_LOW_YIELD_PRIORITY
+    if city_count < SCIENCE_CULTURE_T50_TARGET_CITIES and settler_count == 0:
+        return SCIENCE_CULTURE_T50_EARLY_EXPANSION_PRIORITY
+    return SCIENCE_CULTURE_T50_LOW_YIELD_PRIORITY
+
+
 def production_priority_for(
     recorder: Any,
     snapshot: dict[str, Any] | None = None,
     extra_units: dict[str, int] | None = None,
 ) -> list[str]:
-    if recorder_strategy_profile(recorder) == EXPLORE_SCOUT_FIRST_STRATEGY_PROFILE:
+    if uses_science_culture_t50_runtime(recorder):
+        return science_culture_t50_priority_for(snapshot, extra_units)
+    if uses_expansion_runtime(recorder):
         if (
             snapshot_unit_count(snapshot, "UNIT_SCOUT", extra_units)
             >= EXPLORE_SCOUT_FIRST_SCOUT_CAP
@@ -921,8 +1238,8 @@ def production_priority_for(
                 return [
                     "UNIT_SLINGER",
                     "UNIT_WARRIOR",
-                    "UNIT_BUILDER",
                     "BUILDING_MONUMENT",
+                    "UNIT_BUILDER",
                     "UNIT_SETTLER",
                     "UNIT_TRADER",
                     "DISTRICT_CAMPUS",
@@ -939,10 +1256,16 @@ def production_priority_for(
     return PRODUCTION_PRIORITY
 
 
+def tech_priority_for(recorder: Any) -> list[str]:
+    if uses_science_culture_t50_runtime(recorder):
+        return SCIENCE_CULTURE_T50_TECH_PRIORITY
+    return TECH_PRIORITY
+
+
 def should_auto_explore_unit(
     recorder: Any, unit_type: str, snapshot: dict[str, Any] | None = None
 ) -> bool:
-    if recorder_strategy_profile(recorder) != EXPLORE_SCOUT_FIRST_STRATEGY_PROFILE:
+    if not uses_expansion_runtime(recorder):
         return False
     if unit_type == "UNIT_SCOUT":
         return True
@@ -953,14 +1276,192 @@ def should_auto_explore_unit(
     return False
 
 
-def best_settle_candidate(candidates: list[Any]) -> Any | None:
+def best_settle_candidate(candidates: list[Any], *, prefer_fresh: bool = False) -> Any | None:
     if not candidates:
         return None
-    return ranked_settle_candidates(candidates)[0]
+    return ranked_settle_candidates(candidates, prefer_fresh=prefer_fresh)[0]
 
 
-def ranked_settle_candidates(candidates: list[Any]) -> list[Any]:
-    return sorted(candidates, key=lambda item: getattr(item, "score", 0), reverse=True)
+def settle_fresh_water_bonus(candidate: Any) -> float:
+    water_type = str(value_from(candidate, "water_type", "") or "").lower()
+    if water_type == "fresh":
+        return 6.0
+    if water_type == "coast":
+        return 1.0
+    return 0.0
+
+
+def candidate_matches_unit_tile(candidate: Any, unit: Any) -> bool:
+    try:
+        return int(value_from(candidate, "x")) == int(value_from(unit, "x")) and int(
+            value_from(candidate, "y")
+        ) == int(value_from(unit, "y"))
+    except (TypeError, ValueError):
+        return False
+
+
+def candidate_has_fresh_water(candidate: Any) -> bool:
+    return settle_fresh_water_bonus(candidate) >= 6.0
+
+
+def candidate_distance_from_unit(candidate: Any, unit: Any) -> int:
+    try:
+        return max(
+            abs(int(value_from(candidate, "x")) - int(value_from(unit, "x"))),
+            abs(int(value_from(candidate, "y")) - int(value_from(unit, "y"))),
+        )
+    except (TypeError, ValueError):
+        return 999
+
+
+def ranked_settle_candidates(candidates: list[Any], *, prefer_fresh: bool = False) -> list[Any]:
+    if prefer_fresh:
+        return sorted(
+            candidates,
+            key=lambda item: (
+                1 if candidate_has_fresh_water(item) else 0,
+                float(value_from(item, "score", 0) or 0)
+                + (1.0 if str(value_from(item, "water_type", "") or "").lower() == "coast" else 0.0),
+                float(value_from(item, "score", 0) or 0),
+            ),
+            reverse=True,
+        )
+    return sorted(
+        candidates,
+        key=lambda item: (
+            float(value_from(item, "score", 0) or 0),
+        ),
+        reverse=True,
+    )
+
+
+TARGET_RE = re.compile(r"@(?P<x>-?\d+),(?P<y>-?\d+)\((?P<hp>\d+)hp\)")
+
+
+def parse_attack_target(raw: str) -> dict[str, Any] | None:
+    match = TARGET_RE.search(raw or "")
+    if not match:
+        return None
+    return {
+        "raw": raw,
+        "x": int(match.group("x")),
+        "y": int(match.group("y")),
+        "hp": int(match.group("hp")),
+    }
+
+
+def threat_at(threats: list[Any], x: int, y: int) -> Any | None:
+    for threat in threats:
+        if value_from(threat, "x") == x and value_from(threat, "y") == y:
+            return threat
+    return None
+
+
+def unit_is_ranged_clearer(unit: Any) -> bool:
+    return str(value_from(unit, "unit_type", "") or "") in {"UNIT_SLINGER", "UNIT_ARCHER"} or (
+        float(value_from(unit, "ranged_strength", 0) or 0) > 0
+        and float(value_from(unit, "combat_strength", 0) or 0) <= 15
+    )
+
+
+def target_is_adjacent_to_unit(unit: Any, target: dict[str, Any]) -> bool:
+    unit_x = int(value_from(unit, "x", target["x"]) or target["x"])
+    unit_y = int(value_from(unit, "y", target["y"]) or target["y"])
+    return max(abs(int(target["x"]) - unit_x), abs(int(target["y"]) - unit_y)) <= 1
+
+
+def threat_distance_from_unit(unit: Any, threat: Any) -> int:
+    try:
+        return max(
+            abs(int(value_from(threat, "x")) - int(value_from(unit, "x"))),
+            abs(int(value_from(threat, "y")) - int(value_from(unit, "y"))),
+        )
+    except (TypeError, ValueError):
+        return 999
+
+
+def nearest_barbarian_threat_for_unit(unit: Any, threats: list[Any]) -> dict[str, Any] | None:
+    barbarian_threats = [threat for threat in threats if threat_is_barbarian(threat)]
+    if not barbarian_threats:
+        return None
+    threat = sorted(
+        barbarian_threats,
+        key=lambda item: (
+            threat_distance_from_unit(unit, item),
+            int(value_from(item, "hp", 999) or 999),
+        ),
+    )[0]
+    return {
+        "x": int(value_from(threat, "x")),
+        "y": int(value_from(threat, "y")),
+        "threat": threat,
+        "distance": threat_distance_from_unit(unit, threat),
+        "is_barbarian": True,
+    }
+
+
+def ranged_reposition_target(unit: Any, target: dict[str, Any]) -> tuple[int, int]:
+    unit_x = int(value_from(unit, "x", target["x"]) or target["x"])
+    unit_y = int(value_from(unit, "y", target["y"]) or target["y"])
+    dx = unit_x - int(target["x"])
+    dy = unit_y - int(target["y"])
+    step_x = 1 if dx > 0 else -1 if dx < 0 else 0
+    step_y = 1 if dy > 0 else -1 if dy < 0 else 0
+    if step_x == 0 and step_y == 0:
+        step_y = 1
+    return unit_x + step_x, unit_y + step_y
+
+
+def ranked_attack_targets_for_unit(
+    recorder: Any,
+    unit: Any,
+    threats: list[Any],
+    turn: int,
+) -> list[dict[str, Any]]:
+    unit_type = str(value_from(unit, "unit_type", "") or "")
+    if unit_type not in BARBARIAN_CLEARING_UNIT_TYPES:
+        return []
+    parsed_targets = [
+        target
+        for raw in (value_from(unit, "targets", []) or [])
+        if (target := parse_attack_target(str(raw))) is not None
+    ]
+    ranked: list[dict[str, Any]] = []
+    for target in parsed_targets:
+        threat = threat_at(threats, target["x"], target["y"])
+        is_barb = bool(threat and threat_is_barbarian(threat))
+        is_horseman_pressure = (
+            unit_type == "UNIT_HORSEMAN"
+            and turn >= HORSEMAN_PRESSURE_START_TURN
+            and uses_horseman_pressure_runtime(recorder)
+            and not (threat and value_from(threat, "is_city_state", False))
+        )
+        if not (
+            is_barb
+            and uses_barbarian_clearance_runtime(recorder)
+            or is_horseman_pressure
+        ):
+            continue
+        target["threat"] = threat
+        target["is_barbarian"] = is_barb
+        target["adjacent_to_ranged_unit"] = unit_is_ranged_clearer(unit) and target_is_adjacent_to_unit(
+            unit, target
+        )
+        target["distance"] = (
+            value_from(threat, "distance", None)
+            if threat is not None
+            else abs(target["x"] - int(value_from(unit, "x", target["x"]) or target["x"]))
+            + abs(target["y"] - int(value_from(unit, "y", target["y"]) or target["y"]))
+        )
+        ranked.append(target)
+    return sorted(
+        ranked,
+        key=lambda target: (
+            0 if target.get("is_barbarian") else 1,
+            target.get("hp", 999),
+            target.get("distance", 999),
+        ),
+    )
 
 
 BUILDER_TASK_PRIORITY_RANK = {"urgent": 0, "high": 1, "normal": 2}
@@ -1666,7 +2167,7 @@ async def maybe_choose_research(
         return
 
     options = list(getattr(tech_status, "available_techs", []) or [])
-    selected = choose_by_priority(options, "tech_type", TECH_PRIORITY)
+    selected = choose_by_priority(options, "tech_type", tech_priority_for(recorder))
     if selected is None:
         return
     actions = [f"set tech {getattr(opt, 'tech_type', '')}" for opt in options]
@@ -1685,7 +2186,8 @@ async def maybe_choose_research(
             "current_goal": "Resolve mandatory research blocker so the observed game can advance.",
             "available_actions": actions,
             "selected_action": f"set tech {selected.tech_type}",
-            "rationale": "Pick the first available item from the conservative early-game priority list; this is a blocker-resolution choice, not a learned strategy update.",
+            "rationale": f"Pick the first available item from the active {strategy_priority_label(recorder)} technology priority.",
+            "strategy_context": strategy_context(recorder),
             "why_not_alternatives": {
                 "other available techs": "Lower priority or slower according to the static list used only for this run.",
                 "leave unset": "End turn would be blocked by missing research.",
@@ -1916,8 +2418,9 @@ async def maybe_set_city_production(
                 "selected_action": f"{selected.category} {selected.item_name}",
                 "rationale": (
                     "Use repair first if needed, otherwise select from the active "
-                    f"{recorder_strategy_profile(recorder)} production priority."
+                    f"{strategy_priority_label(recorder)} production priority."
                 ),
+                "strategy_context": strategy_context(recorder),
                 "why_not_alternatives": {
                     "other production options": "Recorded as available actions but lower in the active production priority.",
                     "leave idle": "End turn may be blocked and the city would waste production.",
@@ -2206,15 +2709,101 @@ async def handle_units(
         if unit_type == "UNIT_SETTLER" and city_count == 0:
             actions = [
                 "found_city on current tile",
-                "move settler before founding",
+                "move settler toward fresh water",
                 "wait for more map information",
             ]
+            related_calls: list[str] = []
+            if uses_river_settlement_runtime(recorder):
+                try:
+                    scan_id, candidates = await recorder.tool_call(
+                        "get_global_settle_scan", {}, gs.get_global_settle_scan, turn=turn
+                    )
+                    related_calls.append(scan_id)
+                    candidate_list = ranked_settle_candidates(
+                        list(candidates or []),
+                        prefer_fresh=True,
+                    )
+                    current_candidate = next(
+                        (
+                            candidate
+                            for candidate in candidate_list
+                            if candidate_matches_unit_tile(candidate, unit)
+                        ),
+                        None,
+                    )
+                    best_candidate = candidate_list[0] if candidate_list else None
+                    if (
+                        best_candidate is not None
+                        and candidate_has_fresh_water(best_candidate)
+                        and not candidate_matches_unit_tile(best_candidate, unit)
+                        and not (
+                            current_candidate is not None
+                            and candidate_has_fresh_water(current_candidate)
+                        )
+                    ):
+                        target_x = int(value_from(best_candidate, "x"))
+                        target_y = int(value_from(best_candidate, "y"))
+                        move_id, move_result = await recorder.tool_call(
+                            "unit_action",
+                            {
+                                "unit_id": unit_id,
+                                "action": "move",
+                                "target_x": target_x,
+                                "target_y": target_y,
+                                "water_type": value_from(best_candidate, "water_type"),
+                            },
+                            lambda unit_index=unit_index, target_x=target_x, target_y=target_y: gs.move_unit(
+                                unit_index, target_x, target_y
+                            ),
+                            turn=turn,
+                        )
+                        related_calls.append(move_id)
+                        recorder.record_decision(
+                            {
+                                "turn": turn,
+                                "trigger": "opening settler action",
+                                "importance": "critical",
+                                "background": background_from_snapshot(snapshot),
+                                "current_goal": "Establish the capital on fresh water when a visible river/fresh-water opening tile is available.",
+                                "available_actions": actions,
+                                "selected_action": "move settler toward fresh water",
+                                "rationale": "The active strategy explicitly prefers river/fresh-water settlement; the current tile was not the best fresh-water candidate.",
+                                "strategy_context": strategy_context(recorder),
+                                "why_not_alternatives": {
+                                    "found_city on current tile": "Would ignore the river/fresh-water opening preference when a better visible tile is available.",
+                                    "wait": "Moving toward the chosen tile preserves opening momentum.",
+                                },
+                                "execution": {
+                                    "tool": "unit_action",
+                                    "action": "move",
+                                    "target": {
+                                        "x": target_x,
+                                        "y": target_y,
+                                        "score": value_from(best_candidate, "score"),
+                                        "water_type": value_from(best_candidate, "water_type"),
+                                    },
+                                    "result": move_result,
+                                },
+                                "outcome": short_text(move_result),
+                                "related_tool_call_ids": related_calls,
+                                "related_state_snapshot_ids": [state_id],
+                                "related_save_ids": [],
+                            }
+                        )
+                        continue
+                except Exception as exc:  # noqa: BLE001
+                    recorder.add_gap(
+                        "units.opening_settle_scan",
+                        f"{type(exc).__name__}: {exc}",
+                        "Fall back to immediate founding if the fresh-water settle scan cannot be queried.",
+                    )
             call_id, result = await recorder.tool_call(
                 "unit_action",
                 {"unit_id": unit_id, "action": "found_city"},
                 lambda unit_index=unit_index: gs.found_city(unit_index),
                 turn=turn,
             )
+            related_calls.append(call_id)
             recorder.record_decision(
                 {
                     "turn": turn,
@@ -2224,19 +2813,21 @@ async def handle_units(
                     "current_goal": "Establish the first city so the real game can progress.",
                     "available_actions": actions,
                     "selected_action": "found_city on current tile",
-                    "rationale": "With zero cities, founding immediately is the least speculative action and resolves the main opening blocker.",
+                    "rationale": "With zero cities, founding immediately is the least speculative action once no better fresh-water move was selected.",
+                    "strategy_context": strategy_context(recorder),
                     "why_not_alternatives": {
-                        "move settler before founding": "Would intentionally alter opening strategy without a stronger recorded reason.",
+                        "move settler toward fresh water": "No better fresh-water candidate was selected from the opening settle scan.",
                         "wait": "Delays all production and research.",
                     },
                     "execution": {"tool": "unit_action", "action": "found_city", "result": result},
                     "outcome": short_text(result),
-                    "related_tool_call_ids": [call_id],
+                    "related_tool_call_ids": related_calls,
                     "related_state_snapshot_ids": [state_id],
                     "related_save_ids": [],
                 }
             )
-            city_count += 1
+            if str(result).startswith("FOUNDED|"):
+                city_count += 1
             continue
 
         if unit_type == "UNIT_SETTLER":
@@ -2268,62 +2859,97 @@ async def handle_units(
                     "get_global_settle_scan", {}, gs.get_global_settle_scan, turn=turn
                 )
                 related_calls.append(scan_id)
-                candidate_list = ranked_settle_candidates(list(candidates or []))
+                candidate_list = ranked_settle_candidates(
+                    list(candidates or []),
+                    prefer_fresh=uses_river_settlement_runtime(recorder),
+                )
                 if candidate_list:
                     move_attempts: list[dict[str, Any]] = []
                     move_result = ""
                     candidate = candidate_list[0]
                     target_x = int(getattr(candidate, "x"))
                     target_y = int(getattr(candidate, "y"))
-                    for candidate in candidate_list[:3]:
-                        target_x = int(getattr(candidate, "x"))
-                        target_y = int(getattr(candidate, "y"))
-                        move_id, move_result = await recorder.tool_call(
+                    target_distance = candidate_distance_from_unit(candidate, unit)
+                    if (
+                        visible_barbarian_threat_count(snapshot) > 0
+                        and target_distance
+                        > SETTLER_MAX_UNESCORTED_DISTANCE_WITH_BARBARIANS
+                    ):
+                        skip_id, skip_result = await recorder.tool_call(
                             "unit_action",
-                            {
-                                "unit_id": unit_id,
-                                "action": "move",
-                                "target_x": target_x,
-                                "target_y": target_y,
-                            },
-                            lambda unit_index=unit_index, target_x=target_x, target_y=target_y: gs.move_unit(
-                                unit_index, target_x, target_y
-                            ),
+                            {"unit_id": unit_id, "action": "skip"},
+                            lambda unit_index=unit_index: gs.skip_unit(unit_index),
                             turn=turn,
                         )
-                        related_calls.append(move_id)
-                        move_attempts.append(
-                            {
-                                "target": {
-                                    "x": target_x,
-                                    "y": target_y,
-                                    "score": getattr(candidate, "score", None),
-                                    "water_type": getattr(candidate, "water_type", None),
-                                },
-                                "result": move_result,
-                                "tool_call_id": move_id,
-                            }
+                        related_calls.append(skip_id)
+                        selected = "hold settler for barbarian safety"
+                        execution = {
+                            "tool": "unit_action",
+                            "action": "skip",
+                            "found_result": found_result,
+                            "target": {
+                                "x": target_x,
+                                "y": target_y,
+                                "score": getattr(candidate, "score", None),
+                                "water_type": getattr(candidate, "water_type", None),
+                                "distance": target_distance,
+                            },
+                            "skip_result": skip_result,
+                        }
+                        outcome = short_text(skip_result)
+                        rationale = (
+                            "A visible barbarian threat and a long settle path make this unescorted settler vulnerable, so it waits instead of walking into capture risk."
                         )
-                        if "BLOCKED" not in str(move_result):
-                            break
-                    selected = "move toward best settle candidate"
-                    execution = {
-                        "tool": "unit_action",
-                        "action": "move",
-                        "target": {
-                            "x": target_x,
-                            "y": target_y,
-                            "score": getattr(candidate, "score", None),
-                            "water_type": getattr(candidate, "water_type", None),
-                        },
-                        "found_result": found_result,
-                        "move_result": move_result,
-                        "move_attempts": move_attempts,
-                    }
-                    outcome = short_text(move_result)
-                    rationale = (
-                        "The settler could not found on its current tile, so the runner moved it toward the highest-scored revealed settle candidate."
-                    )
+                    else:
+                        for candidate in candidate_list[:3]:
+                            target_x = int(getattr(candidate, "x"))
+                            target_y = int(getattr(candidate, "y"))
+                            move_id, move_result = await recorder.tool_call(
+                                "unit_action",
+                                {
+                                    "unit_id": unit_id,
+                                    "action": "move",
+                                    "target_x": target_x,
+                                    "target_y": target_y,
+                                },
+                                lambda unit_index=unit_index, target_x=target_x, target_y=target_y: gs.move_unit(
+                                    unit_index, target_x, target_y
+                                ),
+                                turn=turn,
+                            )
+                            related_calls.append(move_id)
+                            move_attempts.append(
+                                {
+                                    "target": {
+                                        "x": target_x,
+                                        "y": target_y,
+                                        "score": getattr(candidate, "score", None),
+                                        "water_type": getattr(candidate, "water_type", None),
+                                    },
+                                    "result": move_result,
+                                    "tool_call_id": move_id,
+                                }
+                            )
+                            if "BLOCKED" not in str(move_result):
+                                break
+                        selected = "move toward best settle candidate"
+                        execution = {
+                            "tool": "unit_action",
+                            "action": "move",
+                            "target": {
+                                "x": target_x,
+                                "y": target_y,
+                                "score": getattr(candidate, "score", None),
+                                "water_type": getattr(candidate, "water_type", None),
+                            },
+                            "found_result": found_result,
+                            "move_result": move_result,
+                            "move_attempts": move_attempts,
+                        }
+                        outcome = short_text(move_result)
+                        rationale = (
+                            "The settler could not found on its current tile, so the runner moved it toward the highest-scored revealed settle candidate."
+                        )
                 else:
                     skip_id, skip_result = await recorder.tool_call(
                         "unit_action",
@@ -2356,6 +2982,7 @@ async def handle_units(
                     "available_actions": actions,
                     "selected_action": selected,
                     "rationale": rationale,
+                    "strategy_context": strategy_context(recorder),
                     "why_not_alternatives": {
                         "wait for more map information": "The T50 strategy needs expansion pressure, not indefinite settler idling.",
                         "ignore settler": "Leaving a settler with moves can block end_turn and wastes production.",
@@ -2620,6 +3247,18 @@ async def handle_units(
             )
             continue
 
+        attack_targets = ranked_attack_targets_for_unit(
+            recorder,
+            unit,
+            list(snapshot.get("threats") or []),
+            turn,
+        )
+        barbarian_move_target = (
+            nearest_barbarian_threat_for_unit(unit, list(snapshot.get("threats") or []))
+            if unit_type in BARBARIAN_CLEARING_UNIT_TYPES
+            and uses_barbarian_clearance_runtime(recorder)
+            else None
+        )
         if getattr(unit, "health", 100) < max(1, getattr(unit, "max_health", 100)) * 0.6:
             call_id, result = await recorder.tool_call(
                 "unit_action",
@@ -2629,6 +3268,87 @@ async def handle_units(
             )
             selected = "heal"
             rationale = "The unit is badly damaged; preserving it is safer than moving during an observation run."
+        elif attack_targets:
+            target = attack_targets[0]
+            target_x = int(target["x"])
+            target_y = int(target["y"])
+            if target.get("adjacent_to_ranged_unit"):
+                move_x, move_y = ranged_reposition_target(unit, target)
+                call_id, result = await recorder.tool_call(
+                    "unit_action",
+                    {
+                        "unit_id": unit_id,
+                        "action": "move",
+                        "target_x": move_x,
+                        "target_y": move_y,
+                        "deferred_attack_target_x": target_x,
+                        "deferred_attack_target_y": target_y,
+                        "target": target.get("raw"),
+                    },
+                    lambda unit_index=unit_index, move_x=move_x, move_y=move_y: gs.move_unit(
+                        unit_index, move_x, move_y
+                    ),
+                    turn=turn,
+                )
+                selected = "reposition ranged unit"
+                rationale = (
+                    "The ranged unit is adjacent to its target; moving away first avoids the observed close-range ranged attack rejection and can free stacking pressure."
+                )
+            else:
+                call_id, result = await recorder.tool_call(
+                    "unit_action",
+                    {
+                        "unit_id": unit_id,
+                        "action": "attack",
+                        "target_x": target_x,
+                        "target_y": target_y,
+                        "target": target.get("raw"),
+                    },
+                    lambda unit_index=unit_index, target_x=target_x, target_y=target_y: gs.attack_unit(
+                        unit_index, target_x, target_y
+                    ),
+                    turn=turn,
+                )
+                selected = "attack target"
+                rationale = (
+                    "The active T50 strategy gives clearable barbarian threats priority over fortifying."
+                    if target.get("is_barbarian")
+                    else "The active T50 strategy allows horsemen to pressure attackable neighboring units after the opening phase."
+                )
+        elif barbarian_move_target:
+            if unit_is_ranged_clearer(unit) and target_is_adjacent_to_unit(
+                unit, barbarian_move_target
+            ):
+                move_x, move_y = ranged_reposition_target(unit, barbarian_move_target)
+                selected = "reposition ranged unit"
+                rationale = (
+                    "A visible barbarian is adjacent but not currently attackable; the ranged unit moves away to avoid close-range ranged rejection and free stacking."
+                )
+            else:
+                move_x = int(barbarian_move_target["x"])
+                move_y = int(barbarian_move_target["y"])
+                selected = "move toward barbarian threat"
+                rationale = (
+                    "The active T50 strategy treats clearing visible barbarians as high priority, so this unit moves toward the nearest known barbarian instead of fortifying."
+                )
+            call_id, result = await recorder.tool_call(
+                "unit_action",
+                {
+                    "unit_id": unit_id,
+                    "action": "move",
+                    "target_x": move_x,
+                    "target_y": move_y,
+                    "target": {
+                        "x": barbarian_move_target["x"],
+                        "y": barbarian_move_target["y"],
+                        "distance": barbarian_move_target["distance"],
+                    },
+                },
+                lambda unit_index=unit_index, move_x=move_x, move_y=move_y: gs.move_unit(
+                    unit_index, move_x, move_y
+                ),
+                turn=turn,
+            )
         elif should_auto_explore_unit(recorder, unit_type, snapshot):
             call_id, result = await recorder.tool_call(
                 "unit_action",
@@ -2636,14 +3356,17 @@ async def handle_units(
                     "unit_id": unit_id,
                     "action": "automate_explore",
                     "strategy_profile": recorder_strategy_profile(recorder),
+                    "strategy_context": strategy_context(recorder),
                 },
                 lambda unit_index=unit_index: gs.automate_explore(unit_index),
                 turn=turn,
             )
             selected = "automate_explore"
+            runtime = recorder_candidate_runtime(recorder)
             rationale = (
-                "The explore_scout_first profile treats early map knowledge as "
-                "higher value than repeated fortify/hold during T20 exploration."
+                "The candidate playbook runtime treats early map knowledge as higher value than repeated fortify/hold."
+                if runtime.get("status") == "applied"
+                else "The explore_scout_first profile treats early map knowledge as higher value than repeated fortify/hold during T20 exploration."
             )
         elif "COMBAT" in unit_type or unit_type in {
             "UNIT_WARRIOR",
@@ -2685,12 +3408,27 @@ async def handle_units(
                 ],
                 "selected_action": selected,
                 "rationale": rationale,
+                "strategy_context": strategy_context(recorder),
                 "why_not_alternatives": {
                     "move": "No explicit safe target was selected from the snapshot.",
-                    "attack": "No attack was chosen without a recorded target and combat estimate.",
+                    "attack": "No higher-priority attackable target matched the active strategy.",
                     "other": "Deferred to keep Phase 1 observation focused on evidence capture.",
                 },
-                "execution": {"tool": "unit_action", "action": selected, "result": result},
+                "execution": {
+                    "tool": "unit_action",
+                    "action": selected,
+                    "target": (
+                        attack_targets[0]
+                        if selected == "attack target"
+                        else attack_targets[0]
+                        if selected == "reposition ranged unit" and attack_targets
+                        else barbarian_move_target
+                        if selected
+                        in {"move toward barbarian threat", "reposition ranged unit"}
+                        else None
+                    ),
+                    "result": result,
+                },
                 "outcome": short_text(result),
                 "related_tool_call_ids": [call_id],
                 "related_state_snapshot_ids": [state_id],
@@ -3270,7 +4008,7 @@ def generate_report_legacy(recorder: Any) -> None:
 
     tool_complete = bool(tool_rows) and all("result_raw" in r or "error" in r for r in tool_rows)
     mcp_complete = bool(lua_rows) and all("request" in r and ("response" in r or "error" in r) for r in lua_rows)
-    states_complete = bool(states) and len(set(t for t in state_turns if t is not None)) >= max(1, actual_turns)
+    states_complete = bool(states) and len(states) >= max(1, actual_turns)
     decisions_complete = bool(decisions) and not missing_decision_fields
     save_complete = len(saves) >= 2 and all(
         s.get("episode_id")
@@ -4284,6 +5022,15 @@ def build_report_pack(
         "$env:PYTHONIOENCODING='utf-8'; & 'O:\\civ6\\.tools\\uv\\uv.exe' run "
         f"codex-hl-civ6-phase1-observe --save-name \"test 1\" --turns {actual_turns}"
     )
+    candidate_runtime = header.get("candidate_runtime") or {
+        "status": "not_supplied",
+        "runtime_effects": [],
+    }
+    if isinstance(candidate_runtime, dict) and candidate_runtime.get("package_path"):
+        observe_command += (
+            " --candidate-package "
+            + json.dumps(str(candidate_runtime.get("package_path")), ensure_ascii=False)
+        )
 
     return {
         "episode_id": recorder.episode_id,
@@ -4306,6 +5053,7 @@ def build_report_pack(
             "route_map": header.get("route_map", PHASE_LABEL),
             "stop_boundary": observation_stop_boundary(actual_turns),
         },
+        "candidate_runtime": candidate_runtime,
         "paths": paths,
         "counts": {
             "tool_calls": len(tool_rows),
@@ -4818,7 +5566,11 @@ def generate_report(recorder: Any) -> None:
 
     tool_complete = bool(tool_rows) and all("result_raw" in r or "error" in r for r in tool_rows)
     mcp_complete = bool(lua_rows) and all("request" in r and ("response" in r or "error" in r) for r in lua_rows)
-    states_complete = bool(state_rows) and not missing_state_cells and len(set(t for t in state_turns if t is not None)) >= max(1, actual_turns)
+    states_complete = (
+        bool(state_rows)
+        and not missing_state_cells
+        and len(state_rows) >= max(1, actual_turns)
+    )
     decisions_complete = bool(decisions) and not missing_decision_fields
     save_complete = len(saves) >= 2 and all(
         save.get("episode_id")
@@ -5133,8 +5885,7 @@ def generate_reports(recorder: Any) -> None:
     states_complete = (
         bool(state_rows)
         and not missing_state_cells
-        and len(set(turn for turn in state_turns if turn is not None))
-        >= max(1, actual_turns)
+        and len(state_rows) >= max(1, actual_turns)
     )
     decisions_complete = bool(decisions) and not missing_decision_fields
     save_complete = len(saves) >= 2 and all(
@@ -5236,6 +5987,7 @@ async def run_short(args: argparse.Namespace) -> int:
     recorder.requested_turns = args.turns
     recorder.observation_mode = mode
     recorder.strategy_profile = args.strategy_profile
+    recorder.candidate_runtime = load_candidate_runtime(args.candidate_package)
     hostname = os.environ.get("COMPUTERNAME")
     if not hostname and hasattr(os, "uname"):
         hostname = os.uname().nodename
@@ -5273,6 +6025,7 @@ async def run_short(args: argparse.Namespace) -> int:
         "observation_mode": mode,
         "observation_mode_zh": mode_zh,
         "strategy_profile": args.strategy_profile,
+        "candidate_runtime": recorder.candidate_runtime,
         "route_map": f"{PHASE_LABEL} - {mode_zh}",
         "phase_rules": [
             (
@@ -5287,6 +6040,7 @@ async def run_short(args: argparse.Namespace) -> int:
             "no candidate strategy improvement",
             "no learning loop",
             "no asset promote/reject",
+            "candidate package is read-only runtime input when supplied; it does not mutate Phase 3 assets",
             "single-player test 1 save only",
             observation_stop_boundary(args.turns),
         ],
@@ -5411,6 +6165,11 @@ def parse_args() -> argparse.Namespace:
         default=BASELINE_STRATEGY_PROFILE,
         choices=sorted(STRATEGY_PROFILES),
         help="Runtime strategy profile. Non-baseline profiles are explicit T20 exploration experiments.",
+    )
+    parser.add_argument(
+        "--candidate-package",
+        type=Path,
+        help="Read a Phase 4 candidate playbook package as read-only runtime guidance for this episode.",
     )
     parser.add_argument(
         "--report-only",
