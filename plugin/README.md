@@ -9,7 +9,7 @@
 安装后 Codex 应先读：
 
 1. `AGENTS.md`
-2. `assets/codex_hl/phase3/catalog.json`
+2. `assets/codex_hl/strategy/catalog.json`
 3. 当前任务需要的 active asset
 4. 对应的 `commands/*.md`
 
@@ -17,34 +17,33 @@
 
 ### 1. 基础观测与报告
 
-- `/civ6-phase1-observe`：运行真实 Civ6 Phase 1 观测。
-- `/civ6-phase1-report`：基于已有 episode 重建报告。
+- `/civ6-observe`：运行真实 Civ6 Observation 观测。
+- `/civ6-observe --report-only`：基于已有 episode 重建报告。
 - `/civ6-debug`：检查连接、FireTuner 和存档环境。
 
 ### 2. 离线资产与证据流程
 
-- `/civ6-phase2-label`：离线标注候选失败，人工确认后写正式 failure。
-- `/civ6-phase3-assets`：校验资产库，列 active assets，只读比较 T50。
-- `/civ6-phase4-candidates`：从正式 failure 生成候选改进包。
-- `/civ6-phase5-scenarios`：把正式 failure 登记为被动 regression scenario。
+- `/civ6-review`：离线标注候选失败，人工确认后写正式 failure。
+- `/civ6-strategy-assets`：校验资产库，列 active assets，只读比较 T50。
+- `/civ6-strategy-candidates`：从正式 failure 生成候选改进包。
+- `/civ6-validation-scenarios`：把正式 failure 登记为被动 regression scenario。
 - `/civ6-governance`：审计候选资产，显式允许且 gate 通过才合并。
 
 ### 3. 自动化编排和验收入口
 
-- `/civ6-evolve`：编排多局 T20/T50 和后续阶段。
-- `/civ6-v002-acceptance`：只读验证 `5 baseline T50 + 5 candidate T50` 的
+- `/civ6-runs`：编排多局 T20/T50 和后续阶段。
+- `/civ6-acceptance`：只读验证 `5 baseline T50 + 5 candidate T50` 的
   `v0.0.2` 策略改进验收。
 
-`/civ6-evolve` 可以把 Phase 4 candidate package 作为只读运行时输入传给
-Phase 1 runner；候选包不会自动合并资产，合并仍然必须走 governance gate。
+`/civ6-runs` 可以把 strategy candidate package 作为只读运行时输入传给
+observation runner；候选包不会自动合并资产，合并仍然必须走 governance gate。
 
 ## 核心边界
 
-- Phase 1 只记录事实，不判断策略好坏。
-- Phase 2 只读已有 episode，不启动 Civ6。
-- Phase 3 只管理和校验资产，不生成候选改动。
-- Phase 4 只生成候选包，不直接改资产。
-- Phase 5 只登记 passive scenario，不 replay。
+- Observation 只记录事实，不判断策略好坏。
+- Review 只读已有 episode，不启动 Civ6。
+- Strategy 负责管理资产和候选包，是系统的核心产物层。
+- Validation 只登记 passive scenario，不 replay。
 - Governance 默认 audit-only。
 - Evolution 可以编排流程，但不能替代策略改进验收。
 
@@ -55,5 +54,5 @@ Phase 1 runner；候选包不会自动合并资产，合并仍然必须走 gover
 回归场景池默认写到：
 
 ```text
-validation/regression_scenarios/
+validation/scenarios/
 ```

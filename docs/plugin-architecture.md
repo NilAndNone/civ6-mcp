@@ -23,9 +23,9 @@
 - `README.md`：插件使用总览。
 - `AGENTS.md`：插件安装后 Codex 先读的说明。
 - `commands/`：用户可见命令入口。
-- `skills/`：技能入口，目前主要是 Phase 1 观测。
-- `assets/codex_hl/phase3/`：版本化 prompt、playbook、tool policy 和 memory。
-- `src/codex_hl/`：Phase 1-5、governance、evolution 的流程层。
+- `skills/`：技能入口，目前主要是 Observation 观测。
+- `assets/codex_hl/strategy/`：版本化 prompt、playbook、tool policy 和 memory。
+- `src/codex_hl/`：Observation-5、governance、evolution 的流程层。
 - `src/civ6_connector/`：Civ6 底层连接层。
 - `fixtures/`：测试夹具。
 
@@ -38,11 +38,11 @@
 
 `codex_hl` 不直接碰底层连接细节。它负责把底层能力组织成阶段流程：
 
-1. Phase 1 记录真实 episode 和报告。
-2. Phase 2 只读已有 episode，生成候选失败，人工确认后写正式 failure。
-3. Phase 3 校验资产库，只读比较已有 T50。
-4. Phase 4 从正式 failure 生成候选改进包。
-5. Phase 5 把正式 failure 登记成被动回归场景。
+1. Observation 记录真实 episode 和报告。
+2. Review 只读已有 episode，生成候选失败，人工确认后写正式 failure。
+3. Strategy 校验资产库，只读比较已有 T50。
+4. Strategy Candidate 从正式 failure 生成候选改进包。
+5. Validation 把正式 failure 登记成被动回归场景。
 6. Governance 做候选合并审计、显式合并和回滚。
 7. Evolution 编排多局运行和后续阶段，并可把候选 playbook 作为只读运行时输入验证。
 
@@ -52,10 +52,10 @@
 
 ```text
 真实 Civ6 对局
-  -> episodes/<episode_id>/ Phase 1 证据和报告
-  -> phase2/ candidates, failures, regression seeds
-  -> phase4/ candidate packages
-  -> validation/regression_scenarios/
+  -> episodes/<episode_id>/ Observation 证据和报告
+  -> review/ candidates, failures, regression seeds
+  -> strategy/candidates/ candidate packages
+  -> validation/scenarios/
   -> governance audits
 ```
 
@@ -63,7 +63,7 @@
 
 ## 边界
 
-- `v0.0.2` 已证明候选 playbook 可以进入 Phase 1 runner 决策路径并改善 T50 主指标。
-- `/civ6-evolve` 可以运行 baseline/candidate T50；`/civ6-v002-acceptance` 只读生成验收报告。
+- `v0.0.2` 已证明候选 playbook 可以进入 observation runner 决策路径并改善 T50 主指标。
+- `/civ6-runs` 可以运行 baseline/candidate T50；`/civ6-acceptance` 只读生成验收报告。
 - `episodes/` 是本地运行产物，默认不提交。
 - `archive/legacy/` 只能作为旧资料查看，不是当前运行路径。

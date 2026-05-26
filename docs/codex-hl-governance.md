@@ -9,9 +9,9 @@ Governance 负责审计候选资产是否可以合并，并在显式允许且所
 
 审计输入：
 
-- Phase 4 candidate package。
+- strategy candidate package。
 - validation report。
-- Phase 3 asset catalog。
+- strategy asset catalog。
 
 回滚输入：
 
@@ -72,7 +72,7 @@ automation/audits/<decision_id>/merge_decision.json
 本地检查：
 
 ```bash
-uv run pytest tests/test_phase4_5_governance.py -q
+uv run pytest tests/test_strategy_validation_governance.py -q
 ```
 
 ## 最容易错的地方

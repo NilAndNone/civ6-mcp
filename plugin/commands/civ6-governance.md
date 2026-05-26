@@ -2,7 +2,7 @@
 
 ## 用途
 
-审计 Phase 4 候选资产是否满足合并 gate。默认只写审计，不改资产。只有显式
+审计 Strategy Candidate 候选资产是否满足合并 gate。默认只写审计，不改资产。只有显式
 传 `--allow-merge` 且所有 gate 通过时才写资产。
 
 ## 输入

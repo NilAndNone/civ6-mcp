@@ -1,0 +1,272 @@
+{
+    "schema_version":  1,
+    "catalog_id":  "codex-hl-civ6-strategy-assets",
+    "generated_at":  "2026-05-21T00:00:00+08:00",
+    "assets":  [
+                   {
+                       "asset_id":  "strategy.prompt.default_boundary",
+                       "asset_type":  "prompt",
+                       "version":  "1.0.0",
+                       "content_path":  "assets/prompt-default-boundary.md",
+                       "content_sha256":  "c68b9d8b304ed0fa99edab3bcfc1b9e7a8811bd7c2f6aa371f9ce7a2c966a507",
+                       "source_refs":  [
+                                           "docs/codex-hl-evolution-roadmap.md",
+                                           "plugin/AGENTS.md",
+                                           "human plan: strategy asset 首批资产迁移计划"
+                                       ],
+                       "applicability":  [
+                                             "installed plugin default behavior",
+                                             "strategy boundary decisions"
+                                         ],
+                       "risk_level":  "medium",
+                       "rollback_path":  "assets/prompt-default-boundary.md",
+                       "capability_dimensions":  [
+                                                     "planning",
+                                                     "memory/state",
+                                                     "recovery"
+                                                 ],
+                       "status":  "active"
+                   },
+                   {
+                       "asset_id":  "strategy.playbook.observation",
+                       "asset_type":  "playbook",
+                       "version":  "1.0.0",
+                       "content_path":  "assets/playbook-observation.md",
+                       "content_sha256":  "b27591025f213b82213ffa2e65341b246482ced4f276c6da2d894e09a06277eb",
+                       "source_refs":  [
+                                           "docs/codex-hl-observation.md",
+                                           "plugin/commands/civ6-observe.md",
+                                           "plugin/skills/civ6-observation/SKILL.md",
+                                           "human plan: strategy asset 首批资产迁移计划"
+                                       ],
+                       "applicability":  [
+                                             "Observation short validation",
+                                             "Observation T50 observation"
+                                         ],
+                       "risk_level":  "high",
+                       "rollback_path":  "assets/playbook-observation.md",
+                       "capability_dimensions":  [
+                                                     "planning",
+                                                     "execution",
+                                                     "verification",
+                                                     "recovery"
+                                                 ],
+                       "status":  "active"
+                   },
+                   {
+                       "asset_id":  "strategy.playbook.failure_review",
+                       "asset_type":  "playbook",
+                       "version":  "1.0.0",
+                       "content_path":  "assets/playbook-review-offline-labeling.md",
+                       "content_sha256":  "834ddc9df472bc245b9df2000227106d068311b4c4dc51f965650cde972311e1",
+                       "source_refs":  [
+                                           "docs/codex-hl-review.md",
+                                           "plugin/commands/civ6-review.md",
+                                           "human plan: strategy asset 首批资产迁移计划"
+                                       ],
+                       "applicability":  [
+                                             "Review candidate generation",
+                                             "Review confirmation apply"
+                                         ],
+                       "risk_level":  "high",
+                       "rollback_path":  "assets/playbook-review-offline-labeling.md",
+                       "capability_dimensions":  [
+                                                     "planning",
+                                                     "tool grounding",
+                                                     "verification"
+                                                 ],
+                       "status":  "active"
+                   },
+                   {
+                       "asset_id":  "strategy.tool_policy.observation_evidence",
+                       "asset_type":  "tool_policy",
+                       "version":  "1.0.0",
+                       "content_path":  "assets/tool-policy-observation-run-and-evidence.md",
+                       "content_sha256":  "53c87e34c191895fdbffef1943d4ffadf432eb36e08ef9aac1f7d8a78514a649",
+                       "source_refs":  [
+                                           "docs/codex-hl-observation.md",
+                                           "plugin/skills/civ6-observation/SKILL.md",
+                                           "human plan: strategy asset 首批资产迁移计划"
+                                       ],
+                       "applicability":  [
+                                             "observation runner invocation",
+                                             "Observation evidence acceptance"
+                                         ],
+                       "risk_level":  "high",
+                       "rollback_path":  "assets/tool-policy-observation-run-and-evidence.md",
+                       "capability_dimensions":  [
+                                                     "execution",
+                                                     "tool grounding",
+                                                     "verification",
+                                                     "recovery"
+                                                 ],
+                       "status":  "active"
+                   },
+                   {
+                       "asset_id":  "strategy.tool_policy.review_confirmation",
+                       "asset_type":  "tool_policy",
+                       "version":  "1.0.0",
+                       "content_path":  "assets/tool-policy-review-confirmation-apply.md",
+                       "content_sha256":  "928e98de6090579b9bc97a4e887e38c8a3d3a2b2bed8c88d86e3064439c4902b",
+                       "source_refs":  [
+                                           "docs/codex-hl-review.md",
+                                           "plugin/commands/civ6-review.md",
+                                           "human plan: strategy asset 首批资产迁移计划"
+                                       ],
+                       "applicability":  [
+                                             "Review local labeler",
+                                             "Review confirmation apply"
+                                         ],
+                       "risk_level":  "high",
+                       "rollback_path":  "assets/tool-policy-review-confirmation-apply.md",
+                       "capability_dimensions":  [
+                                                     "execution",
+                                                     "tool grounding",
+                                                     "verification"
+                                                 ],
+                       "status":  "active"
+                   },
+                   {
+                       "asset_id":  "strategy.memory.low_trust",
+                       "asset_type":  "memory",
+                       "version":  "1.0.0",
+                       "content_path":  "assets/memory-low-trust-policy.md",
+                       "content_sha256":  "0461b527bab2d7456152a4eaf23595fcd23f1b02325e854514a45a1d56518dfd",
+                       "source_refs":  [
+                                           "docs/codex-hl-evolution-roadmap.md",
+                                           "plugin/AGENTS.md",
+                                           "human plan: strategy asset 首批资产迁移计划"
+                                       ],
+                       "applicability":  [
+                                             "memory use",
+                                             "state grounding"
+                                         ],
+                       "risk_level":  "medium",
+                       "rollback_path":  "assets/memory-low-trust-policy.md",
+                       "capability_dimensions":  [
+                                                     "memory/state",
+                                                     "tool grounding",
+                                                     "verification"
+                                                 ],
+                       "status":  "active"
+                   },
+                   {
+                       "asset_id":  "strategy.tool_policy.t50_metrics_review",
+                       "asset_type":  "tool_policy",
+                       "version":  "1.0.0",
+                       "content_path":  "assets/tool-policy-t50-metrics-review.md",
+                       "content_sha256":  "834d84e20a6889e6ee31e165f3acbd95b4572ffe4db4aa45fdc8edebff6defce",
+                       "source_refs":  [
+                                           "docs/codex-hl-evolution-roadmap.md",
+                                           "human plan: strategy asset 首批资产迁移计划"
+                                       ],
+                       "applicability":  [
+                                             "strategy T50 metric comparison",
+                                             "candidate evidence review"
+                                         ],
+                       "risk_level":  "medium",
+                       "rollback_path":  "assets/tool-policy-t50-metrics-review.md",
+                       "capability_dimensions":  [
+                                                     "verification",
+                                                     "planning"
+                                                 ],
+                       "status":  "active"
+                   },
+                   {
+                       "asset_id":  "strategy.playbook.candidate_improvements",
+                       "asset_type":  "playbook",
+                       "version":  "1.0.0",
+                       "content_path":  "assets/playbook-strategy-candidates.md",
+                       "content_sha256":  "c88d1cc93e15394493bb12a898494af14dde3518726831939a39e86ad6da9b5e",
+                       "source_refs":  [
+                                           "docs/codex-hl-strategy-candidates.md",
+                                           "plugin/commands/civ6-strategy-candidates.md",
+                                           "human request: complete all roadmap modules"
+                                       ],
+                       "applicability":  [
+                                             "strategy candidate improvement packaging",
+                                             "asset change proposal review"
+                                         ],
+                       "risk_level":  "high",
+                       "rollback_path":  "assets/playbook-strategy-candidates.md",
+                       "capability_dimensions":  [
+                                                     "planning",
+                                                     "verification",
+                                                     "recovery"
+                                                 ],
+                       "status":  "active"
+                   },
+                   {
+                       "asset_id":  "strategy.tool_policy.candidate_gate",
+                       "asset_type":  "tool_policy",
+                       "version":  "1.0.0",
+                       "content_path":  "assets/tool-policy-strategy-candidate-gate.md",
+                       "content_sha256":  "ad86a90d97096a29ec63b178f69b22f6a3dfd7ff291b95de31d31cea6a833c51",
+                       "source_refs":  [
+                                           "docs/codex-hl-strategy-candidates.md",
+                                           "plugin/commands/civ6-strategy-candidates.md",
+                                           "human request: complete all roadmap modules"
+                                       ],
+                       "applicability":  [
+                                             "strategy candidate gates",
+                                             "pre-governance validation"
+                                         ],
+                       "risk_level":  "high",
+                       "rollback_path":  "assets/tool-policy-strategy-candidate-gate.md",
+                       "capability_dimensions":  [
+                                                     "tool grounding",
+                                                     "verification",
+                                                     "recovery"
+                                                 ],
+                       "status":  "active"
+                   },
+                   {
+                       "asset_id":  "strategy.playbook.validation_scenarios",
+                       "asset_type":  "playbook",
+                       "version":  "1.0.0",
+                       "content_path":  "assets/playbook-validation-scenarios.md",
+                       "content_sha256":  "7788fab6d1808a690f1c539d78d130625f7475217d3ed52e6fd7d1dfbfd490a5",
+                       "source_refs":  [
+                                           "docs/codex-hl-validation-scenarios.md",
+                                           "plugin/commands/civ6-validation-scenarios.md",
+                                           "human request: complete all roadmap modules"
+                                       ],
+                       "applicability":  [
+                                             "Validation regression scenario pool",
+                                             "multi-scenario validation"
+                                         ],
+                       "risk_level":  "high",
+                       "rollback_path":  "assets/playbook-validation-scenarios.md",
+                       "capability_dimensions":  [
+                                                     "verification",
+                                                     "memory/state",
+                                                     "recovery"
+                                                 ],
+                       "status":  "active"
+                   },
+                   {
+                       "asset_id":  "strategy.tool_policy.governance_merge",
+                       "asset_type":  "tool_policy",
+                       "version":  "1.0.0",
+                       "content_path":  "assets/tool-policy-governance-merge.md",
+                       "content_sha256":  "3ef52ea81f11c396cbd56e3799983bf0414585c7d0c951aaf5c36b98394e4c22",
+                       "source_refs":  [
+                                           "docs/codex-hl-governance.md",
+                                           "plugin/commands/civ6-governance.md",
+                                           "human request: complete all roadmap modules"
+                                       ],
+                       "applicability":  [
+                                             "L4/L5 guarded merge",
+                                             "asset rollback and audit"
+                                         ],
+                       "risk_level":  "high",
+                       "rollback_path":  "assets/tool-policy-governance-merge.md",
+                       "capability_dimensions":  [
+                                                     "verification",
+                                                     "execution",
+                                                     "recovery"
+                                                 ],
+                       "status":  "active"
+                   }
+               ]
+}

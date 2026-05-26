@@ -1,14 +1,14 @@
 [project]
 name = "codex-hl-civ6"
 version = "0.0.2"
-description = "Codex HL Civ6 plugin for observation-first Civ6 play, offline failure labeling, asset registry validation, candidate improvements, scenario pools, guarded asset governance, and multi-T50 evolution orchestration"
+description = "Codex HL Civ6 plugin for observation-first Civ6 play, offline failure review, strategy asset governance, candidate strategy improvements, validation scenarios, guarded merges, and multi-T50 self-evolution orchestration"
 readme = "README.md"
 license = "MIT"
 authors = [
     { name = "Xiaohan Lu" }
 ]
 requires-python = ">=3.12"
-keywords = ["codex", "civ6", "civilization", "phase1", "phase2", "phase3", "phase4", "phase5", "governance", "assets", "observation", "evolution", "plugin"]
+keywords = ["codex", "civ6", "civilization", "strategy", "governance", "assets", "observation", "review", "validation", "evolution", "plugin"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: MIT License",
@@ -42,15 +42,16 @@ launcher-linux = [
 launcher = ["codex-hl-civ6[launcher-macos]"]
 
 [project.scripts]
-codex-hl-civ6-phase1-observe = "codex_hl.phase1.observer:main"
-codex-hl-civ6-phase2-label = "codex_hl.phase2.labeler:main"
-codex-hl-civ6-phase3-assets = "codex_hl.phase3.assets:main"
-codex-hl-civ6-phase4-candidates = "codex_hl.phase4.improvements:main"
-codex-hl-civ6-phase5-scenarios = "codex_hl.phase5.scenarios:main"
-codex-hl-civ6-governance = "codex_hl.governance.automation:main"
-codex-hl-civ6-evolve = "codex_hl.evolution.orchestrator:main"
-codex-hl-civ6-v002-acceptance = "codex_hl.evolution.acceptance:main"
-codex-hl-civ6-debug = "codex_hl.debug:main"
+codex-hl-civ6-observe = "codex_hl.evidence.observation:main"
+codex-hl-civ6-review = "codex_hl.review.failure_labeling:main"
+codex-hl-civ6-strategy-assets = "codex_hl.strategy.registry:main"
+codex-hl-civ6-strategy-candidates = "codex_hl.strategy.candidates:main"
+codex-hl-civ6-validation-scenarios = "codex_hl.validation.scenarios:main"
+codex-hl-civ6-governance = "codex_hl.governance.gates:main"
+codex-hl-civ6-runs = "codex_hl.runs.orchestrator:main"
+codex-hl-civ6-acceptance = "codex_hl.reports.acceptance:main"
+codex-hl-civ6-debug = "codex_hl.diagnostics.connector:main"
+codex-hl-civ6-human-demo-record = "codex_hl.demos.cli:main"
 civ6-connector = "civ6_connector.server:main"
 
 [tool.hatch.build.targets.wheel]

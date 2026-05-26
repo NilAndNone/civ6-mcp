@@ -1,1 +1,1 @@
-"""L4/L5 governance helpers."""
+"""Strategy governance gates, audit, merge, and rollback helpers."""

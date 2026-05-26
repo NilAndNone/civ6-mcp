@@ -11,16 +11,16 @@
 - `codex-hl-evolution-roadmap.md`：长期路线图的唯一权威 Markdown。
 - `codex-hl-evolution-roadmap.html`：路线图的人类审阅版，内容应与 Markdown 同步。
 
-## 阶段文档
+## 职责模块文档
 
-每份阶段文档都按同一逻辑写：输入是什么、怎么处理、输出什么、验收看什么、
+每份模块文档都按同一逻辑写：输入是什么、怎么处理、输出什么、验收看什么、
 哪一步最容易错。
 
-- `codex-hl-phase1-observation.md`：真实 Civ6 观测、episode 证据和报告。
-- `codex-hl-phase2-v1-labeling.md`：离线失败标注和人工确认。
-- `codex-hl-phase3-assets.md`：版本化资产库和 T50 只读比较。
-- `codex-hl-phase4-candidates.md`：从正式 failure 生成候选改进包。
-- `codex-hl-phase5-scenarios.md`：把 failure 沉淀成被动回归场景池。
+- `codex-hl-observation.md`：真实 Civ6 观测、episode 证据和报告。
+- `codex-hl-review.md`：离线失败标注和人工确认。
+- `codex-hl-strategy-assets.md`：版本化资产库和 T50 只读比较。
+- `codex-hl-strategy-candidates.md`：从正式 failure 生成候选改进包。
+- `codex-hl-validation-scenarios.md`：把 failure 沉淀成被动回归场景池。
 - `codex-hl-governance.md`：候选资产的审计、显式合并和回滚。
 
 ## 插件说明

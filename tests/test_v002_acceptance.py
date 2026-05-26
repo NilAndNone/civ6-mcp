@@ -1,7 +1,9 @@
 import json
+import shutil
 from pathlib import Path
 
-from codex_hl.evolution import acceptance
+from codex_hl.evidence.store import rebuild_episode_db
+from codex_hl.reports import acceptance
 
 
 def write_json(path: Path, data: dict) -> None:
@@ -87,9 +89,9 @@ def test_build_acceptance_report_passes_with_candidate_runtime_evidence(tmp_path
         "source_failure_ids": ["fail_test"],
     }
     write_json(package, package_data)
-    package_sha = acceptance.phase3_assets.sha256_file(package)
+    package_sha = acceptance.strategy_registry.sha256_file(package)
     write_jsonl(
-        tmp_path / "episodes" / "source_ep" / "phase2" / "failures.jsonl",
+        tmp_path / "episodes" / "source_ep" / "review" / "failures.jsonl",
         [{"failure_id": "fail_test"}],
     )
 
@@ -118,3 +120,47 @@ def test_build_acceptance_report_passes_with_candidate_runtime_evidence(tmp_path
     assert report["metric_comparison"]["improved_metrics"]
     assert Path(report["paths"]["json"]).exists()
     assert Path(report["paths"]["html"]).exists()
+
+
+def test_acceptance_reads_db_only_observation_episodes(tmp_path):
+    package = tmp_path / "candidate.json"
+    package_data = {
+        "candidate_id": "impr_db",
+        "source_episode_ids": ["source_ep"],
+        "source_failure_ids": ["fail_db"],
+    }
+    write_json(package, package_data)
+    package_sha = acceptance.strategy_registry.sha256_file(package)
+    write_jsonl(
+        tmp_path / "episodes" / "source_ep" / "review" / "failures.jsonl",
+        [{"failure_id": "fail_db"}],
+    )
+    make_episode(tmp_path, "baseline_db", cities=1, techs=2, civics=1)
+    runtime = {
+        "status": "applied",
+        "candidate_id": "impr_db",
+        "package_sha256": package_sha,
+        "runtime_effects": ["expansion_pressure"],
+    }
+    make_episode(tmp_path, "candidate_db", cities=2, techs=3, civics=2, candidate_runtime=runtime)
+    for episode_id in ["baseline_db", "candidate_db"]:
+        episode = tmp_path / "episodes" / episode_id
+        rebuild_episode_db(episode)
+        for child in episode.iterdir():
+            if child.name == "episode.db":
+                continue
+            if child.is_dir():
+                shutil.rmtree(child)
+            else:
+                child.unlink()
+
+    report = acceptance.build_acceptance_report(
+        workspace=tmp_path,
+        output_dir=tmp_path / "out",
+        baseline_episodes=["baseline_db"],
+        candidate_episodes=["candidate_db"],
+        candidate_package=package,
+        required_sample_size=1,
+    )
+
+    assert report["ok"] is True

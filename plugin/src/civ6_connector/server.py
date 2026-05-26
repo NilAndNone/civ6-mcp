@@ -12,14 +12,14 @@ import re
 import sys
 import time
 from contextlib import asynccontextmanager
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, is_dataclass
 from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Awaitable, Callable, Optional
 
 import uvicorn
 from mcp.server.fastmcp import Context, FastMCP
 
-from civ6_connector import game_launcher, heartbeat
+from civ6_connector import game_launcher, heartbeat, lua as lq
 from civ6_connector.game_over_watchdog import GameOverWatchdog
 from civ6_connector import narrate as nr
 from civ6_connector.connection import GameConnection, LuaError
@@ -505,6 +505,122 @@ async def _logged(
 # ---------------------------------------------------------------------------
 # Query tools (read-only)
 # ---------------------------------------------------------------------------
+
+
+def _human_demo_jsonable(value: Any) -> Any:
+    if is_dataclass(value):
+        return _human_demo_jsonable(asdict(value))
+    if isinstance(value, tuple):
+        return [_human_demo_jsonable(item) for item in value]
+    if isinstance(value, list):
+        return [_human_demo_jsonable(item) for item in value]
+    if isinstance(value, set):
+        return sorted(_human_demo_jsonable(item) for item in value)
+    if isinstance(value, dict):
+        return {str(key): _human_demo_jsonable(item) for key, item in value.items()}
+    return value
+
+
+async def _human_demo_safe(
+    name: str,
+    fn: Callable[[], Awaitable[Any]],
+    gaps: list[dict[str, str]],
+) -> Any | None:
+    try:
+        return await fn()
+    except Exception as exc:  # noqa: BLE001 - snapshot should preserve gaps.
+        gaps.append(
+            {
+                "field": name,
+                "reason": f"{type(exc).__name__}: {exc}",
+                "next_step": f"Repair or add a read-only MCP query for {name}.",
+            }
+        )
+        return None
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+async def get_human_demo_snapshot(ctx: Context) -> str:
+    """Return one read-only aggregate snapshot for human-demo recording.
+
+    This tool never advances the turn or writes to the game. It exists so Codex can
+    record manual play through before/after state snapshots without calling
+    action tools such as end_turn, set_city_production, or unit_action.
+    """
+    gs = _get_game(ctx)
+
+    async def _run() -> str:
+        gaps: list[dict[str, str]] = []
+        overview = await gs.get_game_overview()
+        turn = int(getattr(overview, "turn", 0))
+        identity = await _human_demo_safe("identity", gs.get_game_identity, gaps)
+        empire = await _human_demo_safe("empire", gs.get_diary_snapshot, gaps)
+        cities_value = await _human_demo_safe("cities", gs.get_cities, gaps)
+        units = await _human_demo_safe("units", gs.get_units, gaps)
+        notifications = await _human_demo_safe("notifications", gs.get_notifications, gaps)
+        threats = await _human_demo_safe("threats", gs.get_threat_scan, gaps)
+        research_civic = await _human_demo_safe("research_civic", gs.get_tech_civics, gaps)
+        policies = await _human_demo_safe("policies", gs.get_policies, gaps)
+        governors = await _human_demo_safe("governors", gs.get_governors, gaps)
+        resources = await _human_demo_safe("resources", gs.get_empire_resources, gaps)
+        diplomacy = await _human_demo_safe("diplomacy", gs.get_diplomacy, gaps)
+        victory = await _human_demo_safe("victory", gs.get_victory_progress, gaps)
+        trade_routes = await _human_demo_safe("trade_routes", gs.get_trade_routes, gaps)
+        strategic_map = await _human_demo_safe("strategic_map", gs.get_strategic_map, gaps)
+        pantheon = await _human_demo_safe("pantheon_status", gs.get_pantheon_status, gaps)
+        religion = await _human_demo_safe(
+            "religion_founding_status", gs.get_religion_founding_status, gaps
+        )
+        great_people = await _human_demo_safe("great_people", gs.get_great_people, gaps)
+
+        cities = []
+        city_distances = []
+        if isinstance(cities_value, tuple):
+            cities, city_distances = cities_value
+        elif cities_value:
+            cities = cities_value
+
+        production: dict[str, Any] = {}
+        for city in cities or []:
+            city_id = getattr(city, "city_id", None)
+            if city_id is None:
+                continue
+            production[str(city_id)] = await _human_demo_safe(
+                f"production.city_{city_id}",
+                lambda city_id=city_id: gs.list_city_production(city_id),
+                gaps,
+            )
+
+        snapshot = {
+            "snapshot_kind": "human_demo_mcp_snapshot",
+            "read_only": True,
+            "captured_at": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
+            "turn": turn,
+            "overview": overview,
+            "identity": identity,
+            "empire": empire,
+            "cities": cities,
+            "city_distances": city_distances,
+            "units": units,
+            "notifications": notifications,
+            "threats": threats,
+            "research_civic": research_civic,
+            "policies": policies,
+            "governors": governors,
+            "production": production,
+            "resources": resources,
+            "diplomacy": diplomacy,
+            "victory": victory,
+            "trade_routes": trade_routes,
+            "strategic_map": strategic_map,
+            "pantheon_status": pantheon,
+            "religion_founding_status": religion,
+            "great_people": great_people,
+            "known_gaps": gaps,
+        }
+        return json.dumps(_human_demo_jsonable(snapshot), ensure_ascii=False, default=str)
+
+    return await _logged(ctx, "get_human_demo_snapshot", {}, _run)
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
@@ -1443,7 +1559,7 @@ async def respond_to_diplomacy(
         response: "POSITIVE" (friendly) or "NEGATIVE" (dismissive)
 
     First meetings typically have 2-3 rounds. The tool automatically detects
-    and closes goodbye-phase sessions (where dialogue text stops changing).
+    and closes goodbye-state sessions (where dialogue text stops changing).
     If SESSION_CONTINUES is returned, send another response for the next round.
     """
     gs = _get_game(ctx)

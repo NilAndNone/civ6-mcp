@@ -10,11 +10,11 @@
     "codex",
     "civ6",
     "civilization",
-    "phase1",
-    "phase2",
-    "phase3",
-    "phase4",
-    "phase5",
+    "observation",
+    "review",
+    "strategy",
+    "strategy_candidate",
+    "validation_scenario",
     "governance",
     "assets",
     "observation",
@@ -24,7 +24,7 @@
   "interface": {
     "displayName": "Codex HL Civ6",
     "shortDescription": "运行观测优先的 Codex HL Civ6 episode",
-    "longDescription": "Codex HL Civ6 提供一个自包含的 Civilization VI 插件。它会在任何长跑继续前记录真实 Civ6 回合、决策记录、状态快照、存档和中文人工验收报告；用户明确开启后，还支持 Phase 2 离线标注、Phase 3 资产 catalog 校验、Phase 4 候选改进包、Phase 5 scenario pool、L4/L5 受控资产治理和多局 T20/T50 自进化编排。",
+    "longDescription": "Codex HL Civ6 提供一个自包含的 Civilization VI 插件。它会在任何长跑继续前记录真实 Civ6 回合、决策记录、状态快照、存档和中文人工验收报告；用户明确开启后，还支持 Review 离线标注、Strategy 资产 catalog 校验、strategy candidate 候选改进包、Validation scenario pool、L4/L5 受控资产治理和多局 T20/T50 自进化编排。",
     "developerName": "Xiaohan Lu",
     "category": "Engineering",
     "capabilities": [
@@ -32,7 +32,7 @@
       "Write"
     ],
     "defaultPrompt": [
-      "在 test 1 Civ6 存档上运行 3 回合 Phase 1 观测短跑"
+      "在 test 1 Civ6 存档上运行 3 回合 Observation 观测短跑"
     ],
     "brandColor": "#2B5C8A",
     "screenshots": []

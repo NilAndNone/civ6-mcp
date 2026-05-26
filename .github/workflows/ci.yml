@@ -17,5 +17,5 @@ jobs:
           python-version: "3.12"
       - run: pip install uv
       - run: uv sync
-      - run: uv run python -m py_compile plugin/src/codex_hl/phase1/observer.py plugin/src/civ6_connector/server.py
+      - run: uv run python -m py_compile plugin/src/codex_hl/evidence/observation.py plugin/src/civ6_connector/server.py
       - run: uv run pytest tests -q
