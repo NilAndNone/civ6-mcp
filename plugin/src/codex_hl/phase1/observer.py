@@ -51,10 +51,12 @@ FIRETUNER_LOAD_TIMEOUT_SECONDS = 420
 BASELINE_STRATEGY_PROFILE = "baseline_static"
 EXPLORE_SCOUT_FIRST_STRATEGY_PROFILE = "explore_scout_first"
 SCIENCE_CULTURE_T50_STRATEGY_PROFILE = "science_culture_t50"
+GOLDEN_AGE_PUSH_STRATEGY_PROFILE = "golden_age_push"
 STRATEGY_PROFILES = {
     BASELINE_STRATEGY_PROFILE,
     EXPLORE_SCOUT_FIRST_STRATEGY_PROFILE,
     SCIENCE_CULTURE_T50_STRATEGY_PROFILE,
+    GOLDEN_AGE_PUSH_STRATEGY_PROFILE,
 }
 ACCEPTED_HUMAN_REPORT_EPISODE = "phase1_test1_short_20260512_130155"
 HUMAN_REPORT_CONTRACT_PATH = (
@@ -181,6 +183,20 @@ SCIENCE_CULTURE_T50_TECH_PRIORITY = [
     "TECH_IRON_WORKING",
 ]
 
+GOLDEN_AGE_PUSH_TECH_PRIORITY = [
+    "TECH_ANIMAL_HUSBANDRY",
+    "TECH_ARCHERY",
+    "TECH_HORSEBACK_RIDING",
+    "TECH_ASTROLOGY",
+    "TECH_MINING",
+    "TECH_BRONZE_WORKING",
+    "TECH_POTTERY",
+    "TECH_WRITING",
+    "TECH_THE_WHEEL",
+    "TECH_CURRENCY",
+    "TECH_IRON_WORKING",
+]
+
 CIVIC_PRIORITY = [
     "CIVIC_CODE_OF_LAWS",
     "CIVIC_FOREIGN_TRADE",
@@ -188,6 +204,17 @@ CIVIC_PRIORITY = [
     "CIVIC_EARLY_EMPIRE",
     "CIVIC_STATE_WORKFORCE",
     "CIVIC_POLITICAL_PHILOSOPHY",
+]
+
+GOLDEN_AGE_PUSH_CIVIC_PRIORITY = [
+    "CIVIC_CODE_OF_LAWS",
+    "CIVIC_FOREIGN_TRADE",
+    "CIVIC_CRAFTSMANSHIP",
+    "CIVIC_MYSTICISM",
+    "CIVIC_EARLY_EMPIRE",
+    "CIVIC_STATE_WORKFORCE",
+    "CIVIC_POLITICAL_PHILOSOPHY",
+    "CIVIC_THEOLOGY",
 ]
 
 PRODUCTION_PRIORITY = [
@@ -302,6 +329,185 @@ SCIENCE_CULTURE_T50_LOW_YIELD_PRIORITY = [
     "UNIT_WARRIOR",
     "UNIT_SCOUT",
 ]
+GOLDEN_AGE_PUSH_PRODUCTION_PRIORITY = [
+    "PROJECT_HOLY_SITE_PRAYERS",
+    "UNIT_HORSEMAN",
+    "UNIT_ARCHER",
+    "DISTRICT_HOLY_SITE",
+    "BUILDING_SHRINE",
+    "UNIT_SLINGER",
+    "UNIT_WARRIOR",
+    "UNIT_SCOUT",
+    "UNIT_SETTLER",
+    "UNIT_BUILDER",
+    "BUILDING_MONUMENT",
+    "DISTRICT_CAMPUS",
+    "UNIT_TRADER",
+    "BUILDING_WATER_MILL",
+    "BUILDING_GRANARY",
+]
+GOLDEN_AGE_PUSH_ANCIENT_SCOUTING_PRIORITY = [
+    "UNIT_SCOUT",
+    "UNIT_SETTLER",
+    "BUILDING_MONUMENT",
+    "UNIT_BUILDER",
+    "UNIT_SLINGER",
+    "UNIT_ARCHER",
+    "UNIT_WARRIOR",
+    "DISTRICT_CAMPUS",
+    "UNIT_TRADER",
+    "UNIT_HORSEMAN",
+    "BUILDING_WATER_MILL",
+    "BUILDING_GRANARY",
+]
+GOLDEN_AGE_PUSH_ANCIENT_EXPANSION_PRIORITY = [
+    "UNIT_SETTLER",
+    "PROJECT_HOLY_SITE_PRAYERS",
+    "DISTRICT_HOLY_SITE",
+    "BUILDING_SHRINE",
+    "UNIT_SCOUT",
+    "BUILDING_MONUMENT",
+    "UNIT_BUILDER",
+    "UNIT_SLINGER",
+    "UNIT_ARCHER",
+    "UNIT_WARRIOR",
+    "DISTRICT_CAMPUS",
+    "UNIT_TRADER",
+    "UNIT_HORSEMAN",
+    "BUILDING_WATER_MILL",
+    "BUILDING_GRANARY",
+]
+GOLDEN_AGE_PUSH_ANCIENT_DEVELOPMENT_PRIORITY = [
+    "PROJECT_HOLY_SITE_PRAYERS",
+    "DISTRICT_HOLY_SITE",
+    "BUILDING_SHRINE",
+    "UNIT_BUILDER",
+    "BUILDING_MONUMENT",
+    "UNIT_SETTLER",
+    "UNIT_SCOUT",
+    "DISTRICT_CAMPUS",
+    "UNIT_TRADER",
+    "UNIT_SLINGER",
+    "UNIT_ARCHER",
+    "UNIT_WARRIOR",
+    "UNIT_HORSEMAN",
+    "BUILDING_WATER_MILL",
+    "BUILDING_GRANARY",
+]
+GOLDEN_AGE_PUSH_ANCIENT_STRATEGIC_RESOURCE_PRIORITY = [
+    "UNIT_HORSEMAN",
+    "UNIT_BUILDER",
+    "UNIT_ARCHER",
+    "UNIT_SLINGER",
+    "UNIT_WARRIOR",
+    "PROJECT_HOLY_SITE_PRAYERS",
+    "DISTRICT_HOLY_SITE",
+    "BUILDING_SHRINE",
+    "UNIT_SETTLER",
+    "UNIT_SCOUT",
+    "BUILDING_MONUMENT",
+    "DISTRICT_CAMPUS",
+    "UNIT_TRADER",
+    "BUILDING_WATER_MILL",
+    "BUILDING_GRANARY",
+]
+GOLDEN_AGE_PUSH_ANCIENT_BUILDER_PURCHASE_RESERVE_PRIORITY = [
+    "UNIT_ARCHER",
+    "UNIT_SLINGER",
+    "BUILDING_MONUMENT",
+    "PROJECT_HOLY_SITE_PRAYERS",
+    "DISTRICT_HOLY_SITE",
+    "BUILDING_SHRINE",
+    "UNIT_SETTLER",
+    "UNIT_WARRIOR",
+    "DISTRICT_CAMPUS",
+    "UNIT_TRADER",
+    "UNIT_HORSEMAN",
+    "UNIT_SCOUT",
+    "UNIT_BUILDER",
+    "BUILDING_WATER_MILL",
+    "BUILDING_GRANARY",
+]
+GOLDEN_AGE_PUSH_ANCIENT_DEFENSE_PRIORITY = [
+    "UNIT_SLINGER",
+    "UNIT_ARCHER",
+    "UNIT_WARRIOR",
+    "PROJECT_HOLY_SITE_PRAYERS",
+    "DISTRICT_HOLY_SITE",
+    "BUILDING_SHRINE",
+    "UNIT_SCOUT",
+    "BUILDING_MONUMENT",
+    "UNIT_SETTLER",
+    "UNIT_BUILDER",
+    "DISTRICT_CAMPUS",
+    "UNIT_TRADER",
+    "UNIT_HORSEMAN",
+    "BUILDING_WATER_MILL",
+    "BUILDING_GRANARY",
+]
+GOLDEN_AGE_PUSH_ANCIENT_SCOUT_CAP = 2
+GOLDEN_AGE_PUSH_ANCIENT_SCOUT_REPLACEMENT_LATEST_TURN = 18
+GOLDEN_AGE_PUSH_ANCIENT_STRATEGIC_RESOURCE_START_TURN = 12
+GOLDEN_AGE_PUSH_ANCIENT_TARGET_CITIES = 3
+GOLDEN_AGE_PUSH_ANCIENT_MIN_COMBAT_UNITS = 2
+GOLDEN_AGE_PUSH_ANCIENT_RANGED_CAP = 3
+GOLDEN_AGE_PUSH_EARLY_MILITARY_BUY_PRIORITY = {"UNIT_HORSEMAN", "UNIT_ARCHER"}
+GOLDEN_AGE_PUSH_ACTIVE_PRODUCTION_OVERRIDE_ITEMS = {"UNIT_HORSEMAN"}
+GOLDEN_AGE_PUSH_MILITARY_PURCHASE_PRIORITY = [
+    "UNIT_HORSEMAN",
+    "UNIT_ARCHER",
+    "UNIT_SLINGER",
+    "UNIT_WARRIOR",
+    "UNIT_SCOUT",
+]
+GOLDEN_AGE_PUSH_MILITARY_UPGRADE_SOURCE_PRIORITY = [
+    "UNIT_SLINGER",
+    "UNIT_WARRIOR",
+    "UNIT_SCOUT",
+    "UNIT_ARCHER",
+    "UNIT_HORSEMAN",
+]
+GOLDEN_AGE_PUSH_MILITARY_UPGRADE_TARGET_PRIORITY = [
+    "UNIT_HORSEMAN",
+    "UNIT_ARCHER",
+    "UNIT_SWORDSMAN",
+    "UNIT_SKIRMISHER",
+    "UNIT_CROSSBOWMAN",
+    "UNIT_COURSER",
+]
+GOLDEN_AGE_PUSH_BUILDER_PURCHASE_PRIORITY = ["UNIT_BUILDER"]
+GOLDEN_AGE_PUSH_STRATEGIC_TILE_PRIORITY = ["HORSES", "IRON"]
+GOLDEN_AGE_PUSH_MIN_GOLD_TO_SPEND = 120
+GOLDEN_AGE_PUSH_ANCIENT_MIN_GOLD_TO_SPEND = 65
+GOLDEN_AGE_PUSH_RESOURCE_TRADE_RESERVE = {"HORSES": 20, "IRON": 10}
+GOLDEN_AGE_PUSH_RESOURCE_TRADE_MIN_SURPLUS = 5
+GOLDEN_AGE_PUSH_WAR_START_TURN = 30
+GOLDEN_AGE_PUSH_WAR_MIN_COMBAT_UNITS = 3
+GOLDEN_AGE_PUSH_MAP_TARGET_SCAN_RADIUS = 12
+GOLDEN_AGE_PUSH_BLOCKED_MAP_TARGET_COOLDOWN_TURNS = 6
+GOLDEN_AGE_PUSH_URGENT_SETTLER_MOVE_TURN = 24
+GOLDEN_AGE_PUSH_SETTLER_ADJACENT_BARBARIAN_DISTANCE = 1
+GOLDEN_AGE_PUSH_STRATEGIC_SETTLE_RADIUS = 3
+GOLDEN_AGE_PUSH_PANTHEON_PRIORITY = [
+    "BELIEF_DIVINE_SPARK",
+    "BELIEF_RELIGIOUS_SETTLEMENTS",
+    "BELIEF_GOD_OF_THE_FORGE",
+]
+GOLDEN_AGE_PUSH_FOLLOWER_BELIEF = "BELIEF_CHORAL_MUSIC"
+GOLDEN_AGE_PUSH_FOUNDER_BELIEF_PRIORITY = [
+    "BELIEF_STEWARDSHIP",
+    "BELIEF_TITHE",
+    "BELIEF_CHURCH_PROPERTY",
+    "BELIEF_WORLD_CHURCH",
+]
+GOLDEN_AGE_PUSH_RELIGION_PRIORITY = [
+    "RELIGION_CONFUCIANISM",
+    "RELIGION_TAOISM",
+    "RELIGION_BUDDHISM",
+    "RELIGION_HINDUISM",
+    "RELIGION_ISLAM",
+    "RELIGION_CATHOLICISM",
+]
 BARBARIAN_CLEARING_UNIT_TYPES = {
     "UNIT_WARRIOR",
     "UNIT_SLINGER",
@@ -359,6 +565,17 @@ def candidate_runtime_effects(candidate: dict[str, Any]) -> list[str]:
         effects.append("horseman_pressure")
     if any(term in text for term in ["era score", "golden age", "时代得分", "黄金时代"]):
         effects.append("era_score_push")
+    if any(term in text for term in ["golden_age_push", "golden age push"]):
+        effects.append("golden_age_push")
+    if any(
+        term in text
+        for term in ["resource trade", "strategic resource", "horses", "iron", "sell resource"]
+    ):
+        effects.append("strategic_resource_trading")
+    if any(term in text for term in ["opportunistic war", "declare war", "neighbor war", "war opportunity"]):
+        effects.append("opportunistic_war")
+    if any(term in text for term in ["gold spender", "military purchase", "buy unit", "purchase unit"]):
+        effects.append("military_gold_spending")
     if not effects and "playbook" in text:
         effects.append("playbook_loaded")
     return effects
@@ -660,6 +877,7 @@ class EpisodeRecorder:
         self.start_time = now_iso()
         self.final_turn: int | None = None
         self.start_turn: int | None = None
+        self.blocked_map_targets: dict[tuple[str, int, int], int] = {}
 
     def append_jsonl(self, path: Path, row: dict[str, Any]) -> None:
         with path.open("a", encoding="utf-8") as f:
@@ -987,7 +1205,17 @@ def candidate_runtime_has(recorder: Any, effect: str) -> bool:
 def uses_science_culture_t50_runtime(recorder: Any) -> bool:
     return (
         recorder_strategy_profile(recorder) == SCIENCE_CULTURE_T50_STRATEGY_PROFILE
+        or recorder_strategy_profile(recorder) == GOLDEN_AGE_PUSH_STRATEGY_PROFILE
         or candidate_runtime_has(recorder, "science_culture_push")
+        or candidate_runtime_has(recorder, "era_score_push")
+        or candidate_runtime_has(recorder, "golden_age_push")
+    )
+
+
+def uses_golden_age_push_runtime(recorder: Any) -> bool:
+    return (
+        recorder_strategy_profile(recorder) == GOLDEN_AGE_PUSH_STRATEGY_PROFILE
+        or candidate_runtime_has(recorder, "golden_age_push")
         or candidate_runtime_has(recorder, "era_score_push")
     )
 
@@ -995,13 +1223,16 @@ def uses_science_culture_t50_runtime(recorder: Any) -> bool:
 def uses_barbarian_clearance_runtime(recorder: Any) -> bool:
     return (
         recorder_strategy_profile(recorder) == SCIENCE_CULTURE_T50_STRATEGY_PROFILE
+        or recorder_strategy_profile(recorder) == GOLDEN_AGE_PUSH_STRATEGY_PROFILE
         or candidate_runtime_has(recorder, "barbarian_clearance")
+        or candidate_runtime_has(recorder, "golden_age_push")
     )
 
 
 def uses_river_settlement_runtime(recorder: Any) -> bool:
     return (
         recorder_strategy_profile(recorder) == SCIENCE_CULTURE_T50_STRATEGY_PROFILE
+        or recorder_strategy_profile(recorder) == GOLDEN_AGE_PUSH_STRATEGY_PROFILE
         or candidate_runtime_has(recorder, "river_settlement")
     )
 
@@ -1009,7 +1240,9 @@ def uses_river_settlement_runtime(recorder: Any) -> bool:
 def uses_horseman_pressure_runtime(recorder: Any) -> bool:
     return (
         recorder_strategy_profile(recorder) == SCIENCE_CULTURE_T50_STRATEGY_PROFILE
+        or recorder_strategy_profile(recorder) == GOLDEN_AGE_PUSH_STRATEGY_PROFILE
         or candidate_runtime_has(recorder, "horseman_pressure")
+        or candidate_runtime_has(recorder, "opportunistic_war")
     )
 
 
@@ -1017,6 +1250,7 @@ def uses_expansion_runtime(recorder: Any) -> bool:
     return (
         recorder_strategy_profile(recorder) == EXPLORE_SCOUT_FIRST_STRATEGY_PROFILE
         or recorder_strategy_profile(recorder) == SCIENCE_CULTURE_T50_STRATEGY_PROFILE
+        or recorder_strategy_profile(recorder) == GOLDEN_AGE_PUSH_STRATEGY_PROFILE
         or candidate_runtime_has(recorder, "expansion_pressure")
         or candidate_runtime_has(recorder, "scouting_pressure")
         or candidate_runtime_has(recorder, "river_settlement")
@@ -1070,6 +1304,13 @@ def snapshot_city_count(snapshot: dict[str, Any] | None) -> int:
     if not snapshot:
         return 0
     return len(snapshot.get("cities") or [])
+
+
+def snapshot_turn(snapshot: dict[str, Any] | None) -> int:
+    if not snapshot:
+        return 0
+    overview = snapshot.get("overview") or {}
+    return int(number_from(overview, "turn", number_from(snapshot, "turn", 0)) or 0)
 
 
 def snapshot_combat_unit_count(
@@ -1129,6 +1370,14 @@ def value_from(value: Any, key: str, default: Any = None) -> Any:
     return getattr(value, key, default)
 
 
+def number_from(value: Any, key: str, default: float = 0.0) -> float:
+    raw = value_from(value, key, default)
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return default
+
+
 def snapshot_overview_number(snapshot: dict[str, Any] | None, key: str) -> float | None:
     if not snapshot:
         return None
@@ -1136,6 +1385,73 @@ def snapshot_overview_number(snapshot: dict[str, Any] | None, key: str) -> float
     if isinstance(raw, (int, float)):
         return float(raw)
     return None
+
+
+def snapshot_agent_empire_row(snapshot: dict[str, Any] | None) -> Any | None:
+    if not snapshot:
+        return None
+    empire = snapshot.get("empire") or {}
+    players = value_from(empire, "players", []) or []
+    for player in players:
+        if int(number_from(player, "pid", -1)) == 0 or bool(value_from(player, "is_agent", False)):
+            return player
+    return players[0] if players else None
+
+
+def snapshot_current_age(snapshot: dict[str, Any] | None) -> str:
+    agent = snapshot_agent_empire_row(snapshot)
+    if agent is None:
+        return ""
+    return str(value_from(agent, "age", "") or "").upper()
+
+
+def snapshot_current_era(snapshot: dict[str, Any] | None) -> str:
+    agent = snapshot_agent_empire_row(snapshot)
+    if agent is not None:
+        era = str(value_from(agent, "era", "") or "")
+        if era:
+            return era.upper()
+    if not snapshot:
+        return ""
+    overview = snapshot.get("overview") or {}
+    era_name = str(value_from(overview, "era_name", "") or "")
+    if "ancient" in era_name.lower() or "远古" in era_name:
+        return "ERA_ANCIENT"
+    if "classical" in era_name.lower() or "古典" in era_name:
+        return "ERA_CLASSICAL"
+    return era_name.upper()
+
+
+def snapshot_is_ancient_era(snapshot: dict[str, Any] | None) -> bool:
+    return snapshot_current_era(snapshot) == "ERA_ANCIENT"
+
+
+def era_score_gap(snapshot: dict[str, Any] | None) -> int | None:
+    if not snapshot:
+        return None
+    overview = snapshot.get("overview") or {}
+    threshold = int(number_from(overview, "era_golden_threshold", 0))
+    if threshold <= 0:
+        return None
+    score = int(number_from(overview, "era_score", 0))
+    return max(0, threshold - score)
+
+
+def golden_age_achieved(snapshot: dict[str, Any] | None) -> bool:
+    if snapshot_current_age(snapshot) in {"GOLDEN", "HEROIC"}:
+        return True
+    gap = era_score_gap(snapshot)
+    return gap == 0 if gap is not None else False
+
+
+def golden_age_gold_spend_threshold(snapshot: dict[str, Any] | None) -> int:
+    if (
+        snapshot_is_ancient_era(snapshot)
+        and not golden_age_achieved(snapshot)
+        and (era_score_gap(snapshot) or 0) > 0
+    ):
+        return GOLDEN_AGE_PUSH_ANCIENT_MIN_GOLD_TO_SPEND
+    return GOLDEN_AGE_PUSH_MIN_GOLD_TO_SPEND
 
 
 def threat_is_barbarian(threat: Any) -> bool:
@@ -1194,11 +1510,52 @@ def science_culture_t50_priority_for(
     return SCIENCE_CULTURE_T50_LOW_YIELD_PRIORITY
 
 
+def golden_age_push_priority_for(
+    snapshot: dict[str, Any] | None,
+    extra_units: dict[str, int] | None = None,
+) -> list[str]:
+    gap = era_score_gap(snapshot)
+    if gap and gap > 0:
+        if snapshot_is_ancient_era(snapshot):
+            turn = snapshot_turn(snapshot)
+            city_count = snapshot_city_count(snapshot)
+            scout_count = snapshot_unit_count(snapshot, "UNIT_SCOUT", extra_units)
+            settler_count = snapshot_unit_count(snapshot, "UNIT_SETTLER", extra_units)
+            builder_count = snapshot_unit_count(snapshot, "UNIT_BUILDER", extra_units)
+            combat_count = snapshot_combat_unit_count(snapshot, extra_units)
+            ranged_count = snapshot_ranged_clearing_unit_count(snapshot, extra_units)
+            if (
+                scout_count < GOLDEN_AGE_PUSH_ANCIENT_SCOUT_CAP
+                and turn <= GOLDEN_AGE_PUSH_ANCIENT_SCOUT_REPLACEMENT_LATEST_TURN
+            ):
+                return GOLDEN_AGE_PUSH_ANCIENT_SCOUTING_PRIORITY
+            if ancient_post_settle_builder_reserve_active(
+                snapshot
+            ) and builder_purchase_affordable(snapshot):
+                return GOLDEN_AGE_PUSH_ANCIENT_BUILDER_PURCHASE_RESERVE_PRIORITY
+            if ancient_strategic_resource_push_active(snapshot, extra_units):
+                return GOLDEN_AGE_PUSH_ANCIENT_STRATEGIC_RESOURCE_PRIORITY
+            if combat_count < GOLDEN_AGE_PUSH_ANCIENT_MIN_COMBAT_UNITS:
+                return GOLDEN_AGE_PUSH_ANCIENT_DEFENSE_PRIORITY
+            if (
+                city_count < GOLDEN_AGE_PUSH_ANCIENT_TARGET_CITIES
+                and settler_count == 0
+                and combat_count >= GOLDEN_AGE_PUSH_ANCIENT_MIN_COMBAT_UNITS
+            ):
+                return GOLDEN_AGE_PUSH_ANCIENT_EXPANSION_PRIORITY
+            if builder_count == 0 or ranged_count >= GOLDEN_AGE_PUSH_ANCIENT_RANGED_CAP:
+                return GOLDEN_AGE_PUSH_ANCIENT_DEVELOPMENT_PRIORITY
+        return GOLDEN_AGE_PUSH_PRODUCTION_PRIORITY
+    return science_culture_t50_priority_for(snapshot, extra_units)
+
+
 def production_priority_for(
     recorder: Any,
     snapshot: dict[str, Any] | None = None,
     extra_units: dict[str, int] | None = None,
 ) -> list[str]:
+    if uses_golden_age_push_runtime(recorder):
+        return golden_age_push_priority_for(snapshot, extra_units)
     if uses_science_culture_t50_runtime(recorder):
         return science_culture_t50_priority_for(snapshot, extra_units)
     if uses_expansion_runtime(recorder):
@@ -1257,9 +1614,17 @@ def production_priority_for(
 
 
 def tech_priority_for(recorder: Any) -> list[str]:
+    if uses_golden_age_push_runtime(recorder):
+        return GOLDEN_AGE_PUSH_TECH_PRIORITY
     if uses_science_culture_t50_runtime(recorder):
         return SCIENCE_CULTURE_T50_TECH_PRIORITY
     return TECH_PRIORITY
+
+
+def civic_priority_for(recorder: Any) -> list[str]:
+    if uses_golden_age_push_runtime(recorder):
+        return GOLDEN_AGE_PUSH_CIVIC_PRIORITY
+    return CIVIC_PRIORITY
 
 
 def should_auto_explore_unit(
@@ -1270,6 +1635,14 @@ def should_auto_explore_unit(
     if unit_type == "UNIT_SCOUT":
         return True
     if unit_type == "UNIT_WARRIOR":
+        if (
+            uses_golden_age_push_runtime(recorder)
+            and snapshot_is_ancient_era(snapshot)
+            and not golden_age_achieved(snapshot)
+            and snapshot_turn(snapshot) <= 12
+            and snapshot_unit_count(snapshot, "UNIT_SETTLER") == 0
+        ):
+            return True
         return snapshot_unit_count(snapshot, "UNIT_SCOUT") == 0 and snapshot_unit_count(
             snapshot, "UNIT_SETTLER"
         ) == 0
@@ -1335,6 +1708,148 @@ def ranked_settle_candidates(candidates: list[Any], *, prefer_fresh: bool = Fals
     )
 
 
+def strategic_resource_distance_for_xy(
+    x: Any,
+    y: Any,
+    snapshot: dict[str, Any] | None,
+) -> int:
+    if not snapshot:
+        return 999
+    try:
+        cx = int(x)
+        cy = int(y)
+    except (TypeError, ValueError):
+        return 999
+    resources = snapshot.get("resources")
+    targets = [
+        *unimproved_strategic_resources(resources),
+        *nearby_strategic_resources(resources),
+    ]
+    distances: list[int] = []
+    for resource in targets:
+        rx = value_from(resource, "x", None)
+        ry = value_from(resource, "y", None)
+        if rx is None or ry is None:
+            continue
+        try:
+            distances.append(max(abs(cx - int(rx)), abs(cy - int(ry))))
+        except (TypeError, ValueError):
+            continue
+    return min(distances) if distances else 999
+
+
+def strategic_resource_distance_for_candidate(
+    candidate: Any,
+    snapshot: dict[str, Any] | None,
+) -> int:
+    return strategic_resource_distance_for_xy(
+        value_from(candidate, "x", None),
+        value_from(candidate, "y", None),
+        snapshot,
+    )
+
+
+def golden_age_strategic_settle_active(snapshot: dict[str, Any] | None) -> bool:
+    if not snapshot:
+        return False
+    if not snapshot_is_ancient_era(snapshot) or golden_age_achieved(snapshot):
+        return False
+    if (era_score_gap(snapshot) or 0) <= 0:
+        return False
+    resources = snapshot.get("resources")
+    if not nearby_strategic_resources(resources) and not unimproved_strategic_resources(resources):
+        return False
+    income = strategic_resource_income_by_key(resources)
+    return not any(income.get(resource, 0) > 0 for resource in GOLDEN_AGE_PUSH_STRATEGIC_TILE_PRIORITY)
+
+
+def ranked_golden_age_strategic_settle_candidates(
+    candidates: list[Any],
+    snapshot: dict[str, Any] | None,
+    *,
+    prefer_fresh: bool = False,
+) -> list[Any]:
+    return sorted(
+        candidates,
+        key=lambda item: (
+            0
+            if strategic_resource_distance_for_candidate(item, snapshot)
+            <= GOLDEN_AGE_PUSH_STRATEGIC_SETTLE_RADIUS
+            else 1,
+            strategic_resource_distance_for_candidate(item, snapshot),
+            -min(settle_fresh_water_bonus(item), 2.0) if prefer_fresh else 0.0,
+            -float(value_from(item, "score", 0) or 0),
+        ),
+    )
+
+
+def ranked_settle_candidates_for_strategy(
+    recorder: Any,
+    snapshot: dict[str, Any] | None,
+    candidates: list[Any],
+    *,
+    prefer_fresh: bool = False,
+) -> list[Any]:
+    if uses_golden_age_push_runtime(recorder) and golden_age_strategic_settle_active(snapshot):
+        return ranked_golden_age_strategic_settle_candidates(
+            candidates,
+            snapshot,
+            prefer_fresh=prefer_fresh,
+        )
+    return ranked_settle_candidates(candidates, prefer_fresh=prefer_fresh)
+
+
+def ranked_near_settle_candidates_for_unit(
+    candidates: list[Any],
+    unit: Any,
+    *,
+    max_distance: int,
+    prefer_fresh: bool = False,
+) -> list[Any]:
+    near = [
+        candidate
+        for candidate in candidates
+        if candidate_distance_from_unit(candidate, unit) <= max_distance
+    ]
+    return sorted(
+        near,
+        key=lambda item: (
+            float(value_from(item, "score", 0) or 0),
+            min(settle_fresh_water_bonus(item), 2.0) if prefer_fresh else 0.0,
+            -candidate_distance_from_unit(item, unit),
+        ),
+        reverse=True,
+    )
+
+
+def ranked_near_settle_candidates_for_strategy(
+    recorder: Any,
+    snapshot: dict[str, Any] | None,
+    candidates: list[Any],
+    unit: Any,
+    *,
+    max_distance: int,
+    prefer_fresh: bool = False,
+) -> list[Any]:
+    near = [
+        candidate
+        for candidate in candidates
+        if candidate_distance_from_unit(candidate, unit) <= max_distance
+    ]
+    if uses_golden_age_push_runtime(recorder) and golden_age_strategic_settle_active(snapshot):
+        return ranked_golden_age_strategic_settle_candidates(
+            near,
+            snapshot,
+            prefer_fresh=prefer_fresh,
+        )
+    return ranked_near_settle_candidates_for_unit(
+        near,
+        unit,
+        max_distance=max_distance,
+        prefer_fresh=prefer_fresh,
+    )
+
+
 TARGET_RE = re.compile(r"@(?P<x>-?\d+),(?P<y>-?\d+)\((?P<hp>\d+)hp\)")
 
 
@@ -1370,6 +1885,181 @@ def target_is_adjacent_to_unit(unit: Any, target: dict[str, Any]) -> bool:
     return max(abs(int(target["x"]) - unit_x), abs(int(target["y"]) - unit_y)) <= 1
 
 
+def golden_age_map_target_event(tile: Any) -> tuple[str, int] | None:
+    improvement = str(value_from(tile, "improvement", "") or "").upper()
+    feature = str(value_from(tile, "feature", "") or "").upper()
+    if "BARBARIAN_CAMP" in improvement or "BARBARIAN_OUTPOST" in improvement:
+        return "clear_barbarian_camp", 0
+    if "NATURAL_WONDER" in feature:
+        return "natural_wonder", 1
+    if "GOODY" in improvement or "TRIBAL" in improvement or "VILLAGE" in improvement:
+        return "tribal_village", 3
+    return None
+
+
+def unit_can_route_to_golden_age_map_target(unit: Any, target: dict[str, Any]) -> bool:
+    unit_type = str(value_from(unit, "unit_type", "") or "")
+    event_key = str(target.get("event_key") or "")
+    if event_key == "clear_barbarian_camp":
+        return unit_type in BARBARIAN_CLEARING_UNIT_TYPES
+    if event_key in {"tribal_village", "natural_wonder"}:
+        return unit_type in {
+            "UNIT_SCOUT",
+            "UNIT_WARRIOR",
+            "UNIT_SLINGER",
+            "UNIT_ARCHER",
+            "UNIT_HORSEMAN",
+        }
+    return False
+
+
+def ranked_golden_age_map_targets_for_unit(unit: Any, tiles: list[Any]) -> list[dict[str, Any]]:
+    targets: list[dict[str, Any]] = []
+    for tile in tiles:
+        event = golden_age_map_target_event(tile)
+        if event is None:
+            continue
+        event_key, priority = event
+        target = {
+            "event_key": event_key,
+            "priority": priority,
+            "x": int(number_from(tile, "x", 0)),
+            "y": int(number_from(tile, "y", 0)),
+            "distance": candidate_distance_from_unit(tile, unit),
+            "improvement": value_from(tile, "improvement", ""),
+            "feature": value_from(tile, "feature", ""),
+            "resource": value_from(tile, "resource", ""),
+        }
+        if unit_can_route_to_golden_age_map_target(unit, target):
+            targets.append(target)
+    return sorted(
+        targets,
+        key=lambda row: (
+            int(row["priority"]),
+            int(row["distance"]),
+            str(row["event_key"]),
+            int(row["x"]),
+            int(row["y"]),
+        ),
+    )
+
+
+def golden_age_map_target_key(unit: Any, target: dict[str, Any]) -> tuple[str, int, int]:
+    unit_id = value_from(unit, "unit_id", value_from(unit, "id", "?"))
+    return (
+        str(unit_id),
+        int(target.get("x", -999999)),
+        int(target.get("y", -999999)),
+    )
+
+
+def remember_blocked_golden_age_map_target(
+    recorder: Any,
+    unit: Any,
+    target: dict[str, Any] | None,
+    turn: int,
+) -> None:
+    if not target or not hasattr(recorder, "blocked_map_targets"):
+        return
+    recorder.blocked_map_targets[golden_age_map_target_key(unit, target)] = int(turn)
+
+
+def golden_age_map_target_is_blocked(
+    recorder: Any,
+    unit: Any,
+    target: dict[str, Any],
+    turn: int,
+) -> bool:
+    if not hasattr(recorder, "blocked_map_targets"):
+        return False
+    last_blocked_turn = recorder.blocked_map_targets.get(
+        golden_age_map_target_key(unit, target)
+    )
+    if last_blocked_turn is None:
+        return False
+    return (
+        int(turn) - int(last_blocked_turn)
+        <= GOLDEN_AGE_PUSH_BLOCKED_MAP_TARGET_COOLDOWN_TURNS
+    )
+
+
+def filter_blocked_golden_age_map_targets(
+    recorder: Any,
+    unit: Any,
+    targets: list[dict[str, Any]],
+    turn: int,
+) -> list[dict[str, Any]]:
+    return [
+        target
+        for target in targets
+        if not golden_age_map_target_is_blocked(recorder, unit, target, turn)
+    ]
+
+
+def movement_result_is_blocked(result: Any) -> bool:
+    text = str(result or "").upper()
+    return "BLOCKED" in text or "STACKING_CONFLICT" in text
+
+
+async def golden_age_map_target_for_unit(
+    recorder: EpisodeRecorder,
+    gs: GameState,
+    turn: int,
+    unit: Any,
+    snapshot: dict[str, Any],
+) -> tuple[str | None, dict[str, Any] | None]:
+    if not uses_golden_age_push_runtime(recorder):
+        return None, None
+    if not snapshot_is_ancient_era(snapshot):
+        return None, None
+    gap = era_score_gap(snapshot)
+    if gap is None or gap <= 0:
+        return None, None
+    if not hasattr(gs, "get_map_area"):
+        return None, None
+    unit_type = str(value_from(unit, "unit_type", "") or "")
+    if unit_type not in {
+        "UNIT_SCOUT",
+        "UNIT_WARRIOR",
+        "UNIT_SLINGER",
+        "UNIT_ARCHER",
+        "UNIT_HORSEMAN",
+    }:
+        return None, None
+    try:
+        center_x = int(value_from(unit, "x", 0))
+        center_y = int(value_from(unit, "y", 0))
+        call_id, tiles = await recorder.tool_call(
+            "get_map_area",
+            {
+                "center_x": center_x,
+                "center_y": center_y,
+                "radius": GOLDEN_AGE_PUSH_MAP_TARGET_SCAN_RADIUS,
+                "reason": "golden_age_map_target_scan",
+            },
+            lambda center_x=center_x, center_y=center_y: gs.get_map_area(
+                center_x,
+                center_y,
+                GOLDEN_AGE_PUSH_MAP_TARGET_SCAN_RADIUS,
+            ),
+            turn=turn,
+        )
+    except Exception as exc:  # noqa: BLE001
+        recorder.add_gap(
+            f"units.golden_age_map_target.{value_from(unit, 'unit_id', '?')}",
+            f"{type(exc).__name__}: {exc}",
+            "Repair get_map_area target scans before relying on camp/village routing for golden-age pushes.",
+        )
+        return None, None
+    targets = filter_blocked_golden_age_map_targets(
+        recorder,
+        unit,
+        ranked_golden_age_map_targets_for_unit(unit, list(tiles or [])),
+        turn,
+    )
+    return (call_id, targets[0]) if targets else (None, None)
+
+
 def threat_distance_from_unit(unit: Any, threat: Any) -> int:
     try:
         return max(
@@ -1400,6 +2090,33 @@ def nearest_barbarian_threat_for_unit(unit: Any, threats: list[Any]) -> dict[str
     }
 
 
+def nearest_barbarian_threat_distance_for_unit(unit: Any, threats: list[Any]) -> int:
+    target = nearest_barbarian_threat_for_unit(unit, threats)
+    if target is None:
+        return 999
+    return int(target.get("distance", 999))
+
+
+def should_risk_golden_age_settler_move(
+    recorder: Any,
+    snapshot: dict[str, Any],
+    unit: Any,
+    turn: int,
+) -> bool:
+    if not uses_golden_age_push_runtime(recorder):
+        return False
+    if not snapshot_is_ancient_era(snapshot):
+        return False
+    if golden_age_achieved(snapshot):
+        return False
+    if turn < GOLDEN_AGE_PUSH_URGENT_SETTLER_MOVE_TURN:
+        return False
+    nearest_distance = nearest_barbarian_threat_distance_for_unit(
+        unit, list(snapshot.get("threats") or [])
+    )
+    return nearest_distance > GOLDEN_AGE_PUSH_SETTLER_ADJACENT_BARBARIAN_DISTANCE
+
+
 def ranged_reposition_target(unit: Any, target: dict[str, Any]) -> tuple[int, int]:
     unit_x = int(value_from(unit, "x", target["x"]) or target["x"])
     unit_y = int(value_from(unit, "y", target["y"]) or target["y"])
@@ -1412,11 +2129,180 @@ def ranged_reposition_target(unit: Any, target: dict[str, Any]) -> tuple[int, in
     return unit_x + step_x, unit_y + step_y
 
 
+def target_matches_map_event(
+    target: dict[str, Any] | None,
+    map_target: dict[str, Any] | None,
+    event_key: str | None = None,
+) -> bool:
+    if not target or not map_target:
+        return False
+    if event_key and str(map_target.get("event_key") or "") != event_key:
+        return False
+    return int(target.get("x", 999999)) == int(map_target.get("x", -999999)) and int(
+        target.get("y", 999999)
+    ) == int(map_target.get("y", -999999))
+
+
+def prioritize_golden_age_attack_targets(
+    attack_targets: list[dict[str, Any]],
+    map_target: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    if not map_target:
+        return attack_targets
+    return sorted(
+        attack_targets,
+        key=lambda target: (
+            0 if target_matches_map_event(target, map_target, "clear_barbarian_camp") else 1,
+            attack_targets.index(target),
+        ),
+    )
+
+
+def should_attack_adjacent_ranged_target(
+    recorder: Any,
+    target: dict[str, Any],
+    map_target: dict[str, Any] | None,
+) -> bool:
+    if not uses_golden_age_push_runtime(recorder):
+        return False
+    if not target.get("is_barbarian"):
+        return False
+    if target_matches_map_event(target, map_target, "clear_barbarian_camp"):
+        return True
+    return int(target.get("hp", 999) or 999) <= 45
+
+
+def should_attack_critical_target_while_wounded(
+    recorder: Any,
+    target: dict[str, Any],
+    map_target: dict[str, Any] | None,
+) -> bool:
+    return should_attack_adjacent_ranged_target(recorder, target, map_target)
+
+
+def should_move_to_critical_map_target_while_wounded(
+    recorder: Any,
+    unit: Any,
+    map_target: dict[str, Any] | None,
+) -> bool:
+    if not uses_golden_age_push_runtime(recorder) or not map_target:
+        return False
+    if str(map_target.get("event_key") or "") not in {"tribal_village", "natural_wonder"}:
+        return False
+    if str(value_from(unit, "unit_type", "") or "") != "UNIT_SCOUT":
+        return False
+    return int(map_target.get("distance", 999) or 999) <= 1
+
+
+def at_war_player_ids(diplomacy: list[Any] | None) -> set[int]:
+    ids: set[int] = set()
+    for civ in diplomacy or []:
+        if not value_from(civ, "is_at_war", False):
+            continue
+        player_id = value_from(civ, "player_id", None)
+        if player_id is None:
+            continue
+        ids.add(int(player_id))
+    return ids
+
+
+def high_confidence_attack_window(unit: Any, threat: Any) -> bool:
+    attacker_strength = combat_strength_for_tactical_estimate(unit)
+    defender_strength = combat_strength_for_tactical_estimate(threat)
+    defender_hp = int(number_from(threat, "hp", 100))
+    if attacker_strength <= 0 or defender_strength <= 0:
+        return False
+    margin = attacker_strength - defender_strength
+    attacker_hp = int(number_from(unit, "health", 100))
+    if unit_is_ranged_clearer(unit):
+        return margin >= 0 or defender_hp <= 45
+    if attacker_hp < 60:
+        return margin >= 0 and defender_hp <= 30
+    return margin >= 0 or (margin >= -5 and defender_hp <= 45)
+
+
+def high_confidence_attack_target(unit: Any, threat: Any, target: dict[str, Any]) -> bool:
+    attacker_strength = combat_strength_for_tactical_estimate(unit)
+    defender_strength = combat_strength_for_tactical_estimate(threat)
+    defender_hp = int(number_from(threat, "hp", target.get("hp", 100)))
+    target_hp = int(target.get("hp", defender_hp) or defender_hp)
+    defender_hp = min(defender_hp, target_hp)
+    if attacker_strength <= 0 or defender_strength <= 0:
+        return False
+    margin = attacker_strength - defender_strength
+    attacker_hp = int(number_from(unit, "health", 100))
+    if unit_is_ranged_clearer(unit):
+        return margin >= 0 or defender_hp <= 45
+    if attacker_hp < 60:
+        return margin >= 0 and defender_hp <= 30
+    return margin >= 0 or (margin >= -5 and defender_hp <= 45)
+
+
+def is_high_confidence_war_target(
+    recorder: Any,
+    unit: Any,
+    threat: Any,
+    diplomacy: list[Any] | None,
+) -> bool:
+    if threat is None or threat_is_barbarian(threat):
+        return False
+    if value_from(threat, "is_city_state", False):
+        return False
+    owner_id = int(number_from(threat, "owner_id", -1))
+    if owner_id not in at_war_player_ids(diplomacy):
+        return False
+    if not uses_golden_age_push_runtime(recorder):
+        return False
+    return high_confidence_attack_window(unit, threat)
+
+
+def nearest_war_threat_for_unit(
+    recorder: Any,
+    unit: Any,
+    threats: list[Any],
+    diplomacy: list[Any] | None,
+) -> dict[str, Any] | None:
+    if str(value_from(unit, "unit_type", "") or "") not in BARBARIAN_CLEARING_UNIT_TYPES:
+        return None
+    if not uses_golden_age_push_runtime(recorder):
+        return None
+    war_ids = at_war_player_ids(diplomacy)
+    if not war_ids:
+        return None
+    candidates = [
+        threat
+        for threat in threats
+        if int(number_from(threat, "owner_id", -1)) in war_ids
+        and not threat_is_barbarian(threat)
+        and not value_from(threat, "is_city_state", False)
+    ]
+    if not candidates:
+        return None
+    threat = sorted(
+        candidates,
+        key=lambda item: (
+            threat_distance_from_unit(unit, item),
+            int(number_from(item, "hp", 999)),
+        ),
+    )[0]
+    distance = threat_distance_from_unit(unit, threat)
+    if distance > 4:
+        return None
+    return {
+        "x": int(value_from(threat, "x")),
+        "y": int(value_from(threat, "y")),
+        "threat": threat,
+        "distance": distance,
+        "is_opportunistic_war": True,
+    }
+
+
 def ranked_attack_targets_for_unit(
     recorder: Any,
     unit: Any,
     threats: list[Any],
     turn: int,
+    diplomacy: list[Any] | None = None,
 ) -> list[dict[str, Any]]:
     unit_type = str(value_from(unit, "unit_type", "") or "")
     if unit_type not in BARBARIAN_CLEARING_UNIT_TYPES:
@@ -1430,20 +2316,32 @@ def ranked_attack_targets_for_unit(
     for target in parsed_targets:
         threat = threat_at(threats, target["x"], target["y"])
         is_barb = bool(threat and threat_is_barbarian(threat))
+        is_barb_attack_target = is_barb and uses_barbarian_clearance_runtime(recorder)
+        if is_barb_attack_target and uses_golden_age_push_runtime(recorder):
+            is_barb_attack_target = high_confidence_attack_target(unit, threat, target)
+        is_war_target = is_high_confidence_war_target(recorder, unit, threat, diplomacy)
         is_horseman_pressure = (
             unit_type == "UNIT_HORSEMAN"
             and turn >= HORSEMAN_PRESSURE_START_TURN
             and uses_horseman_pressure_runtime(recorder)
             and not (threat and value_from(threat, "is_city_state", False))
+            and high_confidence_attack_window(unit, threat)
         )
         if not (
-            is_barb
-            and uses_barbarian_clearance_runtime(recorder)
+            is_barb_attack_target
             or is_horseman_pressure
+            or is_war_target
         ):
             continue
         target["threat"] = threat
         target["is_barbarian"] = is_barb
+        target["is_opportunistic_war"] = is_war_target or is_horseman_pressure and not is_barb
+        target["estimated_margin"] = (
+            combat_strength_for_tactical_estimate(unit)
+            - combat_strength_for_tactical_estimate(threat)
+            if threat is not None
+            else None
+        )
         target["adjacent_to_ranged_unit"] = unit_is_ranged_clearer(unit) and target_is_adjacent_to_unit(
             unit, target
         )
@@ -1458,6 +2356,8 @@ def ranked_attack_targets_for_unit(
         ranked,
         key=lambda target: (
             0 if target.get("is_barbarian") else 1,
+            0 if target.get("is_opportunistic_war") else 1,
+            -(target.get("estimated_margin") or 0),
             target.get("hp", 999),
             target.get("distance", 999),
         ),
@@ -1465,18 +2365,56 @@ def ranked_attack_targets_for_unit(
 
 
 BUILDER_TASK_PRIORITY_RANK = {"urgent": 0, "high": 1, "normal": 2}
+EARLY_UNRELIABLE_BUILDER_IMPROVEMENTS = {"IMPROVEMENT_LUMBER_MILL"}
 
 
-def ranked_builder_tasks_for_unit(tasks: list[Any], unit: Any) -> list[Any]:
-    unit_id = getattr(unit, "unit_id", None)
+def builder_task_resource_rank(task: Any) -> int:
+    resource = strategic_resource_key(value_from(task, "resource", ""))
+    resource_class = str(value_from(task, "resource_class", "") or "").lower()
+    if resource in {"HORSES", "IRON"}:
+        return 0
+    if resource_class == "strategic":
+        return 1
+    if resource_class in {"luxury", "bonus", "pillaged"}:
+        return 2
+    return 3
 
-    def task_rank(task: Any) -> tuple[int, int, float]:
-        nearest = getattr(task, "nearest_builder_id", None)
-        priority = str(getattr(task, "priority", "") or "")
-        distance = getattr(task, "distance", 999) or 999
+
+def builder_task_is_usable_now(task: Any, unit: Any) -> bool:
+    improvement = str(value_from(task, "improvement", "") or "")
+    if not unit_can_build_improvement(unit, improvement):
+        return False
+    resource = strategic_resource_key(value_from(task, "resource", ""))
+    resource_class = str(value_from(task, "resource_class", "") or "").lower()
+    if improvement in EARLY_UNRELIABLE_BUILDER_IMPROVEMENTS and not (
+        resource or resource_class == "strategic"
+    ):
+        return False
+    return True
+
+
+def ranked_builder_tasks_for_unit(
+    tasks: list[Any],
+    unit: Any,
+    prefer_strategic: bool = False,
+) -> list[Any]:
+    unit_id = value_from(unit, "unit_id", None)
+
+    def task_rank(task: Any) -> tuple[int, int, int, float]:
+        nearest = value_from(task, "nearest_builder_id", None)
+        priority = str(value_from(task, "priority", "") or "")
+        distance = value_from(task, "distance", 999) or 999
+        priority_rank = BUILDER_TASK_PRIORITY_RANK.get(priority, 3)
+        resource_rank = builder_task_resource_rank(task)
+        secondary_rank, tertiary_rank = (
+            (resource_rank, priority_rank)
+            if prefer_strategic
+            else (priority_rank, resource_rank)
+        )
         return (
             0 if nearest == unit_id else 1,
-            BUILDER_TASK_PRIORITY_RANK.get(priority, 3),
+            secondary_rank,
+            tertiary_rank,
             float(distance),
         )
 
@@ -1537,6 +2475,68 @@ def trader_is_already_on_route(trade_routes: Any, unit: Any) -> bool:
     return False
 
 
+def religion_slots_open(snapshot: dict[str, Any] | None) -> bool:
+    if not snapshot:
+        return False
+    overview = snapshot.get("overview") or {}
+    if value_from(overview, "our_religion", None):
+        return False
+    founded = int(number_from(overview, "religions_founded", 0))
+    max_slots = int(number_from(overview, "religions_max", 0))
+    return max_slots <= 0 or founded < max_slots
+
+
+def choose_belief_by_priority(beliefs: list[Any], priority: list[str]) -> Any | None:
+    return choose_by_priority(beliefs, "belief_type", priority) or (beliefs[0] if beliefs else None)
+
+
+def preferred_religion_type(status: Any) -> str | None:
+    religions = list(value_from(status, "available_religions", []) or [])
+    for preferred in GOLDEN_AGE_PUSH_RELIGION_PRIORITY:
+        for religion_type, _religion_name in religions:
+            if religion_type == preferred:
+                return religion_type
+    return religions[0][0] if religions else None
+
+
+def preferred_founder_belief(status: Any) -> str | None:
+    founder_beliefs = list(
+        value_from(status, "beliefs_by_class", {}).get("BELIEF_CLASS_FOUNDER", [])
+        if value_from(status, "beliefs_by_class", None)
+        else []
+    )
+    selected = choose_belief_by_priority(
+        founder_beliefs, GOLDEN_AGE_PUSH_FOUNDER_BELIEF_PRIORITY
+    )
+    return value_from(selected, "belief_type", None) if selected else None
+
+
+def choral_music_available(status: Any) -> bool:
+    follower_beliefs = list(
+        value_from(status, "beliefs_by_class", {}).get("BELIEF_CLASS_FOLLOWER", [])
+        if value_from(status, "beliefs_by_class", None)
+        else []
+    )
+    return any(
+        value_from(belief, "belief_type", None) == GOLDEN_AGE_PUSH_FOLLOWER_BELIEF
+        for belief in follower_beliefs
+    )
+
+
+def unit_is_great_prophet(unit: Any) -> bool:
+    unit_type = str(value_from(unit, "unit_type", "") or "").upper()
+    return unit_type in {"UNIT_GREAT_PROPHET", "UNIT_PROPHET"} or "PROPHET" in unit_type
+
+
+def snapshot_has_great_prophet_unit(snapshot: dict[str, Any] | None) -> bool:
+    return any(unit_is_great_prophet(unit) for unit in (snapshot or {}).get("units") or [])
+
+
+def great_person_is_prophet(great_person: Any) -> bool:
+    name = str(value_from(great_person, "class_name", "") or "").lower()
+    return "prophet" in name or "预言" in name or "先知" in name
+
+
 POLICY_PRIORITY_BY_SLOT = {
     "SLOT_MILITARY": [
         "POLICY_AGOGE",
@@ -1577,6 +2577,15 @@ GOVERNOR_PRIORITY = [
     "GOVERNOR_THE_RESOURCE_MANAGER",
     "GOVERNOR_THE_MERCHANT",
     "GOVERNOR_THE_AMBASSADOR",
+]
+
+ENVOY_CITY_STATE_TYPE_PRIORITY = [
+    "SCIENTIFIC",
+    "CULTURAL",
+    "TRADE",
+    "INDUSTRIAL",
+    "MILITARISTIC",
+    "RELIGIOUS",
 ]
 
 DEDICATION_PRIORITY = [
@@ -1660,13 +2669,788 @@ def first_by_priority(items: list[Any], attr: str, priority: list[str]) -> Any |
     )[0]
 
 
+def governor_is_assigned(governor: Any) -> bool:
+    city_id = int(number_from(governor, "assigned_city_id", -1))
+    city_name = str(value_from(governor, "assigned_city_name", "") or "")
+    return city_id >= 0 and city_name.upper() not in {"", "NONE", "UNASSIGNED"}
+
+
+def governor_assignment_target(cities: list[Any], governor_type: str) -> Any | None:
+    if not cities:
+        return None
+    if governor_type == "GOVERNOR_THE_EDUCATOR":
+        return sorted(
+            cities,
+            key=lambda city: (
+                number_from(city, "science", 0) + number_from(city, "culture", 0),
+                number_from(city, "population", 0),
+                number_from(city, "production", 0),
+            ),
+            reverse=True,
+        )[0]
+    if governor_type in {"GOVERNOR_THE_BUILDER", "GOVERNOR_THE_RESOURCE_MANAGER"}:
+        return sorted(
+            cities,
+            key=lambda city: (
+                number_from(city, "production", 0),
+                len(value_from(city, "unimproved_resources", []) or []),
+                number_from(city, "population", 0),
+            ),
+            reverse=True,
+        )[0]
+    return sorted(
+        cities,
+        key=lambda city: (
+            number_from(city, "population", 0),
+            number_from(city, "science", 0) + number_from(city, "culture", 0),
+        ),
+        reverse=True,
+    )[0]
+
+
+async def assign_governor_with_record(
+    recorder: EpisodeRecorder,
+    gs: GameState,
+    *,
+    turn: int,
+    state_id: str,
+    snapshot: dict[str, Any],
+    governor_type: str,
+    trigger: str,
+    existing_tool_call_ids: list[str] | None = None,
+    appointment_result: Any | None = None,
+) -> bool:
+    cities = list(snapshot.get("cities") or [])
+    target_city = governor_assignment_target(cities, governor_type)
+    if target_city is None:
+        recorder.add_gap(
+            f"governance.governor_assignment.{governor_type}",
+            "Governor is available but no city snapshot is available for assignment.",
+            "Repair city snapshot coverage before governor assignment becomes a T50 blocker.",
+        )
+        return False
+    city_id = int(value_from(target_city, "city_id", -1))
+    city_name = str(value_from(target_city, "name", city_id))
+    if city_id < 0:
+        recorder.add_gap(
+            f"governance.governor_assignment.{governor_type}",
+            f"Selected city {city_name} has no valid city_id.",
+            "Repair get_cities city_id coverage before assigning governors.",
+        )
+        return False
+    assign_id, result = await recorder.tool_call(
+        "assign_governor",
+        {"governor_type": governor_type, "city_id": city_id, "city_name": city_name},
+        lambda governor_type=governor_type, city_id=city_id: gs.assign_governor(
+            governor_type, city_id
+        ),
+        turn=turn,
+    )
+    related = [*(existing_tool_call_ids or []), assign_id]
+    recorder.record_decision(
+        {
+            "turn": turn,
+            "trigger": trigger,
+            "importance": "high",
+            "background": background_from_snapshot(snapshot),
+            "current_goal": "Place newly appointed or unassigned governors immediately so T50 snapshots can verify city != NONE.",
+            "available_actions": [
+                f"assign {governor_type} to {value_from(city, 'name', value_from(city, 'city_id', '?'))}"
+                for city in cities
+            ],
+            "selected_action": f"assign {governor_type} to {city_name}",
+            "rationale": (
+                "Pingala goes to the highest science/culture city; Liang or Magnus goes to the city with the strongest production/resource pressure."
+            ),
+            "strategy_context": strategy_context(recorder),
+            "why_not_alternatives": {
+                "leave governor unassigned": "The current T50 plan treats city == NONE as a strategy failure to verify in snapshots.",
+                "assign to lower-ranked city": "Lower current science/culture or production/resource pressure.",
+            },
+            "execution": {
+                "tool": "assign_governor",
+                "governor_type": governor_type,
+                "city_id": city_id,
+                "city_name": city_name,
+                "appointment_result": appointment_result,
+                "result": result,
+            },
+            "outcome": short_text(result),
+            "related_tool_call_ids": related,
+            "related_state_snapshot_ids": [state_id],
+            "related_save_ids": [],
+        }
+    )
+    return not str(result).startswith(("Error", "ERR", "FAILED"))
+
+
+def notification_text_rows(snapshot: dict[str, Any]) -> list[str]:
+    raw_notifications = snapshot.get("notifications")
+    if isinstance(raw_notifications, str):
+        return [raw_notifications]
+    rows: list[str] = []
+    for notification in raw_notifications or []:
+        type_name = str(value_from(notification, "type_name", "") or "")
+        message = str(value_from(notification, "message", "") or "")
+        rows.append(" ".join(part for part in [type_name, message] if part))
+    if not rows and raw_notifications:
+        rows.append(str(raw_notifications or ""))
+    return rows
+
+
 def snapshot_notification_text(snapshot: dict[str, Any]) -> str:
-    return str(snapshot.get("notifications") or "")
+    return " ".join(notification_text_rows(snapshot))
 
 
 def snapshot_mentions_any(snapshot: dict[str, Any], terms: list[str]) -> bool:
     text = snapshot_notification_text(snapshot).lower()
     return any(term.lower() in text for term in terms)
+
+
+def snapshot_envoy_tokens_available(snapshot: dict[str, Any] | None) -> int:
+    if not snapshot:
+        return 0
+    agent = snapshot_agent_empire_row(snapshot)
+    values = [
+        number_from(agent, "envoys_available", 0) if agent is not None else 0,
+        number_from(snapshot.get("overview") or {}, "envoys_available", 0),
+    ]
+    return max(int(value) for value in values)
+
+
+def should_handle_envoy_opportunity(snapshot: dict[str, Any]) -> bool:
+    return snapshot_envoy_tokens_available(snapshot) > 0 or snapshot_mentions_any(
+        snapshot,
+        [
+            "envoy",
+            "influence",
+            "GIVE_INFLUENCE_TOKEN",
+            "INFLUENCE_TOKEN",
+            "city-state",
+            "城邦",
+            "使者",
+            "影响力",
+        ],
+    )
+
+
+def ranked_envoy_targets(status: Any) -> list[Any]:
+    targets = [
+        city_state
+        for city_state in list(value_from(status, "city_states", []) or [])
+        if bool(value_from(city_state, "can_send_envoy", False))
+    ]
+
+    def rank(city_state: Any) -> tuple[int, int, str]:
+        city_state_type = str(value_from(city_state, "city_state_type", "") or "").upper()
+        priority = len(ENVOY_CITY_STATE_TYPE_PRIORITY)
+        for index, token in enumerate(ENVOY_CITY_STATE_TYPE_PRIORITY):
+            if token in city_state_type:
+                priority = index
+                break
+        return (
+            priority,
+            int(number_from(city_state, "envoys_sent", 0)),
+            str(value_from(city_state, "name", "") or ""),
+        )
+
+    return sorted(targets, key=rank)
+
+
+def split_resource_snapshot(resources: Any) -> tuple[list[Any], list[Any], list[Any], dict[str, int]]:
+    if isinstance(resources, tuple) and len(resources) >= 4:
+        stockpiles, owned, nearby, luxuries = resources[:4]
+        return list(stockpiles or []), list(owned or []), list(nearby or []), dict(luxuries or {})
+    return [], [], [], {}
+
+
+def resource_type_for_trade(name: str) -> str:
+    cleaned = str(name or "").strip().upper().replace(" ", "_")
+    if not cleaned:
+        return ""
+    return cleaned if cleaned.startswith("RESOURCE_") else f"RESOURCE_{cleaned}"
+
+
+def strategic_stockpile_rows(resources: Any) -> list[dict[str, Any]]:
+    stockpiles, _owned, _nearby, _luxuries = split_resource_snapshot(resources)
+    rows: list[dict[str, Any]] = []
+    for stock in stockpiles:
+        amount = int(number_from(stock, "amount", 0))
+        per_turn = int(number_from(stock, "per_turn", 0))
+        demand = int(number_from(stock, "demand", 0))
+        rows.append(
+            {
+                "name": value_from(stock, "name", ""),
+                "amount": amount,
+                "cap": int(number_from(stock, "cap", 0)),
+                "per_turn": per_turn,
+                "demand": demand,
+                "imported": int(number_from(stock, "imported", 0)),
+                "net_per_turn": per_turn - demand,
+                "surplus_after_reserve": amount
+                - GOLDEN_AGE_PUSH_RESOURCE_TRADE_RESERVE.get(
+                    str(value_from(stock, "name", "") or "").upper(),
+                    0,
+                ),
+            }
+        )
+    return rows
+
+
+def strategic_resource_income_by_key(resources: Any) -> dict[str, int]:
+    income: dict[str, int] = {}
+    for row in strategic_stockpile_rows(resources):
+        key = strategic_resource_key(row.get("name"))
+        income[key] = income.get(key, 0) + int(row.get("net_per_turn") or 0)
+    return income
+
+
+def unimproved_strategic_resources(resources: Any) -> list[dict[str, Any]]:
+    _stockpiles, owned, _nearby, _luxuries = split_resource_snapshot(resources)
+    rows: list[dict[str, Any]] = []
+    for resource in owned:
+        if value_from(resource, "resource_class") != "strategic" or value_from(
+            resource, "improved", False
+        ):
+            continue
+        rows.append(
+            {
+                "name": value_from(resource, "name", ""),
+                "x": value_from(resource, "x"),
+                "y": value_from(resource, "y"),
+            }
+        )
+    return rows
+
+
+def nearby_strategic_resources(resources: Any) -> list[dict[str, Any]]:
+    _stockpiles, _owned, nearby, _luxuries = split_resource_snapshot(resources)
+    rows: list[dict[str, Any]] = []
+    for resource in nearby:
+        name = value_from(resource, "name", value_from(resource, "resource", ""))
+        resource_key = strategic_resource_key(name)
+        resource_class = str(value_from(resource, "resource_class", "") or "").lower()
+        if resource_class != "strategic" and resource_key not in GOLDEN_AGE_PUSH_STRATEGIC_TILE_PRIORITY:
+            continue
+        rows.append(
+            {
+                "name": name,
+                "resource_key": resource_key,
+                "x": value_from(resource, "x"),
+                "y": value_from(resource, "y"),
+                "distance": value_from(resource, "distance", None),
+            }
+        )
+    return rows
+
+
+def strategic_resource_development_path_available(snapshot: dict[str, Any] | None) -> bool:
+    if not snapshot:
+        return False
+    resources = snapshot.get("resources")
+    if unimproved_strategic_resources(resources) or nearby_strategic_resources(resources):
+        return True
+    income = strategic_resource_income_by_key(resources)
+    return any(income.get(resource, 0) > 0 for resource in GOLDEN_AGE_PUSH_STRATEGIC_TILE_PRIORITY)
+
+
+def ancient_strategic_resource_push_active(
+    snapshot: dict[str, Any] | None,
+    extra_units: dict[str, int] | None = None,
+) -> bool:
+    if not snapshot:
+        return False
+    if not snapshot_is_ancient_era(snapshot) or golden_age_achieved(snapshot):
+        return False
+    if (era_score_gap(snapshot) or 0) <= 0:
+        return False
+    if snapshot_turn(snapshot) < GOLDEN_AGE_PUSH_ANCIENT_STRATEGIC_RESOURCE_START_TURN:
+        return False
+    if snapshot_unit_count(snapshot, "UNIT_HORSEMAN", extra_units) > 0:
+        return False
+    city_count = snapshot_city_count(snapshot)
+    settler_count = snapshot_unit_count(snapshot, "UNIT_SETTLER", extra_units)
+    resources = snapshot.get("resources")
+    if city_count < 2 and settler_count == 0 and not unimproved_strategic_resources(resources):
+        return False
+    return strategic_resource_development_path_available(snapshot)
+
+
+def ancient_strategic_builder_needed(
+    snapshot: dict[str, Any] | None,
+    extra_units: dict[str, int] | None = None,
+) -> bool:
+    if not ancient_strategic_resource_push_active(snapshot, extra_units):
+        return False
+    resources = snapshot.get("resources") if snapshot else None
+    if not (unimproved_strategic_resources(resources) or nearby_strategic_resources(resources)):
+        return False
+    return snapshot_unit_count(snapshot, "UNIT_BUILDER", extra_units) == 0
+
+
+def ancient_post_settle_builder_reserve_active(snapshot: dict[str, Any] | None) -> bool:
+    if not snapshot:
+        return False
+    if not snapshot_is_ancient_era(snapshot) or golden_age_achieved(snapshot):
+        return False
+    if (era_score_gap(snapshot) or 0) <= 0:
+        return False
+    turn = snapshot_turn(snapshot)
+    if (
+        turn < GOLDEN_AGE_PUSH_ANCIENT_STRATEGIC_RESOURCE_START_TURN
+        or turn > GOLDEN_AGE_PUSH_URGENT_SETTLER_MOVE_TURN
+    ):
+        return False
+    if snapshot_unit_count(snapshot, "UNIT_SETTLER") <= 0:
+        return False
+    if snapshot_unit_count(snapshot, "UNIT_BUILDER") > 0:
+        return False
+    if snapshot_unit_count(snapshot, "UNIT_HORSEMAN") > 0:
+        return False
+    resources = snapshot.get("resources")
+    income = strategic_resource_income_by_key(resources)
+    if any(income.get(resource, 0) > 0 for resource in GOLDEN_AGE_PUSH_STRATEGIC_TILE_PRIORITY):
+        return False
+    stockpiles = strategic_stockpile_rows(resources)
+    return any(
+        strategic_resource_key(value_from(row, "name", ""))
+        in GOLDEN_AGE_PUSH_STRATEGIC_TILE_PRIORITY
+        for row in stockpiles
+    )
+
+
+def builder_purchase_affordable(snapshot: dict[str, Any] | None) -> bool:
+    if not snapshot:
+        return False
+    gold = number_from(snapshot.get("overview") or {}, "gold", 0)
+    for options in (snapshot.get("production") or {}).values():
+        for option in options or []:
+            if str(value_from(option, "category", "") or "") != "UNIT":
+                continue
+            if str(value_from(option, "item_name", "") or "") != "UNIT_BUILDER":
+                continue
+            cost = int(number_from(option, "gold_cost", -1))
+            if 0 <= cost <= gold:
+                return True
+    return False
+
+
+def strategic_builder_purchase_shortfall(snapshot: dict[str, Any]) -> int | None:
+    if not (
+        ancient_strategic_builder_needed(snapshot)
+        or ancient_post_settle_builder_reserve_active(snapshot)
+    ):
+        return None
+    gold = number_from(snapshot.get("overview") or {}, "gold", 0)
+    costs: list[int] = []
+    for options in (snapshot.get("production") or {}).values():
+        for option in options or []:
+            if str(value_from(option, "category", "") or "") != "UNIT":
+                continue
+            if str(value_from(option, "item_name", "") or "") != "UNIT_BUILDER":
+                continue
+            cost = int(number_from(option, "gold_cost", -1))
+            if cost > gold:
+                costs.append(cost)
+    return min(costs) if costs else None
+
+
+def builder_task_is_strategic_resource(task: Any) -> bool:
+    return builder_task_resource_rank(task) <= 1
+
+
+def governor_audit_rows(governors: Any) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for governor in list(value_from(governors, "appointed", []) or []):
+        city_id = int(number_from(governor, "assigned_city_id", -1))
+        city_name = str(value_from(governor, "assigned_city_name", "") or "")
+        rows.append(
+            {
+                "governor_type": value_from(governor, "governor_type", ""),
+                "name": value_from(governor, "name", ""),
+                "city_id": city_id,
+                "city": city_name if city_id >= 0 else "NONE",
+                "assigned": city_id >= 0 and city_name.upper() not in {"", "NONE", "UNASSIGNED"},
+                "is_established": bool(value_from(governor, "is_established", False)),
+                "turns_to_establish": int(number_from(governor, "turns_to_establish", 0)),
+            }
+        )
+    return rows
+
+
+def civ_available_actions(civ: Any) -> list[str]:
+    return [str(action or "") for action in (value_from(civ, "available_actions", []) or [])]
+
+
+def can_declare_war_on(civ: Any) -> bool:
+    return any("DECLARE" in action.upper() and "WAR" in action.upper() for action in civ_available_actions(civ))
+
+
+GOLDEN_AGE_TARGET_EVENT_DEFINITIONS = [
+    {
+        "event_key": "clear_barbarian_camp",
+        "priority": 1,
+        "label": "Clear barbarian camp or nearby barbarian pressure",
+        "action_hint": "Move combat units toward clearable barbarian targets; camp clear is the preferred era-score path.",
+    },
+    {
+        "event_key": "meet_civilization",
+        "priority": 2,
+        "label": "Meet another civilization",
+        "action_hint": "Keep scouts and safe combat units exploring until first-contact era score opportunities are exhausted.",
+    },
+    {
+        "event_key": "tribal_village",
+        "priority": 3,
+        "label": "Claim tribal village",
+        "action_hint": "Route the closest safe unit to any revealed tribal village notification or map marker.",
+    },
+    {
+        "event_key": "natural_wonder",
+        "priority": 4,
+        "label": "Discover natural wonder",
+        "action_hint": "Prefer exploration routes that reveal high-yield terrain and natural-wonder notifications.",
+    },
+    {
+        "event_key": "first_new_era_tech_or_civic",
+        "priority": 5,
+        "label": "Finish first new-era technology or civic",
+        "action_hint": "Keep science/culture progress moving while the golden-age gap remains open.",
+    },
+    {
+        "event_key": "first_strategic_resource_unit",
+        "priority": 6,
+        "label": "Field first strategic-resource military unit",
+        "action_hint": "Develop Horses/Iron, then buy, build, or upgrade into the first strategic military unit.",
+    },
+    {
+        "event_key": "aggressive_neighbor_settlement",
+        "priority": 7,
+        "label": "Settle aggressively near a neighbor",
+        "action_hint": "Use safe settler opportunities near contacted neighbors when expansion and loyalty are viable.",
+    },
+    {
+        "event_key": "first_government_or_governor",
+        "priority": 8,
+        "label": "Complete first government or governor-related historic moment",
+        "action_hint": "Resolve government, policy, appointment, and governor-assignment blockers immediately.",
+    },
+]
+
+
+def text_mentions_any(text: str, terms: list[str]) -> bool:
+    lower = text.lower()
+    return any(term.lower() in lower for term in terms)
+
+
+def golden_age_target_events(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
+    text = snapshot_notification_text(snapshot)
+    resources = snapshot.get("resources")
+    diplomacy = list(snapshot.get("diplomacy") or [])
+    units = list(snapshot.get("units") or [])
+    cities = list(snapshot.get("cities") or [])
+    production = snapshot.get("production") or {}
+    events: list[dict[str, Any]] = []
+
+    def add(event_key: str, *, active: bool, evidence: list[str]) -> None:
+        definition = next(
+            item
+            for item in GOLDEN_AGE_TARGET_EVENT_DEFINITIONS
+            if item["event_key"] == event_key
+        )
+        events.append(
+            {
+                **definition,
+                "active": active,
+                "evidence": [item for item in evidence if item],
+            }
+        )
+
+    barb_count = visible_barbarian_threat_count(snapshot)
+    add(
+        "clear_barbarian_camp",
+        active=barb_count > 0 or text_mentions_any(text, ["barbarian", "camp", "outpost"]),
+        evidence=[f"visible_barbarian_threats={barb_count}"],
+    )
+    met_civs = [civ for civ in diplomacy if value_from(civ, "has_met", False)]
+    add(
+        "meet_civilization",
+        active=bool(met_civs) or text_mentions_any(text, ["met", "encountered", "civilization"]),
+        evidence=[f"met_civilizations={len(met_civs)}"],
+    )
+    add(
+        "tribal_village",
+        active=text_mentions_any(text, ["tribal", "village", "goody hut"]),
+        evidence=notification_text_rows(snapshot),
+    )
+    add(
+        "natural_wonder",
+        active=text_mentions_any(text, ["natural wonder", "wonder discovered"]),
+        evidence=notification_text_rows(snapshot),
+    )
+    research_civic = snapshot.get("research_civic")
+    completed_techs = int(number_from(research_civic, "completed_tech_count", 0))
+    completed_civics = int(number_from(research_civic, "completed_civic_count", 0))
+    add(
+        "first_new_era_tech_or_civic",
+        active=text_mentions_any(text, ["historic moment", "technology", "civic", "new era"])
+        or completed_techs > 0
+        or completed_civics > 0,
+        evidence=[f"completed_techs={completed_techs}", f"completed_civics={completed_civics}"],
+    )
+    strategic_units = [
+        unit
+        for unit in units
+        if str(value_from(unit, "unit_type", "") or "") in {"UNIT_HORSEMAN", "UNIT_SWORDSMAN"}
+    ]
+    purchasable_strategic_units = [
+        value_from(option, "item_name", "")
+        for options in production.values()
+        for option in (options or [])
+        if str(value_from(option, "item_name", "") or "") in {"UNIT_HORSEMAN", "UNIT_SWORDSMAN"}
+    ]
+    add(
+        "first_strategic_resource_unit",
+        active=bool(strategic_units)
+        or bool(purchasable_strategic_units)
+        or bool(unimproved_strategic_resources(resources))
+        or bool(strategic_stockpile_rows(resources)),
+        evidence=[
+            f"strategic_units={len(strategic_units)}",
+            f"purchasable_strategic_units={','.join(map(str, purchasable_strategic_units))}",
+            f"unimproved_strategics={len(unimproved_strategic_resources(resources))}",
+        ],
+    )
+    visible_neighbor_cities = sum(len(value_from(civ, "visible_cities", []) or []) for civ in met_civs)
+    settler_count = sum(1 for unit in units if value_from(unit, "unit_type") == "UNIT_SETTLER")
+    add(
+        "aggressive_neighbor_settlement",
+        active=visible_neighbor_cities > 0 and (settler_count > 0 or len(cities) < 4),
+        evidence=[f"visible_neighbor_cities={visible_neighbor_cities}", f"settlers={settler_count}"],
+    )
+    add(
+        "first_government_or_governor",
+        active=text_mentions_any(text, ["government", "governor", "policy", "civic"])
+        or any(not row["assigned"] for row in governor_audit_rows(snapshot.get("governors"))),
+        evidence=[
+            f"unassigned_governors={len([row for row in governor_audit_rows(snapshot.get('governors')) if not row['assigned']])}"
+        ],
+    )
+    return sorted(events, key=lambda row: (int(row["priority"]), not bool(row["active"])))
+
+
+def combat_strength_for_tactical_estimate(unit: Any) -> int:
+    return max(
+        int(number_from(unit, "combat_strength", 0)),
+        int(number_from(unit, "ranged_strength", 0)),
+    )
+
+
+def favorable_attack_windows_for_civ(
+    snapshot: dict[str, Any],
+    civ: Any,
+) -> list[dict[str, Any]]:
+    player_id = int(number_from(civ, "player_id", -1))
+    if player_id < 0:
+        return []
+    threats = list(snapshot.get("threats") or [])
+    windows: list[dict[str, Any]] = []
+    for unit in snapshot.get("units") or []:
+        unit_type = str(value_from(unit, "unit_type", "") or "")
+        if unit_type not in BARBARIAN_CLEARING_UNIT_TYPES:
+            continue
+        attacker_strength = combat_strength_for_tactical_estimate(unit)
+        if attacker_strength <= 0:
+            continue
+        for raw in value_from(unit, "targets", []) or []:
+            target = parse_attack_target(str(raw))
+            if target is None:
+                continue
+            threat = threat_at(threats, int(target["x"]), int(target["y"]))
+            if threat is None or int(number_from(threat, "owner_id", -1)) != player_id:
+                continue
+            defender_strength = combat_strength_for_tactical_estimate(threat)
+            defender_hp = int(number_from(threat, "hp", target["hp"]))
+            estimated_margin = attacker_strength - defender_strength
+            if estimated_margin < -5 and defender_hp > 45:
+                continue
+            windows.append(
+                {
+                    "unit_id": value_from(unit, "unit_id"),
+                    "unit_type": unit_type,
+                    "target_unit_type": value_from(threat, "unit_type", ""),
+                    "target_x": target["x"],
+                    "target_y": target["y"],
+                    "target_hp": defender_hp,
+                    "attacker_strength": attacker_strength,
+                    "defender_strength": defender_strength,
+                    "estimated_margin": estimated_margin,
+                }
+            )
+    return sorted(
+        windows,
+        key=lambda row: (
+            -int(row["estimated_margin"]),
+            int(row["target_hp"]),
+            str(row["unit_type"]),
+        ),
+    )
+
+
+def border_pressure_windows_for_civ(
+    snapshot: dict[str, Any],
+    civ: Any,
+) -> list[dict[str, Any]]:
+    units = [
+        unit
+        for unit in snapshot.get("units") or []
+        if str(value_from(unit, "unit_type", "") or "") in BARBARIAN_CLEARING_UNIT_TYPES
+    ]
+    if not units:
+        return []
+    windows: list[dict[str, Any]] = []
+    for city in value_from(civ, "visible_cities", []) or []:
+        x = value_from(city, "x", None)
+        y = value_from(city, "y", None)
+        if x is None or y is None:
+            continue
+        city_defense = int(number_from(city, "defense_strength", 0))
+        has_walls = bool(value_from(city, "has_walls", False))
+        nearest = sorted(
+            units,
+            key=lambda unit: max(
+                abs(int(number_from(unit, "x", 999)) - int(x)),
+                abs(int(number_from(unit, "y", 999)) - int(y)),
+            ),
+        )[0]
+        distance = max(
+            abs(int(number_from(nearest, "x", 999)) - int(x)),
+            abs(int(number_from(nearest, "y", 999)) - int(y)),
+        )
+        if distance > 4:
+            continue
+        if has_walls or city_defense > combat_strength_for_tactical_estimate(nearest) + 12:
+            continue
+        windows.append(
+            {
+                "city_name": value_from(city, "name", ""),
+                "x": int(x),
+                "y": int(y),
+                "distance": distance,
+                "defense_strength": city_defense,
+                "has_walls": has_walls,
+                "nearest_unit_id": value_from(nearest, "unit_id"),
+                "nearest_unit_type": value_from(nearest, "unit_type", ""),
+            }
+        )
+    return sorted(
+        windows,
+        key=lambda row: (
+            int(row["distance"]),
+            int(row["defense_strength"]),
+            str(row["city_name"]),
+        ),
+    )
+
+
+def t50_strategy_audit(snapshot: dict[str, Any]) -> dict[str, Any]:
+    overview = snapshot.get("overview") or {}
+    diplomacy = list(snapshot.get("diplomacy") or [])
+    gap = era_score_gap(snapshot)
+    governors = governor_audit_rows(snapshot.get("governors"))
+    strategic_resources = strategic_stockpile_rows(snapshot.get("resources"))
+    war_targets = [
+        {
+            "player_id": value_from(civ, "player_id"),
+            "civ_name": value_from(civ, "civ_name", ""),
+            "leader_name": value_from(civ, "leader_name", ""),
+            "military_strength": value_from(civ, "military_strength", 0),
+            "available_actions": civ_available_actions(civ),
+            "favorable_attack_count": len(favorable_attack_windows_for_civ(snapshot, civ)),
+            "border_pressure_count": len(border_pressure_windows_for_civ(snapshot, civ)),
+        }
+        for civ in diplomacy
+        if value_from(civ, "has_met", False)
+        and not value_from(civ, "is_at_war", False)
+        and can_declare_war_on(civ)
+    ]
+    trade_targets = [
+        {
+            "player_id": value_from(civ, "player_id"),
+            "civ_name": value_from(civ, "civ_name", ""),
+            "leader_name": value_from(civ, "leader_name", ""),
+            "diplomatic_state": value_from(civ, "diplomatic_state", ""),
+        }
+        for civ in diplomacy
+        if value_from(civ, "has_met", False) and not value_from(civ, "is_at_war", False)
+    ]
+    opportunities = []
+    target_events = golden_age_target_events(snapshot)
+    if visible_barbarian_threat_count(snapshot) > 0:
+        opportunities.append("clear_visible_barbarian")
+    if war_targets:
+        opportunities.append("opportunistic_neighbor_war")
+    if unimproved_strategic_resources(snapshot.get("resources")):
+        opportunities.append("improve_strategic_resource")
+    if nearby_strategic_resources(snapshot.get("resources")):
+        opportunities.append("claim_nearby_strategic_resource")
+    if snapshot_mentions_any(snapshot, ["governor", "GOVERNOR"]):
+        opportunities.append("governor_event")
+    if should_handle_envoy_opportunity(snapshot):
+        opportunities.append("send_envoy")
+    if religion_slots_open(snapshot):
+        religion_status = snapshot.get("religion_founding_status")
+        if choral_music_available(religion_status):
+            opportunities.append("found_choral_music_religion")
+        if any(great_person_is_prophet(gp) for gp in snapshot.get("great_people") or []):
+            opportunities.append("great_prophet_path")
+        if any(
+            str(value_from(opt, "item_name", "") or "") in {"PROJECT_HOLY_SITE_PRAYERS", "DISTRICT_HOLY_SITE"}
+            for options in (snapshot.get("production") or {}).values()
+            for opt in (options or [])
+        ):
+            opportunities.append("holy_site_prayers")
+    if snapshot_mentions_any(snapshot, ["tribal", "village", "wonder", "natural"]):
+        opportunities.append("historic_moment_notification")
+    opportunities.extend(
+        event["event_key"] for event in target_events if event.get("active")
+    )
+    opportunities = sorted(set(opportunities), key=opportunities.index)
+    return {
+        "turn": snapshot.get("turn"),
+        "era_name": value_from(overview, "era_name", ""),
+        "current_era": snapshot_current_era(snapshot),
+        "current_age": snapshot_current_age(snapshot),
+        "era_score": int(number_from(overview, "era_score", 0)),
+        "golden_threshold": int(number_from(overview, "era_golden_threshold", 0)),
+        "era_score_gap": gap,
+        "golden_age_achieved": golden_age_achieved(snapshot),
+        "gold": number_from(overview, "gold", 0),
+        "gold_per_turn": number_from(overview, "gold_per_turn", 0),
+        "faith": number_from(overview, "faith", 0),
+        "religions_founded": int(number_from(overview, "religions_founded", 0)),
+        "religions_max": int(number_from(overview, "religions_max", 0)),
+        "our_religion": value_from(overview, "our_religion", None),
+        "religion_slots_open": religion_slots_open(snapshot),
+        "choral_music_available": choral_music_available(
+            snapshot.get("religion_founding_status")
+        ),
+        "envoy_tokens_available": snapshot_envoy_tokens_available(snapshot),
+        "governors": governors,
+        "unassigned_governors": [row for row in governors if not row["assigned"]],
+        "strategic_resources": strategic_resources,
+        "unimproved_strategic_resources": unimproved_strategic_resources(snapshot.get("resources")),
+        "nearby_strategic_resources": nearby_strategic_resources(snapshot.get("resources")),
+        "tradable_players": trade_targets,
+        "war_targets": war_targets,
+        "gold_conversion_pressure": number_from(overview, "gold", 0)
+        >= golden_age_gold_spend_threshold(snapshot),
+        "opportunities": opportunities,
+        "golden_age_target_events": target_events,
+        "active_golden_age_target_events": [
+            event for event in target_events if event.get("active")
+        ],
+    }
 
 
 def unit_can_build_improvement(unit: Any, improvement: str) -> bool:
@@ -1788,11 +3572,15 @@ async def capture_state(
         ("get_threat_scan", "threats", gs.get_threat_scan),
         ("get_tech_civics", "research_civic", gs.get_tech_civics),
         ("get_policies", "civic.policies", gs.get_policies),
+        ("get_governors", "governors", gs.get_governors),
         ("get_empire_resources", "empire.resources", gs.get_empire_resources),
         ("get_diplomacy", "diplomacy", gs.get_diplomacy),
         ("get_victory_progress", "victory", gs.get_victory_progress),
         ("get_trade_routes", "trade_routes", gs.get_trade_routes),
         ("get_strategic_map", "exploration.strategic_map", gs.get_strategic_map),
+        ("get_pantheon_beliefs", "religion.pantheon", gs.get_pantheon_status),
+        ("get_religion_beliefs", "religion.founding", gs.get_religion_founding_status),
+        ("get_great_people", "great_people", gs.get_great_people),
     ]:
         cid, value = await safe_tool(
             recorder, name, {}, fn, turn=turn, gaps=gaps, field=field
@@ -1829,6 +3617,7 @@ async def capture_state(
 
     snapshot = {
         "phase": PHASE_LABEL,
+        "turn": turn,
         "overview": overview,
         "identity": identity,
         "empire": captured.get("empire.diary_snapshot"),
@@ -1839,14 +3628,19 @@ async def capture_state(
         "threats": captured.get("threats"),
         "research_civic": captured.get("research_civic"),
         "policies": captured.get("civic.policies"),
+        "governors": captured.get("governors"),
         "production": production_by_city,
         "resources": captured.get("empire.resources"),
         "diplomacy": captured.get("diplomacy"),
         "victory": captured.get("victory"),
         "trade_routes": captured.get("trade_routes"),
         "strategic_map": captured.get("exploration.strategic_map"),
+        "pantheon_status": captured.get("religion.pantheon"),
+        "religion_founding_status": captured.get("religion.founding"),
+        "great_people": captured.get("great_people"),
         "known_gaps": gaps,
     }
+    snapshot["t50_strategy_audit"] = t50_strategy_audit(snapshot)
 
     required_fields = [
         "empire",
@@ -2240,7 +4034,7 @@ async def maybe_choose_civic(
         return
 
     options = list(getattr(tech_status, "available_civics", []) or [])
-    selected = choose_by_priority(options, "civic_type", CIVIC_PRIORITY)
+    selected = choose_by_priority(options, "civic_type", civic_priority_for(recorder))
     if selected is None:
         return
     actions = [f"set civic {getattr(opt, 'civic_type', '')}" for opt in options]
@@ -2259,9 +4053,10 @@ async def maybe_choose_civic(
             "current_goal": "Resolve mandatory civic blocker so the observed game can advance.",
             "available_actions": actions,
             "selected_action": f"set civic {selected.civic_type}",
-            "rationale": "Pick the first available civic from a static priority list; this is only to keep the short run moving.",
+            "rationale": f"Pick the first available item from the active {strategy_priority_label(recorder)} civic priority.",
+            "strategy_context": strategy_context(recorder),
             "why_not_alternatives": {
-                "other available civics": "Lower static priority for this observation runner.",
+                "other available civics": "Lower priority or slower according to the static list used only for this run.",
                 "leave unset": "End turn would be blocked by missing civic.",
             },
             "execution": {"tool": "set_research", "result": result},
@@ -2271,6 +4066,244 @@ async def maybe_choose_civic(
             "related_save_ids": [],
         }
     )
+
+
+async def maybe_choose_pantheon(
+    recorder: EpisodeRecorder,
+    gs: GameState,
+    turn: int,
+    state_id: str,
+    snapshot: dict[str, Any],
+) -> None:
+    if not uses_golden_age_push_runtime(recorder):
+        return
+    status = snapshot.get("pantheon_status")
+    if status is None or value_from(status, "has_pantheon", False):
+        return
+    beliefs = list(value_from(status, "available_beliefs", []) or [])
+    selected = choose_belief_by_priority(beliefs, GOLDEN_AGE_PUSH_PANTHEON_PRIORITY)
+    if selected is None:
+        return
+    belief_type = str(value_from(selected, "belief_type", "") or "")
+    call_id, result = await recorder.tool_call(
+        "choose_pantheon",
+        {"belief_type": belief_type, "reason": "golden_age_push_religion_path"},
+        lambda belief_type=belief_type: gs.choose_pantheon(belief_type),
+        turn=turn,
+    )
+    recorder.record_decision(
+        {
+            "turn": turn,
+            "trigger": "pantheon selection",
+            "importance": "high",
+            "background": background_from_snapshot(snapshot),
+            "current_goal": "Open the religion path for Holy Site prayers and Choral Music if the game offers a pantheon choice.",
+            "available_actions": [
+                f"choose {value_from(belief, 'belief_type', '')}" for belief in beliefs
+            ],
+            "selected_action": f"choose {belief_type}",
+            "rationale": "The golden_age_push religion branch prefers Divine Spark for prophet pressure, with military/economy pantheons as fallbacks.",
+            "strategy_context": strategy_context(recorder),
+            "why_not_alternatives": {
+                "skip pantheon": "Would delay the religion branch and risk losing religion slots.",
+                "other beliefs": "Lower in the configured religion-path priority.",
+            },
+            "execution": {"tool": "choose_pantheon", "result": result},
+            "outcome": short_text(result),
+            "related_tool_call_ids": [call_id],
+            "related_state_snapshot_ids": [state_id],
+            "related_save_ids": [],
+        }
+    )
+
+
+async def maybe_recruit_great_prophet(
+    recorder: EpisodeRecorder,
+    gs: GameState,
+    turn: int,
+    state_id: str,
+    snapshot: dict[str, Any],
+) -> None:
+    if not uses_golden_age_push_runtime(recorder) or not religion_slots_open(snapshot):
+        return
+    candidates = [
+        gp
+        for gp in snapshot.get("great_people") or []
+        if great_person_is_prophet(gp) and value_from(gp, "can_recruit", False)
+    ]
+    if not candidates:
+        return
+    selected = sorted(
+        candidates,
+        key=lambda gp: (
+            int(number_from(gp, "cost", 9999)),
+            str(value_from(gp, "individual_name", "")),
+        ),
+    )[0]
+    individual_id = int(number_from(selected, "individual_id", -1))
+    if individual_id < 0:
+        return
+    call_id, result = await recorder.tool_call(
+        "recruit_great_person",
+        {
+            "individual_id": individual_id,
+            "class_name": value_from(selected, "class_name", ""),
+            "individual_name": value_from(selected, "individual_name", ""),
+            "reason": "golden_age_push_religion_path",
+        },
+        lambda individual_id=individual_id: gs.recruit_great_person(individual_id),
+        turn=turn,
+    )
+    recorder.record_decision(
+        {
+            "turn": turn,
+            "trigger": "great prophet recruitment",
+            "importance": "critical",
+            "background": background_from_snapshot(snapshot),
+            "current_goal": "Convert Holy Site project points into a Great Prophet before religion slots close.",
+            "available_actions": [
+                f"recruit {value_from(gp, 'individual_name', '')}"
+                for gp in candidates
+            ],
+            "selected_action": f"recruit {value_from(selected, 'individual_name', '')}",
+            "rationale": "A Great Prophet is recruitable, so the religion branch claims it immediately instead of waiting.",
+            "strategy_context": strategy_context(recorder),
+            "why_not_alternatives": {
+                "wait": "Religion slots can be lost to AI founders.",
+                "patronize": "Accumulated points are already enough to recruit.",
+            },
+            "execution": {"tool": "recruit_great_person", "result": result},
+            "outcome": short_text(result),
+            "related_tool_call_ids": [call_id],
+            "related_state_snapshot_ids": [state_id],
+            "related_save_ids": [],
+        }
+    )
+
+
+async def maybe_found_religion_with_choral(
+    recorder: EpisodeRecorder,
+    gs: GameState,
+    turn: int,
+    state_id: str,
+    snapshot: dict[str, Any],
+    *,
+    trigger: str = "religion founding",
+) -> None:
+    if not uses_golden_age_push_runtime(recorder) or not religion_slots_open(snapshot):
+        return
+    status_id, status = await recorder.tool_call(
+        "get_religion_beliefs",
+        {"reason": "golden_age_push_choral_music_check"},
+        gs.get_religion_founding_status,
+        turn=turn,
+    )
+    if value_from(status, "has_religion", False):
+        return
+    religion_type = preferred_religion_type(status)
+    founder_belief = preferred_founder_belief(status)
+    if not religion_type or not founder_belief or not choral_music_available(status):
+        recorder.record_decision(
+            {
+                "turn": turn,
+                "trigger": trigger,
+                "importance": "high",
+                "background": background_from_snapshot(snapshot),
+                "current_goal": "Found a religion with Choral Music when all required choices are available.",
+                "available_actions": ["found religion with Choral Music", "wait"],
+                "selected_action": "wait for required religion choices",
+                "rationale": "The religion founding status did not expose an open religion type, Choral Music, and a founder belief at the same time.",
+                "strategy_context": strategy_context(recorder),
+                "why_not_alternatives": {
+                    "found without Choral Music": "User explicitly requested the Choral Music follower belief.",
+                    "ignore religion": "Would abandon the requested religion branch without evidence.",
+                },
+                "execution": {
+                    "tool": "get_religion_beliefs",
+                    "religion_type": religion_type,
+                    "choral_music_available": choral_music_available(status),
+                    "founder_belief": founder_belief,
+                },
+                "outcome": "Religion not founded this turn.",
+                "related_tool_call_ids": [status_id],
+                "related_state_snapshot_ids": [state_id],
+                "related_save_ids": [],
+            }
+        )
+        return
+    call_id, result = await recorder.tool_call(
+        "found_religion",
+        {
+            "religion_type": religion_type,
+            "follower_belief": GOLDEN_AGE_PUSH_FOLLOWER_BELIEF,
+            "founder_belief": founder_belief,
+            "reason": "golden_age_push_choral_music",
+        },
+        lambda religion_type=religion_type, founder_belief=founder_belief: gs.found_religion(
+            religion_type,
+            GOLDEN_AGE_PUSH_FOLLOWER_BELIEF,
+            founder_belief,
+        ),
+        turn=turn,
+    )
+    recorder.record_decision(
+        {
+            "turn": turn,
+            "trigger": trigger,
+            "importance": "critical",
+            "background": background_from_snapshot(snapshot),
+            "current_goal": "Found the run's religion using Choral Music as requested.",
+            "available_actions": ["found religion with Choral Music", "wait"],
+            "selected_action": f"found {religion_type} with {GOLDEN_AGE_PUSH_FOLLOWER_BELIEF}",
+            "rationale": "The religion choices include Choral Music, so the runner locks the culture-scaling belief immediately.",
+            "strategy_context": strategy_context(recorder),
+            "why_not_alternatives": {
+                "wait": "Religion slots and desired beliefs can be taken by other players.",
+                "different follower belief": "User explicitly requested Choral Music.",
+            },
+            "execution": {
+                "tool": "found_religion",
+                "religion_type": religion_type,
+                "follower_belief": GOLDEN_AGE_PUSH_FOLLOWER_BELIEF,
+                "founder_belief": founder_belief,
+                "result": result,
+            },
+            "outcome": short_text(result),
+            "related_tool_call_ids": [status_id, call_id],
+            "related_state_snapshot_ids": [state_id],
+            "related_save_ids": [],
+        }
+    )
+
+
+def active_production_override_for_golden_age(
+    recorder: Any,
+    snapshot: dict[str, Any],
+    city: Any,
+    options: list[Any],
+    planned_units: dict[str, int] | None = None,
+) -> Any | None:
+    if not uses_golden_age_push_runtime(recorder):
+        return None
+    if not snapshot_is_ancient_era(snapshot) or golden_age_achieved(snapshot):
+        return None
+    if (era_score_gap(snapshot) or 0) <= 0:
+        return None
+    current = str(value_from(city, "currently_building", "") or "")
+    if current.upper() in {"", "NONE", "NOTHING", "CORRUPTED_QUEUE"}:
+        return None
+    if current in GOLDEN_AGE_PUSH_ACTIVE_PRODUCTION_OVERRIDE_ITEMS:
+        return None
+    priority = production_priority_for(recorder, snapshot, planned_units)
+    selected = choose_by_priority(options, "item_name", priority)
+    if selected is None:
+        return None
+    selected_name = str(value_from(selected, "item_name", "") or "")
+    if selected_name not in GOLDEN_AGE_PUSH_ACTIVE_PRODUCTION_OVERRIDE_ITEMS:
+        return None
+    if priority_index(selected_name, priority) >= priority_index(current, priority):
+        return None
+    return selected
 
 
 async def maybe_set_city_production(
@@ -2288,39 +4321,53 @@ async def maybe_set_city_production(
         if city_id is None:
             continue
         options = production.get(str(city_id)) or []
-        if not is_idle_city(city):
-            recorder.record_decision(
-                {
-                    "turn": turn,
-                    "trigger": f"production review for {getattr(city, 'name', city_id)}",
-                    "importance": "medium",
-                    "background": f"{getattr(city, 'name', city_id)} is producing {getattr(city, 'currently_building', '')} with {getattr(city, 'production_turns_left', '?')} turns left.",
-                    "current_goal": "Avoid changing active production during Phase 1 observation.",
-                    "available_actions": [
-                        f"continue {getattr(city, 'currently_building', '')}",
-                        "change production",
-                        "defer",
-                    ],
-                    "selected_action": "continue active production",
-                    "rationale": "The city has an active queue; changing it would be a strategy intervention.",
-                    "why_not_alternatives": {
-                        "change production": "Not needed to advance the turn.",
-                        "defer": "Equivalent to continuing the active queue.",
-                    },
-                    "execution": {"tool": "none", "result": "no tool call needed"},
-                    "outcome": "Production left unchanged.",
-                    "related_tool_call_ids": [],
-                    "related_state_snapshot_ids": [state_id],
-                    "related_save_ids": [],
-                }
-            )
-            continue
-
         selected = None
-        repairs = [opt for opt in options if getattr(opt, "is_repair", False)]
-        if repairs:
-            selected = sorted(repairs, key=lambda opt: getattr(opt, "turns", 9999))[0]
+        production_override = False
+        if not is_idle_city(city):
+            selected = active_production_override_for_golden_age(
+                recorder,
+                snapshot,
+                city,
+                list(options or []),
+                planned_units,
+            )
+            if selected is not None:
+                production_override = True
+            else:
+                recorder.record_decision(
+                    {
+                        "turn": turn,
+                        "trigger": f"production review for {getattr(city, 'name', city_id)}",
+                        "importance": "medium",
+                        "background": f"{getattr(city, 'name', city_id)} is producing {getattr(city, 'currently_building', '')} with {getattr(city, 'production_turns_left', '?')} turns left.",
+                        "current_goal": "Avoid changing active production during Phase 1 observation.",
+                        "available_actions": [
+                            f"continue {getattr(city, 'currently_building', '')}",
+                            "change production",
+                            "defer",
+                        ],
+                        "selected_action": "continue active production",
+                        "rationale": "The city has an active queue; changing it would be a strategy intervention.",
+                        "why_not_alternatives": {
+                            "change production": "Not needed to advance the turn.",
+                            "defer": "Equivalent to continuing the active queue.",
+                        },
+                        "execution": {"tool": "none", "result": "no tool call needed"},
+                        "outcome": "Production left unchanged.",
+                        "related_tool_call_ids": [],
+                        "related_state_snapshot_ids": [state_id],
+                        "related_save_ids": [],
+                    }
+                )
+                continue
+
+        if production_override:
+            repairs = []
         else:
+            repairs = [opt for opt in options if getattr(opt, "is_repair", False)]
+        if selected is None and repairs:
+            selected = sorted(repairs, key=lambda opt: getattr(opt, "turns", 9999))[0]
+        elif selected is None:
             selected = choose_by_priority(
                 options,
                 "item_name",
@@ -2333,6 +4380,33 @@ async def maybe_set_city_production(
                 "Repair list_city_production coverage before T50.",
             )
             continue
+        if not is_idle_city(city) and production_override:
+            recorder.record_decision(
+                {
+                    "turn": turn,
+                    "trigger": f"golden age production override for {getattr(city, 'name', city_id)}",
+                    "importance": "high",
+                    "background": f"{getattr(city, 'name', city_id)} is producing {getattr(city, 'currently_building', '')} with {getattr(city, 'production_turns_left', '?')} turns left.",
+                    "current_goal": "Convert the completed Horseback Riding and stocked Horses into the first Horseman before the ancient-era golden-age gate closes.",
+                    "available_actions": [
+                        f"continue {getattr(city, 'currently_building', '')}",
+                        f"switch to {value_from(selected, 'item_name', '')}",
+                        "defer",
+                    ],
+                    "selected_action": f"switch production to {value_from(selected, 'item_name', '')}",
+                    "rationale": "The golden_age_push layer only overrides active production when UNIT_HORSEMAN is already a legal city option and first-age era score is still short.",
+                    "strategy_context": strategy_context(recorder),
+                    "why_not_alternatives": {
+                        "continue current queue": "Run13 showed active builder queues can consume the remaining ancient-era window after Horses and Horseback are ready.",
+                        "defer": "Equivalent to missing the first strategic-resource-unit timing window.",
+                    },
+                    "execution": {"tool": "pending", "result": "set_city_production below"},
+                    "outcome": "Production override selected; command follows in the production tool call.",
+                    "related_tool_call_ids": [],
+                    "related_state_snapshot_ids": [state_id],
+                    "related_save_ids": [],
+                }
+            )
         actions = [
             f"{getattr(opt, 'category', '?')} {getattr(opt, 'item_name', '?')} ({getattr(opt, 'turns', '?')}t)"
             for opt in options
@@ -2410,20 +4484,40 @@ async def maybe_set_city_production(
         recorder.record_decision(
             {
                 "turn": turn,
-                "trigger": f"idle city production for {getattr(city, 'name', city_id)}",
+                "trigger": (
+                    f"golden age production override for {getattr(city, 'name', city_id)}"
+                    if production_override
+                    else f"idle city production for {getattr(city, 'name', city_id)}"
+                ),
                 "importance": "high",
-                "background": f"{getattr(city, 'name', city_id)} has no active production.",
-                "current_goal": "Resolve mandatory production blocker while recording all candidate actions.",
+                "background": (
+                    f"{getattr(city, 'name', city_id)} is producing {getattr(city, 'currently_building', '')} with {getattr(city, 'production_turns_left', '?')} turns left."
+                    if production_override
+                    else f"{getattr(city, 'name', city_id)} has no active production."
+                ),
+                "current_goal": (
+                    "Switch to the first legal Horseman while the ancient-era golden-age gate is still open."
+                    if production_override
+                    else "Resolve mandatory production blocker while recording all candidate actions."
+                ),
                 "available_actions": actions,
                 "selected_action": f"{selected.category} {selected.item_name}",
                 "rationale": (
-                    "Use repair first if needed, otherwise select from the active "
-                    f"{strategy_priority_label(recorder)} production priority."
+                    "Override the active queue because UNIT_HORSEMAN is legal and highest priority for first-age era score."
+                    if production_override
+                    else (
+                        "Use repair first if needed, otherwise select from the active "
+                        f"{strategy_priority_label(recorder)} production priority."
+                    )
                 ),
                 "strategy_context": strategy_context(recorder),
                 "why_not_alternatives": {
                     "other production options": "Recorded as available actions but lower in the active production priority.",
-                    "leave idle": "End turn may be blocked and the city would waste production.",
+                    "continue current queue" if production_override else "leave idle": (
+                        "Would miss the first strategic-resource-unit timing window."
+                        if production_override
+                        else "End turn may be blocked and the city would waste production."
+                    ),
                 },
                 "execution": {"tool": "set_city_production", "params": params, "result": result},
                 "outcome": short_text(result),
@@ -2432,6 +4526,944 @@ async def maybe_set_city_production(
                 "related_save_ids": [],
             }
         )
+
+
+def gold_purchase_candidates(
+    snapshot: dict[str, Any],
+    *,
+    allowed_reasons: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    overview = snapshot.get("overview") or {}
+    gold = number_from(overview, "gold", 0)
+    if gold < golden_age_gold_spend_threshold(snapshot):
+        return []
+    city_by_id = {str(value_from(city, "city_id", "")): city for city in snapshot.get("cities") or []}
+    production = snapshot.get("production") or {}
+    candidates: list[dict[str, Any]] = []
+    has_strategic_development_path = (
+        strategic_resource_development_path_available(snapshot)
+        or ancient_post_settle_builder_reserve_active(snapshot)
+    )
+    scout_count = snapshot_unit_count(snapshot, "UNIT_SCOUT")
+    for city_id, options in production.items():
+        city = city_by_id.get(str(city_id))
+        for option in options or []:
+            item_name = str(value_from(option, "item_name", "") or "")
+            category = str(value_from(option, "category", "") or "")
+            cost = int(number_from(option, "gold_cost", -1))
+            if cost < 0 or cost > gold or category != "UNIT":
+                continue
+            if (
+                item_name == "UNIT_SCOUT"
+                and snapshot_is_ancient_era(snapshot)
+                and (
+                    scout_count >= GOLDEN_AGE_PUSH_ANCIENT_SCOUT_CAP
+                    or snapshot_turn(snapshot) > GOLDEN_AGE_PUSH_ANCIENT_SCOUT_REPLACEMENT_LATEST_TURN
+                )
+            ):
+                continue
+            if item_name in GOLDEN_AGE_PUSH_MILITARY_PURCHASE_PRIORITY:
+                priority = GOLDEN_AGE_PUSH_MILITARY_PURCHASE_PRIORITY
+                reason = "military_unit"
+            elif (
+                has_strategic_development_path
+                and item_name in GOLDEN_AGE_PUSH_BUILDER_PURCHASE_PRIORITY
+            ):
+                priority = GOLDEN_AGE_PUSH_BUILDER_PURCHASE_PRIORITY
+                reason = "strategic_resource_builder"
+            else:
+                continue
+            if allowed_reasons is not None and reason not in allowed_reasons:
+                continue
+            candidates.append(
+                {
+                    "city_id": int(city_id),
+                    "city_name": value_from(city, "name", city_id) if city else str(city_id),
+                    "category": category,
+                    "item_name": item_name,
+                    "gold_cost": cost,
+                    "reason": reason,
+                    "rank": priority_index(item_name, priority),
+                }
+            )
+    return sorted(
+        candidates,
+        key=lambda item: (
+            0 if item["reason"] == "military_unit" else 1,
+            int(item["rank"]),
+            int(item["gold_cost"]),
+            str(item["city_name"]),
+        ),
+    )
+
+
+def select_gold_purchase(
+    snapshot: dict[str, Any],
+    *,
+    allowed_reasons: set[str] | None = None,
+) -> dict[str, Any] | None:
+    candidates = gold_purchase_candidates(snapshot, allowed_reasons=allowed_reasons)
+    return candidates[0] if candidates else None
+
+
+def parse_unit_upgrade_check_result(result: Any) -> dict[str, Any] | None:
+    for line in str(result or "").splitlines():
+        if not line.startswith("UPGRADE|"):
+            continue
+        parts = line.split("|")
+        if len(parts) < 6:
+            return None
+        return {
+            "current_type": parts[1],
+            "upgrade_type": parts[2],
+            "upgrade_name": parts[3],
+            "gold_cost": int(number_from({"value": parts[4]}, "value", 0)),
+            "available_gold": int(number_from({"value": parts[5]}, "value", 0)),
+        }
+    return None
+
+
+def military_upgrade_units(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    for unit in snapshot.get("units") or []:
+        unit_type = str(value_from(unit, "unit_type", "") or "")
+        if unit_type not in GOLDEN_AGE_PUSH_MILITARY_UPGRADE_SOURCE_PRIORITY:
+            continue
+        unit_id = value_from(unit, "unit_id", None)
+        if unit_id is None:
+            continue
+        candidates.append(
+            {
+                "unit_id": int(unit_id),
+                "unit_type": unit_type,
+                "rank": priority_index(
+                    unit_type,
+                    GOLDEN_AGE_PUSH_MILITARY_UPGRADE_SOURCE_PRIORITY,
+                ),
+            }
+        )
+    return sorted(candidates, key=lambda row: (int(row["rank"]), int(row["unit_id"])))
+
+
+def unit_upgrade_candidate(
+    unit: dict[str, Any],
+    check_result: Any,
+    *,
+    snapshot_gold: float,
+) -> dict[str, Any] | None:
+    parsed = parse_unit_upgrade_check_result(check_result)
+    if parsed is None:
+        return None
+    available_gold = min(float(parsed["available_gold"]), snapshot_gold)
+    if parsed["gold_cost"] < 0 or parsed["gold_cost"] > available_gold:
+        return None
+    return {
+        "unit_id": int(unit["unit_id"]),
+        "unit_type": str(parsed["current_type"] or unit["unit_type"]),
+        "upgrade_type": str(parsed["upgrade_type"]),
+        "upgrade_name": str(parsed["upgrade_name"]),
+        "gold_cost": int(parsed["gold_cost"]),
+        "available_gold": available_gold,
+        "check_result": check_result,
+        "rank": (
+            priority_index(
+                str(parsed["upgrade_type"]),
+                GOLDEN_AGE_PUSH_MILITARY_UPGRADE_TARGET_PRIORITY,
+            ),
+            priority_index(
+                str(parsed["current_type"] or unit["unit_type"]),
+                GOLDEN_AGE_PUSH_MILITARY_UPGRADE_SOURCE_PRIORITY,
+            ),
+            int(parsed["gold_cost"]),
+        ),
+    }
+
+
+def select_unit_upgrade_candidate(candidates: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not candidates:
+        return None
+    return sorted(candidates, key=lambda row: row["rank"])[0]
+
+
+def strategic_resource_key(resource: Any) -> str:
+    text = str(resource or "").strip().upper().replace("RESOURCE_", "")
+    if "HORSE" in text:
+        return "HORSES"
+    if "IRON" in text:
+        return "IRON"
+    return text
+
+
+def strategic_tile_purchase_candidates(
+    snapshot: dict[str, Any],
+    purchasable_by_city: dict[str, list[Any]],
+) -> list[dict[str, Any]]:
+    overview = snapshot.get("overview") or {}
+    gold = number_from(overview, "gold", 0)
+    if gold < golden_age_gold_spend_threshold(snapshot):
+        return []
+    resource_income = strategic_resource_income_by_key(snapshot.get("resources"))
+    city_by_id = {str(value_from(city, "city_id", "")): city for city in snapshot.get("cities") or []}
+    candidates: list[dict[str, Any]] = []
+    for city_id, tiles in purchasable_by_city.items():
+        city = city_by_id.get(str(city_id))
+        for tile in tiles or []:
+            cost = int(number_from(tile, "cost", -1))
+            resource = value_from(tile, "resource", "")
+            resource_key = strategic_resource_key(resource)
+            resource_class = str(value_from(tile, "resource_class", "") or "").lower()
+            if cost < 0 or cost > gold:
+                continue
+            if resource_class != "strategic" and resource_key not in GOLDEN_AGE_PUSH_STRATEGIC_TILE_PRIORITY:
+                continue
+            if resource_income.get(resource_key, 0) > 0:
+                continue
+            candidates.append(
+                {
+                    "city_id": int(city_id),
+                    "city_name": value_from(city, "name", city_id) if city else str(city_id),
+                    "x": int(number_from(tile, "x", 0)),
+                    "y": int(number_from(tile, "y", 0)),
+                    "gold_cost": cost,
+                    "resource": resource,
+                    "resource_key": resource_key,
+                    "resource_class": resource_class,
+                    "terrain": value_from(tile, "terrain", ""),
+                    "rank": priority_index(
+                        resource_key,
+                        GOLDEN_AGE_PUSH_STRATEGIC_TILE_PRIORITY,
+                    ),
+                }
+            )
+    return sorted(
+        candidates,
+        key=lambda item: (
+            int(item["rank"]),
+            int(item["gold_cost"]),
+            str(item["city_name"]),
+            int(item["x"]),
+            int(item["y"]),
+        ),
+    )
+
+
+def select_strategic_tile_purchase(
+    snapshot: dict[str, Any],
+    purchasable_by_city: dict[str, list[Any]],
+) -> dict[str, Any] | None:
+    candidates = strategic_tile_purchase_candidates(snapshot, purchasable_by_city)
+    return candidates[0] if candidates else None
+
+
+async def maybe_upgrade_military_unit_for_t50(
+    recorder: EpisodeRecorder,
+    gs: GameState,
+    turn: int,
+    state_id: str,
+    snapshot: dict[str, Any],
+) -> bool:
+    overview = snapshot.get("overview") or {}
+    gold = number_from(overview, "gold", 0)
+    upgrade_units = military_upgrade_units(snapshot)
+    if not upgrade_units:
+        return False
+    related_calls: list[str] = []
+    upgrade_candidates: list[dict[str, Any]] = []
+    for unit in upgrade_units[:6]:
+        call_id, result = await recorder.tool_call(
+            "check_unit_upgrade",
+            {"unit_id": unit["unit_id"], "unit_type": unit["unit_type"]},
+            lambda unit_id=unit["unit_id"]: gs.check_unit_upgrade(unit_id),
+            turn=turn,
+        )
+        related_calls.append(call_id)
+        candidate = unit_upgrade_candidate(unit, result, snapshot_gold=gold)
+        if candidate is not None:
+            upgrade_candidates.append(candidate)
+    selected = select_unit_upgrade_candidate(upgrade_candidates)
+    if selected is None:
+        return False
+    call_id, result = await recorder.tool_call(
+        "upgrade_unit",
+        {
+            "unit_id": selected["unit_id"],
+            "unit_type": selected["unit_type"],
+            "upgrade_type": selected["upgrade_type"],
+            "gold_cost": selected["gold_cost"],
+            "reason": "golden_age_push_military_upgrade",
+        },
+        lambda selected=selected: gs.upgrade_unit(selected["unit_id"]),
+        turn=turn,
+    )
+    recorder.record_decision(
+        {
+            "turn": turn,
+            "trigger": "golden age gold spender",
+            "importance": "high",
+            "background": background_from_snapshot(snapshot),
+            "current_goal": "Convert idle gold into military upgrades before the T50 checkpoint.",
+            "available_actions": [
+                (
+                    f"upgrade {candidate['unit_type']} to {candidate['upgrade_type']} "
+                    f"for {candidate['gold_cost']} gold"
+                )
+                for candidate in upgrade_candidates
+            ],
+            "selected_action": (
+                f"upgrade {selected['unit_type']} to {selected['upgrade_type']} with gold"
+            ),
+            "rationale": (
+                "The golden_age_push layer treats immediate military upgrades as a direct way to turn idle gold into combat options."
+            ),
+            "strategy_context": strategy_context(recorder),
+            "why_not_alternatives": {
+                "hold gold": "The current plan explicitly avoids leaving large T50 gold unconverted.",
+                "buy a new unit first": "A legal upgrade creates immediate combat value without waiting for city placement or movement.",
+            },
+            "execution": {"tool": "upgrade_unit", "params": selected, "result": result},
+            "outcome": short_text(result),
+            "related_tool_call_ids": [*related_calls, call_id],
+            "related_state_snapshot_ids": [state_id],
+            "related_save_ids": [],
+        }
+    )
+    return not str(result).startswith(("Error", "ERR", "FAILED"))
+
+
+async def execute_gold_purchase_for_t50(
+    recorder: EpisodeRecorder,
+    gs: GameState,
+    turn: int,
+    state_id: str,
+    snapshot: dict[str, Any],
+    selected: dict[str, Any],
+    candidates: list[dict[str, Any]],
+) -> bool:
+    call_id, result = await recorder.tool_call(
+        "purchase_item",
+        {
+            "city_id": selected["city_id"],
+            "item_type": selected["category"],
+            "item_name": selected["item_name"],
+            "yield_type": "YIELD_GOLD",
+            "reason": selected["reason"],
+        },
+        lambda selected=selected: gs.purchase_item(
+            selected["city_id"],
+            selected["category"],
+            selected["item_name"],
+            "YIELD_GOLD",
+        ),
+        turn=turn,
+    )
+    recorder.record_decision(
+        {
+            "turn": turn,
+            "trigger": "golden age gold spender",
+            "importance": "high",
+            "background": background_from_snapshot(snapshot),
+            "current_goal": "Convert idle gold into military or strategic-resource tempo before the T50 checkpoint.",
+            "available_actions": [
+                f"buy {candidate['item_name']} in {candidate['city_name']} for {candidate['gold_cost']} gold"
+                for candidate in candidates
+            ],
+            "selected_action": f"purchase {selected['item_name']} with gold",
+            "rationale": (
+                "The golden_age_push layer treats era-score and military opportunities as higher priority than ending T50 with a large gold reserve."
+            ),
+            "strategy_context": strategy_context(recorder),
+            "why_not_alternatives": {
+                "hold gold": "The current plan explicitly avoids leaving large T50 gold unconverted.",
+                "civilian purchase first": "Military tempo and strategic-resource conversion are the active gold priorities.",
+            },
+            "execution": {"tool": "purchase_item", "params": selected, "result": result},
+            "outcome": short_text(result),
+            "related_tool_call_ids": [call_id],
+            "related_state_snapshot_ids": [state_id],
+            "related_save_ids": [],
+        }
+    )
+    return not str(result).startswith(("Error", "ERR", "FAILED"))
+
+
+async def maybe_purchase_strategic_tile_for_t50(
+    recorder: EpisodeRecorder,
+    gs: GameState,
+    turn: int,
+    state_id: str,
+    snapshot: dict[str, Any],
+) -> bool:
+    purchasable_by_city: dict[str, list[Any]] = {}
+    related_calls: list[str] = []
+    for city in snapshot.get("cities") or []:
+        city_id = value_from(city, "city_id", None)
+        if city_id is None:
+            continue
+        call_id, tiles = await recorder.tool_call(
+            "get_purchasable_tiles",
+            {"city_id": int(city_id), "city_name": value_from(city, "name", city_id)},
+            lambda city_id=int(city_id): gs.get_purchasable_tiles(city_id),
+            turn=turn,
+        )
+        related_calls.append(call_id)
+        purchasable_by_city[str(city_id)] = list(tiles or [])
+    candidates = strategic_tile_purchase_candidates(snapshot, purchasable_by_city)
+    selected = candidates[0] if candidates else None
+    if selected is None:
+        return False
+    call_id, result = await recorder.tool_call(
+        "purchase_tile",
+        {
+            "city_id": selected["city_id"],
+            "city_name": selected["city_name"],
+            "x": selected["x"],
+            "y": selected["y"],
+            "gold_cost": selected["gold_cost"],
+            "resource": selected["resource"],
+            "reason": "golden_age_push_strategic_tile",
+        },
+        lambda selected=selected: gs.purchase_tile(
+            selected["city_id"],
+            selected["x"],
+            selected["y"],
+        ),
+        turn=turn,
+    )
+    recorder.record_decision(
+        {
+            "turn": turn,
+            "trigger": "golden age strategic tile purchase",
+            "importance": "high",
+            "background": background_from_snapshot(snapshot),
+            "current_goal": "Convert idle gold into ownership of a strategic Horses or Iron tile for the T50 plan.",
+            "available_actions": [
+                (
+                    f"buy {candidate['resource_key']} tile "
+                    f"({candidate['x']},{candidate['y']}) for {candidate['gold_cost']} gold"
+                )
+                for candidate in candidates
+            ],
+            "selected_action": (
+                f"purchase {selected['resource_key']} tile "
+                f"({selected['x']},{selected['y']}) with gold"
+            ),
+            "rationale": (
+                "When no higher-priority military buy is available, owning a nearby strategic tile creates a concrete resource-development path."
+            ),
+            "strategy_context": strategy_context(recorder),
+            "why_not_alternatives": {
+                "hold gold": "The current plan explicitly avoids ending T50 with large idle gold.",
+                "buy non-strategic tile": "The T50 golden-age plan values Horses/Iron ownership above generic yield tiles.",
+            },
+            "execution": {"tool": "purchase_tile", "params": selected, "result": result},
+            "outcome": short_text(result),
+            "related_tool_call_ids": [*related_calls, call_id],
+            "related_state_snapshot_ids": [state_id],
+            "related_save_ids": [],
+        }
+    )
+    return not str(result).startswith(("Error", "ERR", "FAILED"))
+
+
+async def maybe_spend_gold_for_t50(
+    recorder: EpisodeRecorder,
+    gs: GameState,
+    turn: int,
+    state_id: str,
+    snapshot: dict[str, Any],
+) -> None:
+    if not uses_golden_age_push_runtime(recorder):
+        return
+    overview = snapshot.get("overview") or {}
+    if number_from(overview, "gold", 0) < golden_age_gold_spend_threshold(snapshot):
+        return
+    try:
+        if await maybe_upgrade_military_unit_for_t50(recorder, gs, turn, state_id, snapshot):
+            return
+    except Exception as exc:  # noqa: BLE001
+        recorder.add_gap(
+            "economy.gold_upgrade",
+            f"{type(exc).__name__}: {exc}",
+            "Repair military upgrade spending if T50 runs still end with idle gold.",
+        )
+
+    military_candidates = gold_purchase_candidates(
+        snapshot,
+        allowed_reasons={"military_unit"},
+    )
+    early_military_candidates = [
+        candidate
+        for candidate in military_candidates
+        if candidate["item_name"] in GOLDEN_AGE_PUSH_EARLY_MILITARY_BUY_PRIORITY
+    ]
+    if early_military_candidates:
+        if await execute_gold_purchase_for_t50(
+            recorder,
+            gs,
+            turn,
+            state_id,
+            snapshot,
+            early_military_candidates[0],
+            early_military_candidates,
+        ):
+            return
+
+    if ancient_strategic_builder_needed(snapshot):
+        builder_candidates = gold_purchase_candidates(
+            snapshot,
+            allowed_reasons={"strategic_resource_builder"},
+        )
+        if builder_candidates:
+            if await execute_gold_purchase_for_t50(
+                recorder,
+                gs,
+                turn,
+                state_id,
+                snapshot,
+                builder_candidates[0],
+                builder_candidates,
+            ):
+                return
+            return
+        builder_cost = strategic_builder_purchase_shortfall(snapshot)
+        if builder_cost is not None:
+            recorder.record_decision(
+                {
+                    "turn": turn,
+                    "trigger": "golden age gold spender",
+                    "importance": "high",
+                    "background": background_from_snapshot(snapshot),
+                    "current_goal": "Save early gold for a builder that can unlock Horses or Iron before the ancient-era golden-age gate closes.",
+                    "available_actions": [
+                        f"save toward UNIT_BUILDER for {builder_cost} gold",
+                        *[
+                            f"buy {candidate['item_name']} in {candidate['city_name']} for {candidate['gold_cost']} gold"
+                            for candidate in military_candidates
+                        ],
+                    ],
+                    "selected_action": "save gold for strategic-resource builder",
+                    "rationale": (
+                        "Run evidence showed that spending the first 65 gold on another basic unit left Horses unimproved until after the first-era gate."
+                    ),
+                    "strategy_context": strategy_context(recorder),
+                    "why_not_alternatives": {
+                        "buy basic military now": "A basic unit that cannot immediately clear a camp or become a Horseman is lower value than the strategic-resource builder path.",
+                        "buy tile first": "Without a builder, tile ownership alone does not create Horseman stockpile before the ancient-era rollover.",
+                    },
+                    "execution": {"tool": "none", "result": "gold held for builder purchase"},
+                    "outcome": f"Held gold until UNIT_BUILDER reaches {builder_cost} gold.",
+                    "related_tool_call_ids": [],
+                    "related_state_snapshot_ids": [state_id],
+                    "related_save_ids": [],
+                }
+            )
+            return
+        return
+
+    tried_strategic_tile_purchase = False
+    if ancient_strategic_resource_push_active(snapshot):
+        tried_strategic_tile_purchase = True
+        try:
+            if await maybe_purchase_strategic_tile_for_t50(recorder, gs, turn, state_id, snapshot):
+                return
+        except Exception as exc:  # noqa: BLE001
+            recorder.add_gap(
+                "economy.strategic_tile_purchase",
+                f"{type(exc).__name__}: {exc}",
+                "Repair strategic tile buying if Horses/Iron remain outside borders during T50 runs.",
+            )
+
+    if ancient_post_settle_builder_reserve_active(snapshot):
+        builder_candidates = gold_purchase_candidates(
+            snapshot,
+            allowed_reasons={"strategic_resource_builder"},
+        )
+        if builder_candidates:
+            if await execute_gold_purchase_for_t50(
+                recorder,
+                gs,
+                turn,
+                state_id,
+                snapshot,
+                builder_candidates[0],
+                builder_candidates,
+            ):
+                return
+            return
+        builder_cost = strategic_builder_purchase_shortfall(snapshot)
+        if builder_cost is not None:
+            recorder.record_decision(
+                {
+                    "turn": turn,
+                    "trigger": "golden age gold spender",
+                    "importance": "high",
+                    "background": background_from_snapshot(snapshot),
+                    "current_goal": "Reserve early gold for a builder timed with the strategic second-city settle instead of buying a basic unit before Horses are inside borders.",
+                    "available_actions": [
+                        f"save toward UNIT_BUILDER for {builder_cost} gold",
+                        *[
+                            f"buy {candidate['item_name']} in {candidate['city_name']} for {candidate['gold_cost']} gold"
+                            for candidate in military_candidates
+                        ],
+                    ],
+                    "selected_action": "save gold for post-settlement strategic builder",
+                    "rationale": (
+                        "Run evidence showed that the T18 warrior purchase delayed the horse pasture enough for the first Horseman to miss the ancient-era golden-age gate."
+                    ),
+                    "strategy_context": strategy_context(recorder),
+                    "why_not_alternatives": {
+                        "buy basic military now": "The unit does not directly accelerate the first Horseman or create a reliable era-score event before rollover.",
+                        "buy scout now": "Late scout replacement already missed the opening discovery window and competes with the Horseman path.",
+                    },
+                    "execution": {"tool": "none", "result": "gold held for post-settlement builder purchase"},
+                    "outcome": f"Held gold until UNIT_BUILDER reaches {builder_cost} gold.",
+                    "related_tool_call_ids": [],
+                    "related_state_snapshot_ids": [state_id],
+                    "related_save_ids": [],
+                }
+            )
+            return
+        return
+
+    if military_candidates:
+        if await execute_gold_purchase_for_t50(
+            recorder,
+            gs,
+            turn,
+            state_id,
+            snapshot,
+            military_candidates[0],
+            military_candidates,
+        ):
+            return
+
+    if not tried_strategic_tile_purchase:
+        try:
+            if await maybe_purchase_strategic_tile_for_t50(recorder, gs, turn, state_id, snapshot):
+                return
+        except Exception as exc:  # noqa: BLE001
+            recorder.add_gap(
+                "economy.strategic_tile_purchase",
+                f"{type(exc).__name__}: {exc}",
+                "Repair strategic tile buying if Horses/Iron remain outside borders during T50 runs.",
+            )
+
+    builder_candidates = gold_purchase_candidates(
+        snapshot,
+        allowed_reasons={"strategic_resource_builder"},
+    )
+    if builder_candidates:
+        await execute_gold_purchase_for_t50(
+            recorder,
+            gs,
+            turn,
+            state_id,
+            snapshot,
+            builder_candidates[0],
+            builder_candidates,
+        )
+
+
+def resource_trade_candidate(snapshot: dict[str, Any]) -> dict[str, Any] | None:
+    stockpiles = strategic_stockpile_rows(snapshot.get("resources"))
+    diplomacy = list(snapshot.get("diplomacy") or [])
+    trade_targets = [
+        civ
+        for civ in diplomacy
+        if value_from(civ, "has_met", False) and not value_from(civ, "is_at_war", False)
+    ]
+    if not trade_targets:
+        return None
+    for stock in sorted(stockpiles, key=lambda row: int(row["surplus_after_reserve"]), reverse=True):
+        name = str(stock.get("name") or "").upper()
+        reserve = GOLDEN_AGE_PUSH_RESOURCE_TRADE_RESERVE.get(name)
+        if reserve is None:
+            continue
+        if int(stock["surplus_after_reserve"]) < GOLDEN_AGE_PUSH_RESOURCE_TRADE_MIN_SURPLUS:
+            continue
+        if int(stock["net_per_turn"]) < 0:
+            continue
+        civ = sorted(
+            trade_targets,
+            key=lambda item: (
+                -int(number_from(item, "relationship_score", 0)),
+                str(value_from(item, "civ_name", "")),
+            ),
+        )[0]
+        return {
+            "resource_name": name,
+            "resource_type": resource_type_for_trade(name),
+            "stockpile": stock,
+            "other_player_id": int(value_from(civ, "player_id")),
+            "other_civ_name": value_from(civ, "civ_name", ""),
+        }
+    return None
+
+
+def counter_request_items_from_trade_test(test_result: Any) -> list[dict[str, Any]]:
+    text = str(test_result or "")
+    gpt_match = re.search(r"They give:\s*(?P<amount>\d+)\s*gold\s+per\s+turn", text, re.I)
+    if gpt_match:
+        return [
+            {
+                "type": "GOLD",
+                "amount": int(gpt_match.group("amount")),
+                "duration": 30,
+            }
+        ]
+    gold_match = re.search(r"They give:\s*(?P<amount>\d+)\s*gold", text, re.I)
+    if gold_match:
+        return [
+            {
+                "type": "GOLD",
+                "amount": int(gold_match.group("amount")),
+                "duration": 0,
+            }
+        ]
+    return []
+
+
+async def maybe_trade_surplus_strategic_resources(
+    recorder: EpisodeRecorder,
+    gs: GameState,
+    turn: int,
+    state_id: str,
+    snapshot: dict[str, Any],
+) -> None:
+    if not uses_golden_age_push_runtime(recorder):
+        return
+    candidate = resource_trade_candidate(snapshot)
+    if candidate is None:
+        return
+    related_calls: list[str] = []
+    try:
+        options_id, options = await recorder.tool_call(
+            "get_trade_options",
+            {"other_player_id": candidate["other_player_id"]},
+            lambda candidate=candidate: gs.get_deal_options(candidate["other_player_id"]),
+            turn=turn,
+        )
+        related_calls.append(options_id)
+        their_gold = int(number_from(options, "their_gold", 0))
+        their_gpt = int(number_from(options, "their_gpt", 0))
+        request_items: list[dict[str, Any]]
+        if their_gold > 0:
+            request_items = [{"type": "GOLD", "amount": min(90, their_gold), "duration": 0}]
+        elif their_gpt > 0:
+            request_items = [{"type": "GOLD", "amount": min(3, their_gpt), "duration": 30}]
+        else:
+            return
+        offer_items = [
+            {
+                "type": "RESOURCE",
+                "name": candidate["resource_type"],
+                "amount": 1,
+                "duration": 30,
+            }
+        ]
+        test_id, test_result = await recorder.tool_call(
+            "test_trade",
+            {
+                "other_player_id": candidate["other_player_id"],
+                "offer_items": offer_items,
+                "request_items": request_items,
+            },
+            lambda candidate=candidate, offer_items=offer_items, request_items=request_items: gs.test_trade(
+                candidate["other_player_id"], offer_items, request_items
+            ),
+            turn=turn,
+        )
+        related_calls.append(test_id)
+        selected_action = "test strategic resource sale"
+        execution: dict[str, Any] = {
+            "tool": "test_trade",
+            "candidate": candidate,
+            "offer_items": offer_items,
+            "request_items": request_items,
+            "test_result": test_result,
+        }
+        outcome = short_text(test_result)
+        counter_request_items = []
+        if "ACCEPTABLE" not in str(test_result).upper():
+            counter_request_items = counter_request_items_from_trade_test(test_result)
+            if counter_request_items:
+                request_items = counter_request_items
+                execution["counter_request_items"] = counter_request_items
+        if "ACCEPTABLE" in str(test_result).upper() or counter_request_items:
+            propose_id, propose_result = await recorder.tool_call(
+                "propose_trade",
+                {
+                    "other_player_id": candidate["other_player_id"],
+                    "offer_items": offer_items,
+                    "request_items": request_items,
+                },
+                lambda candidate=candidate, offer_items=offer_items, request_items=request_items: gs.propose_trade(
+                    candidate["other_player_id"], offer_items, request_items
+                ),
+                turn=turn,
+            )
+            related_calls.append(propose_id)
+            selected_action = "sell surplus strategic resource"
+            execution["tool"] = "test_trade + propose_trade"
+            execution["request_items"] = request_items
+            execution["propose_result"] = propose_result
+            outcome = short_text(propose_result)
+        recorder.record_decision(
+            {
+                "turn": turn,
+                "trigger": "strategic resource monetization",
+                "importance": "medium",
+                "background": background_from_snapshot(snapshot),
+                "current_goal": "Convert surplus Horses or Iron into gold without consuming resources reserved for the immediate military plan.",
+                "available_actions": [
+                    f"offer {candidate['resource_type']} to player {candidate['other_player_id']}",
+                    "hold strategic resource reserve",
+                    "skip trade this turn",
+                ],
+                "selected_action": selected_action,
+                "rationale": "Only stockpile above the configured military reserve is offered, and the deal is tested before commit.",
+                "strategy_context": strategy_context(recorder),
+                "why_not_alternatives": {
+                    "hold all resources": "The current plan explicitly tests aggressive conversion of surplus strategics.",
+                    "trade without test": "Testing avoids committing an obviously poor or rejected deal.",
+                },
+                "execution": execution,
+                "outcome": outcome,
+                "related_tool_call_ids": related_calls,
+                "related_state_snapshot_ids": [state_id],
+                "related_save_ids": [],
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        recorder.add_gap(
+            "economy.resource_trade",
+            f"{type(exc).__name__}: {exc}",
+            "Repair strategic resource trading if surplus Horses/Iron remain idle in T50 runs.",
+        )
+
+
+def preferred_war_action(civ: Any) -> str | None:
+    actions = civ_available_actions(civ)
+    for preferred in [
+        "DECLARE_SURPRISE_WAR",
+        "DECLARE_FORMAL_WAR",
+        "DECLARE_TERRITORIAL_WAR",
+        "DECLARE_HOLY_WAR",
+    ]:
+        for action in actions:
+            if preferred in action.upper():
+                return action
+    return None
+
+
+def opportunistic_war_candidate(snapshot: dict[str, Any], turn: int) -> dict[str, Any] | None:
+    if turn < GOLDEN_AGE_PUSH_WAR_START_TURN:
+        return None
+    diplomacy = list(snapshot.get("diplomacy") or [])
+    if any(value_from(civ, "is_at_war", False) for civ in diplomacy):
+        return None
+    combat_count = snapshot_combat_unit_count(snapshot)
+    if combat_count < GOLDEN_AGE_PUSH_WAR_MIN_COMBAT_UNITS:
+        return None
+    candidates: list[dict[str, Any]] = []
+    for civ in diplomacy:
+        if not value_from(civ, "has_met", False) or value_from(civ, "is_at_war", False):
+            continue
+        action = preferred_war_action(civ)
+        if not action:
+            continue
+        their_military = int(number_from(civ, "military_strength", 0))
+        if their_military and their_military > combat_count * 45:
+            continue
+        attack_windows = favorable_attack_windows_for_civ(snapshot, civ)
+        border_windows = border_pressure_windows_for_civ(snapshot, civ)
+        if not attack_windows and not border_windows:
+            continue
+        candidates.append(
+            {
+                "other_player_id": int(value_from(civ, "player_id")),
+                "other_civ_name": value_from(civ, "civ_name", ""),
+                "leader_name": value_from(civ, "leader_name", ""),
+                "action": action,
+                "combat_unit_count": combat_count,
+                "their_military_strength": their_military,
+                "visible_city_count": len(value_from(civ, "visible_cities", []) or []),
+                "favorable_attack_count": len(attack_windows),
+                "border_pressure_count": len(border_windows),
+                "best_attack_window": attack_windows[0] if attack_windows else None,
+                "best_border_window": border_windows[0] if border_windows else None,
+            }
+        )
+    if not candidates:
+        return None
+    return sorted(
+        candidates,
+        key=lambda row: (
+            -int(row["favorable_attack_count"]),
+            -int(row["border_pressure_count"]),
+            int(row["their_military_strength"] or 0),
+            -int(row["visible_city_count"]),
+            str(row["other_civ_name"]),
+        ),
+    )[0]
+
+
+async def maybe_declare_opportunistic_war(
+    recorder: EpisodeRecorder,
+    gs: GameState,
+    turn: int,
+    state_id: str,
+    snapshot: dict[str, Any],
+) -> None:
+    if not uses_golden_age_push_runtime(recorder):
+        return
+    candidate = opportunistic_war_candidate(snapshot, turn)
+    if candidate is None:
+        return
+    call_id, result = await recorder.tool_call(
+        "send_diplomatic_action",
+        {
+            "other_player_id": candidate["other_player_id"],
+            "action": candidate["action"],
+            "reason": "golden_age_push_opportunistic_war",
+        },
+        lambda candidate=candidate: gs.send_diplomatic_action(
+            candidate["other_player_id"], candidate["action"]
+        ),
+        turn=turn,
+    )
+    recorder.record_decision(
+        {
+            "turn": turn,
+            "trigger": "opportunistic war gate",
+            "importance": "high",
+            "background": background_from_snapshot(snapshot),
+            "current_goal": "Use a favorable neighbor-war window only when contact, declaration action, and military gate all pass.",
+            "available_actions": [
+                (
+                    f"{candidate['action']} on {candidate['other_civ_name']} "
+                    f"(attacks={candidate['favorable_attack_count']}, border={candidate['border_pressure_count']})"
+                ),
+                "hold peace",
+                "wait for stronger force or better positioning",
+            ],
+            "selected_action": f"{candidate['action']} on {candidate['other_civ_name']}",
+            "rationale": (
+                "The target is met, a declaration action is currently available, local force is sufficient, "
+                "and the snapshot contains a favorable attack or border-pressure window."
+            ),
+            "strategy_context": strategy_context(recorder),
+            "why_not_alternatives": {
+                "hold peace": "The current golden-age plan allows opportunistic aggression when gates pass.",
+                "force city assault": "War declaration only opens tactical options; unit logic still avoids suicidal attacks.",
+            },
+            "execution": {"tool": "send_diplomatic_action", "candidate": candidate, "result": result},
+            "outcome": short_text(result),
+            "related_tool_call_ids": [call_id],
+            "related_state_snapshot_ids": [state_id],
+            "related_save_ids": [],
+        }
+    )
 
 
 async def maybe_handle_governance_blockers(
@@ -2541,14 +5573,80 @@ async def maybe_handle_governance_blockers(
                 "Repair dedication auto-selection if era blockers recur in T50 runs.",
             )
 
-    if snapshot_mentions_any(
+    if should_handle_envoy_opportunity(snapshot):
+        try:
+            call_id, status = await recorder.tool_call(
+                "get_city_states", {}, gs.get_city_states, turn=turn
+            )
+            tokens_available = int(number_from(status, "tokens_available", 0))
+            targets = ranked_envoy_targets(status)
+            if tokens_available > 0 and targets:
+                selected = targets[0]
+                player_id = int(number_from(selected, "player_id", -1))
+                send_id, result = await recorder.tool_call(
+                    "send_envoy",
+                    {
+                        "player_id": player_id,
+                        "city_state": value_from(selected, "name", ""),
+                        "city_state_type": value_from(selected, "city_state_type", ""),
+                    },
+                    lambda player_id=player_id: gs.send_envoy(player_id),
+                    turn=turn,
+                )
+                recorder.record_decision(
+                    {
+                        "turn": turn,
+                        "trigger": "envoy token blocker",
+                        "importance": "high",
+                        "background": background_from_snapshot(snapshot),
+                        "current_goal": "Convert available envoy tokens instead of leaving city-state influence idle during the first-age push.",
+                        "available_actions": [
+                            f"{value_from(target, 'name', '?')} ({value_from(target, 'city_state_type', '?')})"
+                            for target in targets
+                        ],
+                        "selected_action": f"send envoy to {value_from(selected, 'name', '')}",
+                        "rationale": "Prefer scientific/cultural city-states first, then other yield types with fewer existing envoys.",
+                        "why_not_alternatives": {
+                            "save envoy token": "The T50 plan treats idle conversion opportunities as a failure mode.",
+                            "other city-states": "Lower priority by city-state yield type or already-sent envoy count.",
+                        },
+                        "execution": {
+                            "tool": "send_envoy",
+                            "player_id": player_id,
+                            "result": result,
+                        },
+                        "outcome": short_text(result),
+                        "related_tool_call_ids": [call_id, send_id],
+                        "related_state_snapshot_ids": [state_id],
+                        "related_save_ids": [],
+                    }
+                )
+            elif tokens_available > 0:
+                recorder.add_gap(
+                    "governance.envoy",
+                    "Envoy tokens are available but get_city_states returned no sendable city-state.",
+                    "Repair city-state envoy visibility before treating envoy blockers as resolved.",
+                )
+        except Exception as exc:  # noqa: BLE001
+            recorder.add_gap(
+                "governance.envoy",
+                f"{type(exc).__name__}: {exc}",
+                "Repair envoy auto-selection if influence-token blockers recur in T50 runs.",
+            )
+
+    governor_status = snapshot.get("governors")
+    if governor_status is not None or snapshot_mentions_any(
         snapshot,
         ["governor", "总督", "GOVERNOR_APPOINTMENT", "GOVERNOR_PROMOTION"],
     ):
         try:
-            call_id, status = await recorder.tool_call(
-                "get_governors", {}, gs.get_governors, turn=turn
-            )
+            related_status_calls: list[str] = []
+            status = governor_status
+            if status is None:
+                call_id, status = await recorder.tool_call(
+                    "get_governors", {}, gs.get_governors, turn=turn
+                )
+                related_status_calls.append(call_id)
             available = list(getattr(status, "available_to_appoint", []) or [])
             selected = first_by_priority(available, "governor_type", GOVERNOR_PRIORITY)
             if getattr(status, "can_appoint", False) and selected is not None:
@@ -2581,10 +5679,36 @@ async def maybe_handle_governance_blockers(
                             "result": result,
                         },
                         "outcome": short_text(result),
-                        "related_tool_call_ids": [call_id, appoint_id],
+                        "related_tool_call_ids": [*related_status_calls, appoint_id],
                         "related_state_snapshot_ids": [state_id],
                         "related_save_ids": [],
                     }
+                )
+                if not str(result).startswith(("Error", "ERR", "FAILED")):
+                    await assign_governor_with_record(
+                        recorder,
+                        gs,
+                        turn=turn,
+                        state_id=state_id,
+                        snapshot=snapshot,
+                        governor_type=gov_type,
+                        trigger="governor assignment after appointment",
+                        existing_tool_call_ids=[*related_status_calls, appoint_id],
+                        appointment_result=result,
+                    )
+            for appointed in list(getattr(status, "appointed", []) or []):
+                gov_type = str(getattr(appointed, "governor_type", "") or "")
+                if not gov_type or governor_is_assigned(appointed):
+                    continue
+                await assign_governor_with_record(
+                    recorder,
+                    gs,
+                    turn=turn,
+                    state_id=state_id,
+                    snapshot=snapshot,
+                    governor_type=gov_type,
+                    trigger="unassigned governor placement",
+                    existing_tool_call_ids=related_status_calls,
                 )
         except Exception as exc:  # noqa: BLE001
             recorder.add_gap(
@@ -2660,10 +5784,11 @@ async def handle_units(
     turn: int,
     state_id: str,
     snapshot: dict[str, Any],
-) -> None:
+) -> bool:
     units = list(snapshot.get("units") or [])
     cities = list(snapshot.get("cities") or [])
     city_count = len(cities)
+    founded_city = False
     builder_tasks_call_ids: list[str] = []
     builder_tasks: list[Any] = []
     if any(getattr(u, "unit_type", "") == "UNIT_BUILDER" for u in units):
@@ -2700,6 +5825,145 @@ async def handle_units(
                     "execution": {"tool": "none", "result": "no tool call needed"},
                     "outcome": "No change.",
                     "related_tool_call_ids": [],
+                    "related_state_snapshot_ids": [state_id],
+                    "related_save_ids": [],
+                }
+            )
+            continue
+
+        if unit_is_great_prophet(unit):
+            actions = [
+                "activate Great Prophet on Holy Site",
+                "move toward Holy Site",
+                "skip Great Prophet",
+            ]
+            related_calls: list[str] = []
+            advisor = None
+            try:
+                advisor_id, advisor = await recorder.tool_call(
+                    "get_gp_advisor",
+                    {"unit_id": unit_id},
+                    lambda unit_index=unit_index: gs.get_gp_advisor(unit_index),
+                    turn=turn,
+                )
+                related_calls.append(advisor_id)
+            except Exception as exc:  # noqa: BLE001
+                recorder.add_gap(
+                    f"units.great_prophet_advisor.{unit_id}",
+                    f"{type(exc).__name__}: {exc}",
+                    "Repair get_gp_advisor if Great Prophet routing must be automatic.",
+                )
+            advisor_cities = list(value_from(advisor, "cities", []) or [])
+            activation_city = next(
+                (
+                    city
+                    for city in advisor_cities
+                    if value_from(city, "can_activate", False)
+                    and int(number_from(city, "distance", 999)) == 0
+                ),
+                None,
+            )
+            if activation_city is not None or not advisor_cities:
+                call_id, result = await recorder.tool_call(
+                    "unit_action",
+                    {"unit_id": unit_id, "action": "activate"},
+                    lambda unit_index=unit_index: gs.activate_great_person(unit_index),
+                    turn=turn,
+                )
+                related_calls.append(call_id)
+                selected = "activate Great Prophet"
+                execution = {"tool": "unit_action", "action": "activate", "result": result}
+                rationale = (
+                    "The Great Prophet is on an activation tile, so the runner starts the religion founding operation."
+                    if activation_city is not None
+                    else "No activation advisor data was available, so the runner tries direct activation and records the result."
+                )
+                outcome = short_text(result)
+                recorder.record_decision(
+                    {
+                        "turn": turn,
+                        "trigger": f"great prophet action {unit_id}",
+                        "importance": "critical",
+                        "background": f"{unit_type} at ({getattr(unit, 'x', '?')},{getattr(unit, 'y', '?')}).",
+                        "current_goal": "Use the Great Prophet to found a religion with Choral Music.",
+                        "available_actions": actions,
+                        "selected_action": selected,
+                        "rationale": rationale,
+                        "strategy_context": strategy_context(recorder),
+                        "why_not_alternatives": {
+                            "move": "Activation is available or advisor data was unavailable.",
+                            "skip": "Would risk losing the Choral Music branch after earning a prophet.",
+                        },
+                        "execution": execution,
+                        "outcome": outcome,
+                        "related_tool_call_ids": related_calls,
+                        "related_state_snapshot_ids": [state_id],
+                        "related_save_ids": [],
+                    }
+                )
+                if str(result).startswith("OK:"):
+                    await maybe_found_religion_with_choral(
+                        recorder,
+                        gs,
+                        turn,
+                        state_id,
+                        snapshot,
+                        trigger=f"religion founding after Great Prophet activation {unit_id}",
+                    )
+                continue
+            target_city = sorted(
+                advisor_cities,
+                key=lambda city: (
+                    0 if value_from(city, "can_activate", False) else 1,
+                    int(number_from(city, "distance", 999)),
+                    str(value_from(city, "city_name", "")),
+                ),
+            )[0]
+            target_x = int(number_from(target_city, "district_x", value_from(unit, "x", 0)))
+            target_y = int(number_from(target_city, "district_y", value_from(unit, "y", 0)))
+            call_id, result = await recorder.tool_call(
+                "unit_action",
+                {
+                    "unit_id": unit_id,
+                    "action": "move",
+                    "target_x": target_x,
+                    "target_y": target_y,
+                    "target_district": value_from(advisor, "target_district", ""),
+                },
+                lambda unit_index=unit_index, target_x=target_x, target_y=target_y: gs.move_unit(
+                    unit_index, target_x, target_y
+                ),
+                turn=turn,
+            )
+            related_calls.append(call_id)
+            recorder.record_decision(
+                {
+                    "turn": turn,
+                    "trigger": f"great prophet action {unit_id}",
+                    "importance": "critical",
+                    "background": f"{unit_type} at ({getattr(unit, 'x', '?')},{getattr(unit, 'y', '?')}).",
+                    "current_goal": "Move the Great Prophet to a Holy Site so it can found the requested Choral Music religion.",
+                    "available_actions": actions,
+                    "selected_action": "move toward Holy Site",
+                    "rationale": "The prophet is not on an activation tile yet, so it routes to the best Holy Site advisor target.",
+                    "strategy_context": strategy_context(recorder),
+                    "why_not_alternatives": {
+                        "activate": "The advisor did not report activation available on the current tile.",
+                        "skip": "Would leave the earned prophet idle.",
+                    },
+                    "execution": {
+                        "tool": "unit_action",
+                        "action": "move",
+                        "target": {
+                            "x": target_x,
+                            "y": target_y,
+                            "city_name": value_from(target_city, "city_name", ""),
+                            "target_district": value_from(advisor, "target_district", ""),
+                        },
+                        "result": result,
+                    },
+                    "outcome": short_text(result),
+                    "related_tool_call_ids": related_calls,
                     "related_state_snapshot_ids": [state_id],
                     "related_save_ids": [],
                 }
@@ -2828,6 +6092,7 @@ async def handle_units(
             )
             if str(result).startswith("FOUNDED|"):
                 city_count += 1
+                founded_city = True
             continue
 
         if unit_type == "UNIT_SETTLER":
@@ -2837,6 +6102,121 @@ async def handle_units(
                 "skip settler",
             ]
             related_calls: list[str] = []
+            if uses_golden_age_push_runtime(recorder) and golden_age_strategic_settle_active(
+                snapshot
+            ):
+                try:
+                    scan_id, candidates = await recorder.tool_call(
+                        "get_global_settle_scan", {}, gs.get_global_settle_scan, turn=turn
+                    )
+                    related_calls.append(scan_id)
+                    candidate_list = ranked_settle_candidates_for_strategy(
+                        recorder,
+                        snapshot,
+                        list(candidates or []),
+                        prefer_fresh=uses_river_settlement_runtime(recorder),
+                    )
+                    best_candidate = candidate_list[0] if candidate_list else None
+                    current_resource_distance = strategic_resource_distance_for_xy(
+                        value_from(unit, "x", None),
+                        value_from(unit, "y", None),
+                        snapshot,
+                    )
+                    if (
+                        best_candidate is not None
+                        and not candidate_matches_unit_tile(best_candidate, unit)
+                        and strategic_resource_distance_for_candidate(best_candidate, snapshot)
+                        < current_resource_distance
+                    ):
+                        move_attempts: list[dict[str, Any]] = []
+                        move_result = ""
+                        moved = False
+                        target_x = int(value_from(best_candidate, "x"))
+                        target_y = int(value_from(best_candidate, "y"))
+                        for candidate in candidate_list[:3]:
+                            target_x = int(value_from(candidate, "x"))
+                            target_y = int(value_from(candidate, "y"))
+                            move_id, move_result = await recorder.tool_call(
+                                "unit_action",
+                                {
+                                    "unit_id": unit_id,
+                                    "action": "move",
+                                    "target_x": target_x,
+                                    "target_y": target_y,
+                                    "reason": "strategic_resource_settle",
+                                },
+                                lambda unit_index=unit_index, target_x=target_x, target_y=target_y: gs.move_unit(
+                                    unit_index, target_x, target_y
+                                ),
+                                turn=turn,
+                            )
+                            related_calls.append(move_id)
+                            move_attempts.append(
+                                {
+                                    "target": {
+                                        "x": target_x,
+                                        "y": target_y,
+                                        "score": value_from(candidate, "score", None),
+                                        "water_type": value_from(candidate, "water_type", None),
+                                        "resource_distance": strategic_resource_distance_for_candidate(
+                                            candidate, snapshot
+                                        ),
+                                        "distance": candidate_distance_from_unit(candidate, unit),
+                                    },
+                                    "result": move_result,
+                                    "tool_call_id": move_id,
+                                }
+                            )
+                            if "BLOCKED" not in str(move_result):
+                                moved = True
+                                break
+                        if moved:
+                            recorder.record_decision(
+                                {
+                                    "turn": turn,
+                                    "trigger": f"expansion settler action {unit_id}",
+                                    "importance": "critical",
+                                    "background": (
+                                        f"UNIT_SETTLER at ({value_from(unit, 'x', '?')},{value_from(unit, 'y', '?')}); "
+                                        f"nearest strategic resource distance={current_resource_distance}."
+                                    ),
+                                    "current_goal": "Place the next city close enough to Horses or Iron to unlock the first strategic-resource unit before the ancient-era golden gate closes.",
+                                    "available_actions": actions,
+                                    "selected_action": "move toward strategic resource settle candidate",
+                                    "rationale": (
+                                        "The current tile is farther from the revealed strategic resource cluster, so the golden_age_push layer routes before founding."
+                                    ),
+                                    "strategy_context": strategy_context(recorder),
+                                    "why_not_alternatives": {
+                                        "found_city on current tile": "Would repeat the observed run12 failure where Horses stayed nearby but outside owned/improvable tiles.",
+                                        "ordinary settle score": "Raw settle score is secondary while the first-age golden gate depends on strategic-resource conversion.",
+                                    },
+                                    "execution": {
+                                        "tool": "unit_action",
+                                        "action": "move",
+                                        "target": {
+                                            "x": target_x,
+                                            "y": target_y,
+                                            "resource_distance": strategic_resource_distance_for_xy(
+                                                target_x, target_y, snapshot
+                                            ),
+                                        },
+                                        "move_result": move_result,
+                                        "move_attempts": move_attempts,
+                                    },
+                                    "outcome": short_text(move_result),
+                                    "related_tool_call_ids": related_calls,
+                                    "related_state_snapshot_ids": [state_id],
+                                    "related_save_ids": [],
+                                }
+                            )
+                            continue
+                except Exception as exc:  # noqa: BLE001
+                    recorder.add_gap(
+                        "units.strategic_settle_scan",
+                        f"{type(exc).__name__}: {exc}",
+                        "Repair strategic-resource settlement routing if nearby Horses/Iron remain outside owned tiles.",
+                    )
             found_id, found_result = await recorder.tool_call(
                 "unit_action",
                 {"unit_id": unit_id, "action": "found_city"},
@@ -2859,7 +6239,9 @@ async def handle_units(
                     "get_global_settle_scan", {}, gs.get_global_settle_scan, turn=turn
                 )
                 related_calls.append(scan_id)
-                candidate_list = ranked_settle_candidates(
+                candidate_list = ranked_settle_candidates_for_strategy(
+                    recorder,
+                    snapshot,
                     list(candidates or []),
                     prefer_fresh=uses_river_settlement_runtime(recorder),
                 )
@@ -2875,32 +6257,61 @@ async def handle_units(
                         and target_distance
                         > SETTLER_MAX_UNESCORTED_DISTANCE_WITH_BARBARIANS
                     ):
-                        skip_id, skip_result = await recorder.tool_call(
-                            "unit_action",
-                            {"unit_id": unit_id, "action": "skip"},
-                            lambda unit_index=unit_index: gs.skip_unit(unit_index),
-                            turn=turn,
+                        nearby_candidates = ranked_near_settle_candidates_for_strategy(
+                            recorder,
+                            snapshot,
+                            list(candidates or []),
+                            unit,
+                            max_distance=SETTLER_MAX_UNESCORTED_DISTANCE_WITH_BARBARIANS,
+                            prefer_fresh=uses_river_settlement_runtime(recorder),
                         )
-                        related_calls.append(skip_id)
-                        selected = "hold settler for barbarian safety"
-                        execution = {
-                            "tool": "unit_action",
-                            "action": "skip",
-                            "found_result": found_result,
-                            "target": {
-                                "x": target_x,
-                                "y": target_y,
-                                "score": getattr(candidate, "score", None),
-                                "water_type": getattr(candidate, "water_type", None),
-                                "distance": target_distance,
-                            },
-                            "skip_result": skip_result,
-                        }
-                        outcome = short_text(skip_result)
-                        rationale = (
-                            "A visible barbarian threat and a long settle path make this unescorted settler vulnerable, so it waits instead of walking into capture risk."
-                        )
+                        if nearby_candidates:
+                            candidate_list = nearby_candidates
+                            candidate = candidate_list[0]
+                            target_x = int(getattr(candidate, "x"))
+                            target_y = int(getattr(candidate, "y"))
+                            target_distance = candidate_distance_from_unit(candidate, unit)
+                            selected = "move toward nearby safe settle candidate"
+                            rationale = (
+                                "Visible barbarian pressure made the top long-path settle target unsafe, so the runner chose the best revealed candidate inside the safety radius."
+                            )
+                        elif should_risk_golden_age_settler_move(recorder, snapshot, unit, turn):
+                            selected = "move toward best settle candidate despite barbarian pressure"
+                            rationale = (
+                                "The first-age golden gate is still open and the settler has no adjacent barbarian, so the runner accepts path risk instead of holding expansion indefinitely."
+                            )
+                        else:
+                            skip_id, skip_result = await recorder.tool_call(
+                                "unit_action",
+                                {"unit_id": unit_id, "action": "skip"},
+                                lambda unit_index=unit_index: gs.skip_unit(unit_index),
+                                turn=turn,
+                            )
+                            related_calls.append(skip_id)
+                            selected = "hold settler for barbarian safety"
+                            execution = {
+                                "tool": "unit_action",
+                                "action": "skip",
+                                "found_result": found_result,
+                                "target": {
+                                    "x": target_x,
+                                    "y": target_y,
+                                    "score": getattr(candidate, "score", None),
+                                    "water_type": getattr(candidate, "water_type", None),
+                                    "distance": target_distance,
+                                },
+                                "skip_result": skip_result,
+                            }
+                            outcome = short_text(skip_result)
+                            rationale = (
+                                "A visible barbarian threat and a long settle path make this unescorted settler vulnerable, so it waits instead of walking into capture risk."
+                            )
                     else:
+                        selected = "move toward best settle candidate"
+                        rationale = (
+                            "The settler could not found on its current tile, so the runner moved it toward the highest-scored revealed settle candidate."
+                        )
+                    if selected.startswith("move toward"):
                         for candidate in candidate_list[:3]:
                             target_x = int(getattr(candidate, "x"))
                             target_y = int(getattr(candidate, "y"))
@@ -2925,6 +6336,7 @@ async def handle_units(
                                         "y": target_y,
                                         "score": getattr(candidate, "score", None),
                                         "water_type": getattr(candidate, "water_type", None),
+                                        "distance": candidate_distance_from_unit(candidate, unit),
                                     },
                                     "result": move_result,
                                     "tool_call_id": move_id,
@@ -2932,7 +6344,6 @@ async def handle_units(
                             )
                             if "BLOCKED" not in str(move_result):
                                 break
-                        selected = "move toward best settle candidate"
                         execution = {
                             "tool": "unit_action",
                             "action": "move",
@@ -2941,15 +6352,13 @@ async def handle_units(
                                 "y": target_y,
                                 "score": getattr(candidate, "score", None),
                                 "water_type": getattr(candidate, "water_type", None),
+                                "distance": candidate_distance_from_unit(candidate, unit),
                             },
                             "found_result": found_result,
                             "move_result": move_result,
                             "move_attempts": move_attempts,
                         }
                         outcome = short_text(move_result)
-                        rationale = (
-                            "The settler could not found on its current tile, so the runner moved it toward the highest-scored revealed settle candidate."
-                        )
                 else:
                     skip_id, skip_result = await recorder.tool_call(
                         "unit_action",
@@ -2972,6 +6381,7 @@ async def handle_units(
                     )
             else:
                 city_count += 1
+                founded_city = True
             recorder.record_decision(
                 {
                     "turn": turn,
@@ -2997,13 +6407,37 @@ async def handle_units(
             continue
 
         if unit_type == "UNIT_BUILDER":
-            same_tile_tasks = [
-                t
-                for t in builder_tasks
-                if getattr(t, "x", None) == getattr(unit, "x", None)
-                and getattr(t, "y", None) == getattr(unit, "y", None)
-                and unit_can_build_improvement(unit, str(getattr(t, "improvement", "") or ""))
-            ]
+            prefer_strategic_builder = uses_golden_age_push_runtime(
+                recorder
+            ) and ancient_strategic_resource_push_active(snapshot)
+            same_tile_tasks = ranked_builder_tasks_for_unit(
+                [
+                    t
+                    for t in builder_tasks
+                    if getattr(t, "x", None) == getattr(unit, "x", None)
+                    and getattr(t, "y", None) == getattr(unit, "y", None)
+                    and builder_task_is_usable_now(t, unit)
+                ],
+                unit,
+                prefer_strategic=uses_golden_age_push_runtime(recorder),
+            )
+            if (
+                prefer_strategic_builder
+                and same_tile_tasks
+                and not builder_task_is_strategic_resource(same_tile_tasks[0])
+            ):
+                strategic_off_tile_tasks = [
+                    t
+                    for t in builder_tasks
+                    if (
+                        getattr(t, "x", None) != getattr(unit, "x", None)
+                        or getattr(t, "y", None) != getattr(unit, "y", None)
+                    )
+                    and builder_task_is_usable_now(t, unit)
+                    and builder_task_is_strategic_resource(t)
+                ]
+                if strategic_off_tile_tasks:
+                    same_tile_tasks = []
             if same_tile_tasks:
                 task = same_tile_tasks[0]
                 improvement = getattr(task, "improvement", "")
@@ -3043,14 +6477,16 @@ async def handle_units(
                 continue
             target_tasks = [
                 task
-                for task in ranked_builder_tasks_for_unit(builder_tasks, unit)
+                for task in ranked_builder_tasks_for_unit(
+                    builder_tasks,
+                    unit,
+                    prefer_strategic=uses_golden_age_push_runtime(recorder),
+                )
                 if (
                     getattr(task, "x", None) != getattr(unit, "x", None)
                     or getattr(task, "y", None) != getattr(unit, "y", None)
-                    or unit_can_build_improvement(
-                        unit, str(getattr(task, "improvement", "") or "")
-                    )
                 )
+                and builder_task_is_usable_now(task, unit)
             ]
             if target_tasks:
                 task = target_tasks[0]
@@ -3252,6 +6688,7 @@ async def handle_units(
             unit,
             list(snapshot.get("threats") or []),
             turn,
+            list(snapshot.get("diplomacy") or []),
         )
         barbarian_move_target = (
             nearest_barbarian_threat_for_unit(unit, list(snapshot.get("threats") or []))
@@ -3259,7 +6696,55 @@ async def handle_units(
             and uses_barbarian_clearance_runtime(recorder)
             else None
         )
-        if getattr(unit, "health", 100) < max(1, getattr(unit, "max_health", 100)) * 0.6:
+        war_move_target = nearest_war_threat_for_unit(
+            recorder,
+            unit,
+            list(snapshot.get("threats") or []),
+            list(snapshot.get("diplomacy") or []),
+        )
+        unit_health = float(value_from(unit, "health", 100) or 100)
+        unit_max_health = max(1.0, float(value_from(unit, "max_health", 100) or 100))
+        golden_age_map_call_id: str | None = None
+        golden_age_map_target: dict[str, Any] | None = None
+        if unit_health >= unit_max_health * 0.6 or (
+            uses_golden_age_push_runtime(recorder)
+            and unit_type == "UNIT_SCOUT"
+            and snapshot_is_ancient_era(snapshot)
+            and not golden_age_achieved(snapshot)
+        ):
+            golden_age_map_call_id, golden_age_map_target = await golden_age_map_target_for_unit(
+                recorder,
+                gs,
+                turn,
+                unit,
+                snapshot,
+            )
+        if attack_targets:
+            attack_targets = prioritize_golden_age_attack_targets(
+                attack_targets, golden_age_map_target
+            )
+        wounded_critical_attack = bool(
+            attack_targets
+            and unit_health < unit_max_health * 0.6
+            and should_attack_critical_target_while_wounded(
+                recorder,
+                attack_targets[0],
+                golden_age_map_target,
+            )
+        )
+        wounded_critical_map_move = bool(
+            unit_health < unit_max_health * 0.6
+            and should_move_to_critical_map_target_while_wounded(
+                recorder,
+                unit,
+                golden_age_map_target,
+            )
+        )
+        if (
+            unit_health < unit_max_health * 0.6
+            and not wounded_critical_attack
+            and not wounded_critical_map_move
+        ):
             call_id, result = await recorder.tool_call(
                 "unit_action",
                 {"unit_id": unit_id, "action": "heal"},
@@ -3272,7 +6757,9 @@ async def handle_units(
             target = attack_targets[0]
             target_x = int(target["x"])
             target_y = int(target["y"])
-            if target.get("adjacent_to_ranged_unit"):
+            if target.get("adjacent_to_ranged_unit") and not should_attack_adjacent_ranged_target(
+                recorder, target, golden_age_map_target
+            ):
                 move_x, move_y = ranged_reposition_target(unit, target)
                 call_id, result = await recorder.tool_call(
                     "unit_action",
@@ -3313,8 +6800,36 @@ async def handle_units(
                 rationale = (
                     "The active T50 strategy gives clearable barbarian threats priority over fortifying."
                     if target.get("is_barbarian")
-                    else "The active T50 strategy allows horsemen to pressure attackable neighboring units after the opening phase."
+                    else "The active T50 strategy only attacks declared-war targets when the snapshot shows a high-confidence combat window."
                 )
+        elif golden_age_map_target:
+            move_x = int(golden_age_map_target["x"])
+            move_y = int(golden_age_map_target["y"])
+            call_id, result = await recorder.tool_call(
+                "unit_action",
+                {
+                    "unit_id": unit_id,
+                    "action": "move",
+                    "target_x": move_x,
+                    "target_y": move_y,
+                    "target": golden_age_map_target,
+                },
+                lambda unit_index=unit_index, move_x=move_x, move_y=move_y: gs.move_unit(
+                    unit_index, move_x, move_y
+                ),
+                turn=turn,
+            )
+            if movement_result_is_blocked(result):
+                remember_blocked_golden_age_map_target(
+                    recorder,
+                    unit,
+                    golden_age_map_target,
+                    turn,
+                )
+            selected = "move toward era-score map target"
+            rationale = (
+                "The ancient golden-age gap is still open and the map scan found a revealed camp, village, or natural-wonder target, so the unit routes to that era-score objective before chasing generic threats."
+            )
         elif barbarian_move_target:
             if unit_is_ranged_clearer(unit) and target_is_adjacent_to_unit(
                 unit, barbarian_move_target
@@ -3342,6 +6857,32 @@ async def handle_units(
                         "x": barbarian_move_target["x"],
                         "y": barbarian_move_target["y"],
                         "distance": barbarian_move_target["distance"],
+                    },
+                },
+                lambda unit_index=unit_index, move_x=move_x, move_y=move_y: gs.move_unit(
+                    unit_index, move_x, move_y
+                ),
+                turn=turn,
+            )
+        elif war_move_target:
+            move_x = int(war_move_target["x"])
+            move_y = int(war_move_target["y"])
+            selected = "move toward war target"
+            rationale = (
+                "The active T50 strategy is already at war and has a nearby visible target, so this combat unit moves tactically instead of fortifying."
+            )
+            call_id, result = await recorder.tool_call(
+                "unit_action",
+                {
+                    "unit_id": unit_id,
+                    "action": "move",
+                    "target_x": move_x,
+                    "target_y": move_y,
+                    "target": {
+                        "x": war_move_target["x"],
+                        "y": war_move_target["y"],
+                        "distance": war_move_target["distance"],
+                        "owner_id": value_from(war_move_target.get("threat"), "owner_id"),
                     },
                 },
                 lambda unit_index=unit_index, move_x=move_x, move_y=move_y: gs.move_unit(
@@ -3425,16 +6966,31 @@ async def handle_units(
                         else barbarian_move_target
                         if selected
                         in {"move toward barbarian threat", "reposition ranged unit"}
+                        else war_move_target
+                        if selected == "move toward war target"
+                        else golden_age_map_target
+                        if selected == "move toward era-score map target"
                         else None
                     ),
                     "result": result,
                 },
                 "outcome": short_text(result),
-                "related_tool_call_ids": [call_id],
+                "related_tool_call_ids": [
+                    item
+                    for item in [
+                        golden_age_map_call_id
+                        if selected == "move toward era-score map target"
+                        else None,
+                        call_id,
+                    ]
+                    if item
+                ],
                 "related_state_snapshot_ids": [state_id],
                 "related_save_ids": [],
             }
         )
+
+    return founded_city
 
 
 async def end_turn_with_record(
@@ -6094,10 +9650,45 @@ async def run_short(args: argparse.Namespace) -> int:
             )
             await maybe_choose_research(recorder, gs, turn, state_id, snapshot)
             await maybe_choose_civic(recorder, gs, turn, state_id, snapshot)
+            await maybe_choose_pantheon(recorder, gs, turn, state_id, snapshot)
             await maybe_set_city_production(recorder, gs, turn, state_id, snapshot)
             await maybe_handle_governance_blockers(recorder, gs, turn, state_id, snapshot)
-            await handle_units(recorder, gs, turn, state_id, snapshot)
-            end_result = await end_turn_with_record(recorder, gs, turn, state_id, snapshot)
+            await maybe_trade_surplus_strategic_resources(recorder, gs, turn, state_id, snapshot)
+            await maybe_spend_gold_for_t50(recorder, gs, turn, state_id, snapshot)
+            await maybe_recruit_great_prophet(recorder, gs, turn, state_id, snapshot)
+            await maybe_declare_opportunistic_war(recorder, gs, turn, state_id, snapshot)
+            founded_city = await handle_units(recorder, gs, turn, state_id, snapshot)
+            end_state_id = state_id
+            end_snapshot = snapshot
+            end_turn = turn
+            if founded_city:
+                end_turn, end_state_id, end_snapshot = await capture_state(
+                    recorder, gs, f"post_found_city_{i + 1}"
+                )
+                recorder.codex_output(
+                    "post_found_city",
+                    end_turn,
+                    {
+                        "state_snapshot_id": end_state_id,
+                        "summary": background_from_snapshot(end_snapshot),
+                        "reason": "A settler founded a city after the normal production pass; resolve new-city production before end_turn.",
+                    },
+                )
+                await maybe_set_city_production(
+                    recorder, gs, end_turn, end_state_id, end_snapshot
+                )
+            if snapshot_has_great_prophet_unit(snapshot):
+                await maybe_found_religion_with_choral(
+                    recorder,
+                    gs,
+                    turn,
+                    state_id,
+                    snapshot,
+                    trigger="religion founding after unit handling",
+                )
+            end_result = await end_turn_with_record(
+                recorder, gs, end_turn, end_state_id, end_snapshot
+            )
             recorder.turn_summaries.append(
                 {
                     "turn": turn,

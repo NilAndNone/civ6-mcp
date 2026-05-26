@@ -555,6 +555,12 @@ def build_purchase_item(
         return _bail(
             f"ERR:INVALID_TYPE|Can only purchase UNIT or BUILDING, got {item_type}"
         )
+    stacking_conflict_bail = _bail_lua(
+        f'"ERR:STACKING_CONFLICT|Cannot purchase {item_name} - " .. uDef.UnitType .. '
+        '" (unit_id=" .. uid .. ") is on the city tile. Move it with '
+        'unit_action(unit_id=" .. uid .. ", action=\'move\', target_x, target_y) '
+        'first, then retry the purchase."'
+    )
     return f"""
 {_lua_get_city(city_id)}
 local item = GameInfo.{table_name}["{item_name}"]
@@ -575,7 +581,7 @@ if "{itype}" == "UNIT" then
                 local uDef = GameInfo.Units[u:GetType()]
                 if uDef and uDef.FormationClass == targetClass then
                     local uid = u:GetID() + u:GetOwner() * 65536
-                    {_bail_lua(f'"ERR:STACKING_CONFLICT|Cannot purchase {item_name} — " .. uDef.UnitType .. " (unit_id=" .. uid .. ") is on the city tile. Move it with unit_action(unit_id=" .. uid .. ", action=\'move\', target_x, target_y) first, then retry the purchase."')}
+                    {stacking_conflict_bail}
                 end
             end
         end
