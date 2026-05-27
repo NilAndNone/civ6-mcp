@@ -2044,6 +2044,22 @@ def narrate_notifications(notifs: list[lq.GameNotification]) -> str:
     return "\n".join(lines)
 
 
+def narrate_historic_moments(moments: list[lq.HistoricMoment]) -> str:
+    if not moments:
+        return "No historic moments recorded."
+
+    lines = [f"== Historic Moments ({len(moments)}) =="]
+    for moment in moments:
+        score = f"+{moment.era_score}" if moment.era_score else "+0"
+        era = f" {moment.game_era_type}" if moment.game_era_type else ""
+        lines.append(
+            f"  - T{moment.turn}{era} {score}: {moment.instance_description}"
+        )
+        if moment.moment_type:
+            lines.append(f"    type: {moment.moment_type}")
+    return "\n".join(lines)
+
+
 def narrate_move_discoveries(
     newly_revealed: list[tuple[int, int, dict]],
     total_new: int,

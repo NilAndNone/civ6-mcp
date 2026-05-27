@@ -521,6 +521,26 @@ class GameNotification:
 
 
 @dataclass
+class HistoricMoment:
+    """A recorded historic moment from the in-game timeline."""
+
+    moment_id: int
+    turn: int
+    game_era: int
+    game_era_type: str
+    acting_player: int
+    moment_type_id: int
+    moment_type: str
+    name: str
+    description: str
+    instance_description: str
+    era_score: int
+    interest_level: int
+    has_ever_been_commemorated: bool = False
+    extra_data: list[dict[str, object]] = field(default_factory=list)
+
+
+@dataclass
 class CombatEstimate:
     """Predicted combat outcome."""
 

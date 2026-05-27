@@ -1417,6 +1417,13 @@ class GameState:
         lines = await self.conn.execute_write(lua)
         return lq.parse_notifications_response(lines)
 
+    async def get_historic_moments(
+        self, min_interest_level: int = 1
+    ) -> list[lq.HistoricMoment]:
+        lua = lq.build_historic_moments_query(min_interest_level)
+        lines = await self.conn.execute_write(lua)
+        return lq.parse_historic_moments_response(lines)
+
     # ------------------------------------------------------------------
     # Snapshot-diff for turn event detection
     # ------------------------------------------------------------------

@@ -20,6 +20,32 @@ from civ6_connector.lua.units import (
 from civ6_connector.lua.cities import parse_cities_response
 from civ6_connector.lua.map import parse_map_response
 from civ6_connector.lua.notifications import parse_end_turn_blocking
+from civ6_connector.lua.history import parse_historic_moments_response
+
+
+# ---------------------------------------------------------------------------
+# parse_historic_moments_response
+# ---------------------------------------------------------------------------
+
+
+def test_parse_historic_moments_response():
+    lines = [
+        "COUNT|2",
+        "HMOMENT|20|10|0|ERA_ANCIENT|0|815813506|MOMENT_PLAYER_MET_MAJOR|"
+        "新文明|遇见新文明|在好奇与警惕中，我们遇见了白板文明 (12)的人民。|1|1|0",
+        "HMDATA|20|45|MOMENT_DATA_TARGET_PLAYER|12|白板文明 (12)",
+        "HMOMENT|22|10|0|ERA_ANCIENT|0|-509016565|MOMENT_BARBARIAN_CAMP_DESTROYED|"
+        "蛮族营地已摧毁|摧毁蛮族营地|我方军队摧毁了一个蛮族营地，阻碍文明发展的威胁已清除。|2|2|0",
+    ]
+
+    moments = parse_historic_moments_response(lines)
+
+    assert [moment.moment_id for moment in moments] == [20, 22]
+    assert moments[0].turn == 10
+    assert moments[0].era_score == 1
+    assert moments[0].moment_type == "MOMENT_PLAYER_MET_MAJOR"
+    assert moments[0].extra_data[0]["resolved"] == "白板文明 (12)"
+    assert moments[1].era_score == 2
 
 
 # ---------------------------------------------------------------------------

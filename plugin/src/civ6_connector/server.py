@@ -558,6 +558,9 @@ async def get_human_demo_snapshot(ctx: Context) -> str:
         cities_value = await _human_demo_safe("cities", gs.get_cities, gaps)
         units = await _human_demo_safe("units", gs.get_units, gaps)
         notifications = await _human_demo_safe("notifications", gs.get_notifications, gaps)
+        historic_moments = await _human_demo_safe(
+            "historic_moments", gs.get_historic_moments, gaps
+        )
         threats = await _human_demo_safe("threats", gs.get_threat_scan, gaps)
         research_civic = await _human_demo_safe("research_civic", gs.get_tech_civics, gaps)
         policies = await _human_demo_safe("policies", gs.get_policies, gaps)
@@ -603,6 +606,7 @@ async def get_human_demo_snapshot(ctx: Context) -> str:
             "city_distances": city_distances,
             "units": units,
             "notifications": notifications,
+            "historic_moments": historic_moments,
             "threats": threats,
             "research_civic": research_civic,
             "policies": policies,
@@ -1055,6 +1059,23 @@ async def get_notifications(ctx: Context) -> str:
         "get_notifications",
         {},
         lambda: _narrate(gs.get_notifications, nr.narrate_notifications),
+    )
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+async def get_historic_moments(ctx: Context) -> str:
+    """Get the real in-game Historic Moments timeline.
+
+    Uses Civ6's HistoryManager timeline, including the actual era-score value
+    and localized instance text for each recorded moment. Prefer this over
+    inferring era-score causes from notifications.
+    """
+    gs = _get_game(ctx)
+    return await _logged(
+        ctx,
+        "get_historic_moments",
+        {},
+        lambda: _narrate(gs.get_historic_moments, nr.narrate_historic_moments),
     )
 
 

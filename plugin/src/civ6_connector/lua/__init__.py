@@ -87,6 +87,10 @@ from civ6_connector.lua.great_people import (  # noqa: F401
     parse_gp_advisor_response,
     parse_great_people_response,
 )
+from civ6_connector.lua.history import (  # noqa: F401
+    build_historic_moments_query,
+    parse_historic_moments_response,
+)
 from civ6_connector.lua.governance import (  # noqa: F401
     build_appoint_governor,
     build_assign_governor,
@@ -180,6 +184,7 @@ from civ6_connector.lua.models import (  # noqa: F401
     GPAdvisorCity,
     GPAdvisorResult,
     GreatPersonInfo,
+    HistoricMoment,
     LockedCivic,
     LockedTech,
     NearbyResource,
