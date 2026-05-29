@@ -2,7 +2,11 @@
 
 ## 用途
 
-运行 Observation 真实 Civ6 观测，生成 episode、证据和报告。
+运行 legacy-baseline Observation 真实 Civ6 观测，生成 episode、证据和报告。
+
+Phase 3 后这个入口是 deprecated baseline / compatibility path：用于旧报告
+重建、baseline 对照和旧 episode 读取。新的真实主线入口是
+`/civ6-observe-live`。
 
 ## 输入
 
@@ -42,6 +46,8 @@ episodes/<episode_id>/
 ## 边界
 
 - Observation 只记录事实，不判断策略好坏。
+- legacy-baseline 不是默认真实执行主线。
+- 新 live strict 验收请使用 `/civ6-observe-live`。
 - 短跑结束后停止，不自动进入 T50。
 - T50 结束后停止，不自动进入 Review。
 - 不提交 `episodes/`，除非用户明确要求。

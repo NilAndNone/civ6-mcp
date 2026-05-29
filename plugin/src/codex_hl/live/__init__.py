@@ -4,13 +4,44 @@ Phase 0 only defines metadata. Importing this package must not change the
 legacy connector or observation runner behavior.
 """
 
-from codex_hl.live.actions import ACTION_REGISTRY, ActionSpec, classify_action
+from codex_hl.live.actions import (
+    ACTION_ALIASES,
+    ACTION_REGISTRY,
+    ActionSpec,
+    canonical_action_name,
+    classify_action,
+    is_registered_action_tool,
+)
+from codex_hl.live.gateway import ActionGateway, ActionRequest, ActionResult, GatewayMode
 from codex_hl.live.mutation_levels import ActionKind, MutationLevel
+from codex_hl.live.plan_store import LivePlanStore
+from codex_hl.live.schemas import (
+    EpisodeStatus,
+    LivePlanStep,
+    LivePlanValidationError,
+    LiveTurnPlan,
+    StepStatus,
+    normalize_turn_plan,
+)
 
 __all__ = [
     "ACTION_REGISTRY",
+    "ACTION_ALIASES",
+    "ActionGateway",
     "ActionKind",
+    "ActionRequest",
+    "ActionResult",
     "ActionSpec",
+    "GatewayMode",
+    "LivePlanStep",
+    "LivePlanStore",
+    "LivePlanValidationError",
+    "LiveTurnPlan",
     "MutationLevel",
+    "EpisodeStatus",
+    "StepStatus",
+    "canonical_action_name",
     "classify_action",
+    "is_registered_action_tool",
+    "normalize_turn_plan",
 ]

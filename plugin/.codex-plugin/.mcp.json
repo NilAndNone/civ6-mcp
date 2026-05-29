@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "civ6_connector": {
+      "command": "uv",
+      "args": [
+        "run",
+        "civ6-connector"
+      ],
+      "env": {
+        "CODEX_HL_CIV6_LIVE_GATEWAY_MODE": "legacy_compat"
+      }
+    }
+  }
+}

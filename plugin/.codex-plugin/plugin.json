@@ -6,6 +6,7 @@
     "name": "Xiaohan Lu"
   },
   "license": "MIT",
+  "mcpServers": "./.mcp.json",
   "keywords": [
     "codex",
     "civ6",

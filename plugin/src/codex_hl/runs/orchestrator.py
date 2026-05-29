@@ -32,6 +32,9 @@ T20_TURNS = 20
 T50_TURNS = 50
 DEFAULT_OBSERVATION_TURNS = T50_TURNS
 SUPPORTED_OBSERVATION_TURNS = {T20_TURNS, T50_TURNS}
+RUNNER_LIVE = "live"
+RUNNER_LEGACY_BASELINE = "legacy-baseline"
+SUPPORTED_RUNNERS = {RUNNER_LIVE, RUNNER_LEGACY_BASELINE}
 DEFAULT_STRATEGY_PROFILE = "baseline_static"
 EXPLORE_SCOUT_FIRST_STRATEGY_PROFILE = "explore_scout_first"
 SCIENCE_CULTURE_T50_STRATEGY_PROFILE = "science_culture_t50"
@@ -380,10 +383,60 @@ def run_observation(
     )
     if candidate_package is not None:
         command.extend(["--candidate-package", str(candidate_package.resolve())])
+    env["CODEX_HL_CIV6_RUNNER_KIND"] = RUNNER_LEGACY_BASELINE
     result = runner(command, workspace, env)
-    require_success(result, step=f"observation_t{turns}:{episode_id}", command_log=command_log)
+    require_success(
+        result,
+        step=f"legacy_baseline_observation_t{turns}:{episode_id}",
+        command_log=command_log,
+    )
     payload = parse_stdout_json(result.stdout, step=f"observation_t{turns}")
     payload.setdefault("episode_id", episode_id)
+    payload["runner_kind"] = RUNNER_LEGACY_BASELINE
+    payload["runner_deprecation"] = {
+        "deprecated": True,
+        "message": "legacy-baseline is retained only for baseline comparison and report rebuild compatibility.",
+    }
+    return payload
+
+
+def run_live_observation(
+    *,
+    runner: CommandRunner,
+    workspace: Path,
+    command_log: Path,
+    save_name: str,
+    episode_id: str,
+    turns: int,
+    strategy_profile: str,
+    asset_root: Path | None,
+    candidate_package: Path | None = None,
+) -> dict[str, Any]:
+    env = {
+        "CODEX_HL_CIV6_WORKSPACE": str(workspace),
+        "CODEX_HL_CIV6_LIVE_GATEWAY_MODE": "live_strict",
+        "CODEX_HL_CIV6_RUNNER_KIND": RUNNER_LIVE,
+    }
+    if asset_root is not None:
+        env["CODEX_HL_CIV6_STRATEGY_ASSET_ROOT"] = str(asset_root)
+    command = python_module_command(
+        "codex_hl.live.runner",
+        "--save-name",
+        save_name,
+        "--turns",
+        str(turns),
+        "--episode-id",
+        episode_id,
+        "--strategy-profile",
+        strategy_profile,
+    )
+    if candidate_package is not None:
+        command.extend(["--candidate-package", str(candidate_package.resolve())])
+    result = runner(command, workspace, env)
+    require_success(result, step=f"live_observation_t{turns}:{episode_id}", command_log=command_log)
+    payload = parse_stdout_json(result.stdout, step=f"live_observation_t{turns}")
+    payload.setdefault("episode_id", episode_id)
+    payload["runner_kind"] = RUNNER_LIVE
     return payload
 
 
@@ -1850,6 +1903,12 @@ def copy_asset_root(source: Path, destination: Path) -> Path:
 
 
 def validate_args(args: argparse.Namespace) -> None:
+    runner_kind = getattr(args, "runner", None)
+    if runner_kind is not None and runner_kind not in SUPPORTED_RUNNERS:
+        allowed = ", ".join(sorted(SUPPORTED_RUNNERS))
+        raise EvolutionError(f"--runner must be one of: {allowed}")
+    if args.execute and not runner_kind:
+        raise EvolutionError("--execute requires --runner live or --runner legacy-baseline")
     if args.cycles < 1:
         raise EvolutionError("--cycles must be >= 1")
     if args.episodes_per_cycle is None:
@@ -1921,6 +1980,7 @@ def run_evolution(args: argparse.Namespace, *, runner: CommandRunner = run_subpr
     pool_root = (args.pool_root or workspace / "validation" / "scenarios").resolve()
     run_dir.mkdir(parents=True, exist_ok=True)
     target_completed = args.target_completed_episodes or (args.cycles * args.episodes_per_cycle)
+    runner_kind = getattr(args, "runner", None)
 
     manifest: dict[str, Any] = {
         "schema_version": 1,
@@ -1933,6 +1993,18 @@ def run_evolution(args: argparse.Namespace, *, runner: CommandRunner = run_subpr
         "turns": args.turns,
         "initial_strategy_profile": args.strategy_profile,
         "strategy_profile": args.strategy_profile,
+        "runner_kind": runner_kind,
+        "runner_deprecation": (
+            {
+                "deprecated": True,
+                "message": (
+                    "legacy-baseline is retained only for baseline comparison "
+                    "and report rebuild compatibility."
+                ),
+            }
+            if runner_kind == RUNNER_LEGACY_BASELINE
+            else None
+        ),
         "auto_iterate_strategy": args.auto_iterate_strategy,
         "target_completed_episodes": target_completed,
         "episode_retries": args.episode_retries,
@@ -2179,7 +2251,12 @@ def run_evolution(args: argparse.Namespace, *, runner: CommandRunner = run_subpr
                 else f"{base_episode_id}_retry{attempt:02d}"
             )
             try:
-                observation = run_observation(
+                observation_runner = (
+                    run_live_observation
+                    if runner_kind == RUNNER_LIVE
+                    else run_observation
+                )
+                observation = observation_runner(
                     runner=runner,
                     workspace=workspace,
                     command_log=command_log,
@@ -2193,6 +2270,7 @@ def run_evolution(args: argparse.Namespace, *, runner: CommandRunner = run_subpr
                 observation["strategy_profile"] = current_strategy_profile
                 observation["slot"] = slot
                 observation["attempt"] = attempt
+                observation["runner_kind"] = runner_kind
                 break
             except EvolutionError as exc:
                 manifest["episode_failures"].append(
@@ -2475,6 +2553,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--execute",
         action="store_true",
         help="Actually launch Civ6 observations. Without this, only a plan manifest is written.",
+    )
+    parser.add_argument(
+        "--runner",
+        choices=sorted(SUPPORTED_RUNNERS),
+        help=(
+            "Required with --execute. Use live for the JSON-plan live path, "
+            "or legacy-baseline for deprecated baseline comparison."
+        ),
     )
     parser.add_argument(
         "--allow-auto-confirmation",

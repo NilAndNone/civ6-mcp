@@ -219,6 +219,7 @@ def base_args(tmp_path: Path, *, execute: bool = False) -> argparse.Namespace:
         save_name="test 1",
         turns=50,
         strategy_profile="baseline_static",
+        runner="legacy-baseline",
         cycles=1,
         episodes_per_cycle=3,
         target_completed_episodes=None,

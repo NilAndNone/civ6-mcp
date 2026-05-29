@@ -28,7 +28,8 @@
 基础观测与报告：
 
 - `/civ6-observe --report-only`
-- `/civ6-observe`
+- `/civ6-observe-live`
+- `/civ6-observe`（legacy-baseline / deprecated compatibility）
 - `/civ6-debug`
 
 离线资产与证据流程：
@@ -41,11 +42,13 @@
 
 自动化编排待验入口：
 
-- `/civ6-runs`
+- `/civ6-runs`（真实执行必须显式 `--runner live|legacy-baseline`）
 
 ## 边界
 
 - 默认不要越过当前命令对应的职责边界。
+- live 主线使用 `/civ6-observe-live`；不要把 legacy-baseline 当默认真实执行入口。
+- Phase 3 不启用 fragment；不要调用或暴露 `register_live_fragment` / `execute_live_fragment`。
 - 候选不是正式资产修改。
 - Governance 默认只审计。
 - `episodes/` 默认是本地产物，不提交。

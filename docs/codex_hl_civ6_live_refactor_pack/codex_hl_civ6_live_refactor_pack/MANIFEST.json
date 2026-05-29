@@ -1,0 +1,170 @@
+{
+  "package": "codex_hl_civ6_live_refactor_pack",
+  "files": [
+    {
+      "path": "00_context/current_repo_observations.md",
+      "bytes": 2216,
+      "sha256": "8818819e556e7c7432da5462aebc48d29b5f3fe9e6a542c246f034b30fa45668"
+    },
+    {
+      "path": "01_architecture/action_gateway_design.md",
+      "bytes": 2607,
+      "sha256": "b55eb7d684a3fa2aad49877af116b13b65c48357eb332e65acc72d058cf0ce58"
+    },
+    {
+      "path": "01_architecture/episode_ledger_schema.md",
+      "bytes": 3035,
+      "sha256": "8afa8e9e0b9f904b3617a646458cecafe0a067d62d299ca0f6f2b7d1ebc0c6a1"
+    },
+    {
+      "path": "01_architecture/live_state_machine.md",
+      "bytes": 1911,
+      "sha256": "4e47d3ebe785beba447ba40d3a8bc1835cf9687677b745d660d309088687c8d2"
+    },
+    {
+      "path": "01_architecture/mutation_levels.md",
+      "bytes": 2170,
+      "sha256": "a4daa310820081154fe068502033fc2ff8311ab137e157371afc6c2efec04bc9"
+    },
+    {
+      "path": "01_architecture/schemas/live_event.schema.json",
+      "bytes": 1625,
+      "sha256": "5a455aedb6e789943e8f1ad644be1f6edac48cb5bb6212284c110a44814222ca"
+    },
+    {
+      "path": "01_architecture/schemas/live_turn_plan.schema.json",
+      "bytes": 3113,
+      "sha256": "a8ec0e65e414eea4ff4dc16ca36f3ea716ceacfbe6440be8b5ecd401081ccaff"
+    },
+    {
+      "path": "01_architecture/target_architecture.md",
+      "bytes": 2497,
+      "sha256": "3c7823b7cf0cdb48f34c5d2f26e7861df419e7ab7ffb35617143fad7d7184728"
+    },
+    {
+      "path": "02_phases/phase_0_mutation_inventory.md",
+      "bytes": 2119,
+      "sha256": "e196adff47706f53b45750a0e3723b48bed8b45610c757a782222d243d8b16d1"
+    },
+    {
+      "path": "02_phases/phase_1_action_gateway_shadow.md",
+      "bytes": 1724,
+      "sha256": "aa61af721b3ac48c8f4fe7c65777e90ab9b3aeac042041fdfb60273e93f0493e"
+    },
+    {
+      "path": "02_phases/phase_2_json_plan_live_gate.md",
+      "bytes": 2644,
+      "sha256": "54de696dabadfd3b55d03b54f0d1d4f57fd8b9ffbdb4825ffd9845f7a035c3aa"
+    },
+    {
+      "path": "02_phases/phase_3_legacy_baseline_orchestrator_split.md",
+      "bytes": 1471,
+      "sha256": "cbbd65f9b7dbdca76f5a0a7eff46daa79ef05b0ad142c5e7802d030b57a2fc1d"
+    },
+    {
+      "path": "02_phases/phase_4_safe_fragment_optional.md",
+      "bytes": 1953,
+      "sha256": "8e8a3d50998710a35938226e6cc8d9817b3feca52290fbc153f95a28e62230e1"
+    },
+    {
+      "path": "02_phases/phase_5_eval_governance.md",
+      "bytes": 1794,
+      "sha256": "3933e5e8dbe8e857b3a7864ae0e3b2764da7262783d323ba5e7ba4c086230f46"
+    },
+    {
+      "path": "03_agent_prompts/claude_arch_review_prompt.md",
+      "bytes": 2447,
+      "sha256": "c67bc67d082d3c201f9218facaa6994ec8c515c40396c877f494d9b57ca1ebf6"
+    },
+    {
+      "path": "03_agent_prompts/claude_code_review_checklist.md",
+      "bytes": 1161,
+      "sha256": "6ef9230bc1c8a06efedb329a40fca573a4dd26b70ce2e471f7f3fe6b76a00acf"
+    },
+    {
+      "path": "03_agent_prompts/codex_phase_prompt_template.md",
+      "bytes": 1070,
+      "sha256": "7e734a0b17a5c767abe78ebdaa5bb13b1c2dbe63796afc30987e72cbad4f9176"
+    },
+    {
+      "path": "03_agent_prompts/hermes_execution_protocol.md",
+      "bytes": 1519,
+      "sha256": "6c633510bd5bba7be46886f7ca1a736d845b4f8ec4d70051c30aab4856330141"
+    },
+    {
+      "path": "04_tasks/acceptance_matrix.md",
+      "bytes": 2516,
+      "sha256": "1fec2674070c5c70d4c2f851893e2abbac8c4521589e3634dfb90a42446c3ebb"
+    },
+    {
+      "path": "04_tasks/linear_style_tickets.md",
+      "bytes": 1577,
+      "sha256": "70c09b8cc83307fd02dd8313579cdaea274a0fc7791b03f0d82f04fce5f3cc26"
+    },
+    {
+      "path": "04_tasks/risk_register.md",
+      "bytes": 1172,
+      "sha256": "1605b170b671ff7a58674c816f0a881cbbc37e4dd0a17f3f69bca32f82b67688"
+    },
+    {
+      "path": "04_tasks/task_manifest.yaml",
+      "bytes": 1095,
+      "sha256": "6b99e0d670c4e1a7c78e0a29e10bacdb4dd63aea0e17d68f8fa98729a94f1c9c"
+    },
+    {
+      "path": "04_tasks/test_plan.md",
+      "bytes": 2013,
+      "sha256": "d61ec95d6b0c68fe04ddca8c35d5d2827edd200878446dad88c7971c33aa5f38"
+    },
+    {
+      "path": "05_repo_change_plan/api_contracts.md",
+      "bytes": 1690,
+      "sha256": "fe94f4f9945b7ec4fb1614110ac619ca99225a0d0495962be805871135b0fe9d"
+    },
+    {
+      "path": "05_repo_change_plan/migration_notes.md",
+      "bytes": 1040,
+      "sha256": "bbf66128b292252b0182606697827bd9ee91a5b43f7620a6d6bd0464252a9bb1"
+    },
+    {
+      "path": "05_repo_change_plan/target_file_map.md",
+      "bytes": 1953,
+      "sha256": "8e8eed3f79dd68ddf278e21e94a741598180037849420426b99180afe292e034"
+    },
+    {
+      "path": "06_templates/PR_DESCRIPTION_TEMPLATE.md",
+      "bytes": 479,
+      "sha256": "c8f6489a9c12578f6b1ff0b573aaf37236226f291c03ab35ee42964b3d470a7b"
+    },
+    {
+      "path": "06_templates/live_event_example.json",
+      "bytes": 798,
+      "sha256": "743eeb4efb492f12f39dd943e83e3c1b642413f34918395008e875ecf10a4ab8"
+    },
+    {
+      "path": "06_templates/live_turn_plan_example.json",
+      "bytes": 2018,
+      "sha256": "642f92db7c6aea64354aa6e7823cbf02d506e72b3412fbb77bf419132320613c"
+    },
+    {
+      "path": "06_templates/review_report_template.md",
+      "bytes": 279,
+      "sha256": "e3bbb81e2f668495aee478fcc1fdaa3f6925ddb952c2d6a8113a665c604ad01f"
+    },
+    {
+      "path": "HERMES_MESSAGE_TO_PASTE.md",
+      "bytes": 1301,
+      "sha256": "63af62fad67574cdf4660b448f79c5b8a8adfb9fdc91b853aa4e35d4478e0258"
+    },
+    {
+      "path": "HERMES_START_HERE.md",
+      "bytes": 4048,
+      "sha256": "fdbaa21decd26fda72f5a335e8a29c6e75ea86d237e8a7dd1cd9157c7bae82bf"
+    },
+    {
+      "path": "README.md",
+      "bytes": 2652,
+      "sha256": "9e4198d49b007495fdff2d4e257abd22a223283fe3819b7800f7e1ed3aa2c35a"
+    }
+  ]
+}

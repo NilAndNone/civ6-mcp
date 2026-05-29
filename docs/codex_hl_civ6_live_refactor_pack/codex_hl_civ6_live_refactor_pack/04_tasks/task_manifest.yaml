@@ -1,0 +1,41 @@
+repo: NilAndNone/codex-hl-civ6
+base_branch: windows-test
+working_branch: codex/live-codex-mcp-agent
+no_worktree: true
+no_episodes_commit: true
+roles:
+  orchestrator: Hermes
+  coder: Codex
+  reviewer: Claude Code
+phases:
+  - id: 0
+    name: mutation_inventory
+    file: 02_phases/phase_0_mutation_inventory.md
+    blocking_review: true
+  - id: 1
+    name: action_gateway_shadow
+    file: 02_phases/phase_1_action_gateway_shadow.md
+    depends_on: [0]
+    blocking_review: true
+  - id: 2
+    name: json_plan_live_gate
+    file: 02_phases/phase_2_json_plan_live_gate.md
+    depends_on: [1]
+    blocking_review: true
+    real_acceptance: T3
+  - id: 3
+    name: legacy_baseline_orchestrator_split
+    file: 02_phases/phase_3_legacy_baseline_orchestrator_split.md
+    depends_on: [2]
+    blocking_review: true
+  - id: 4
+    name: safe_fragment_optional
+    file: 02_phases/phase_4_safe_fragment_optional.md
+    depends_on: [3]
+    blocking_review: true
+    optional: true
+  - id: 5
+    name: eval_governance
+    file: 02_phases/phase_5_eval_governance.md
+    depends_on: [3]
+    blocking_review: true

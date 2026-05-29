@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codex-hl-civ6.local/schemas/live_turn_plan.schema.json",
+  "title": "Codex HL Civ6 Live Turn Plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "episode_id",
+    "turn",
+    "context_hash",
+    "plan_id",
+    "objective",
+    "steps",
+    "stop_conditions"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "episode_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "turn": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "branch_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "context_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "plan_id": {
+      "type": "string",
+      "pattern": "^plan_t[0-9]{4,}_v[0-9]{2,}$"
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 8
+    },
+    "strategy_summary": {
+      "type": "string"
+    },
+    "risk_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "step_id",
+          "tool",
+          "mutation_level",
+          "args",
+          "rationale",
+          "preconditions",
+          "postconditions",
+          "checkpoint_policy",
+          "on_failure"
+        ],
+        "properties": {
+          "step_id": {
+            "type": "string",
+            "pattern": "^s[0-9]{3,}(_r[0-9]{2,})?$"
+          },
+          "tool": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mutation_level": {
+            "enum": [
+              "L2",
+              "L3",
+              "L4"
+            ]
+          },
+          "args": {
+            "type": "object"
+          },
+          "args_match_policy": {
+            "enum": [
+              "exact",
+              "subset",
+              "custom"
+            ],
+            "default": "exact"
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 8
+          },
+          "preconditions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "postconditions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "checkpoint_policy": {
+            "enum": [
+              "none",
+              "auto_by_level",
+              "required"
+            ]
+          },
+          "on_failure": {
+            "enum": [
+              "need_recovery_plan",
+              "restore_checkpoint",
+              "abort_episode"
+            ]
+          }
+        }
+      }
+    },
+    "stop_conditions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

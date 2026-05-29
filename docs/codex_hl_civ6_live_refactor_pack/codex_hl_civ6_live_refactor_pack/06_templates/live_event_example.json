@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "event_id": "evt_000001",
+  "episode_id": "live_test1_short_20260529_120000",
+  "seq": 1,
+  "ts": "2026-05-29T12:00:00+08:00",
+  "turn": 12,
+  "branch_id": "b000",
+  "event_type": "STEP_VERIFIED",
+  "plan_id": "plan_t0012_v01",
+  "step_id": "s001",
+  "tool": "set_city_production",
+  "mutation_level": "L3",
+  "source": "mcp",
+  "context_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "pre_state_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "post_state_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "payload": {
+    "verifier_status": "PASS",
+    "objective_delta": {
+      "capital_production": [
+        "NONE",
+        "UNIT_BUILDER"
+      ]
+    }
+  }
+}

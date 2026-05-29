@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "episode_id": "live_test1_short_20260529_120000",
+  "turn": 12,
+  "branch_id": "b000",
+  "context_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "plan_id": "plan_t0012_v01",
+  "objective": "Advance turn 12 while resolving production and moving scout safely.",
+  "strategy_summary": "Prioritize expansion safety, avoid speculative war, preserve gold unless high-confidence purchase.",
+  "risk_flags": [
+    "barbarian_near_scout"
+  ],
+  "assumptions": [
+    "Current context snapshot is fresh."
+  ],
+  "steps": [
+    {
+      "step_id": "s001",
+      "tool": "set_city_production",
+      "mutation_level": "L3",
+      "args": {
+        "city_id": 1,
+        "item_type": "UNIT",
+        "item_name": "UNIT_BUILDER"
+      },
+      "args_match_policy": "exact",
+      "rationale": "Capital has empty production; builder improves immediate tile yields.",
+      "preconditions": [
+        "city_id 1 exists",
+        "city production is empty or change is explicitly allowed"
+      ],
+      "postconditions": [
+        "city_id 1 currently_building == UNIT_BUILDER or tool_result indicates unavailable"
+      ],
+      "checkpoint_policy": "required",
+      "on_failure": "need_recovery_plan"
+    },
+    {
+      "step_id": "s002",
+      "tool": "end_turn",
+      "mutation_level": "L4",
+      "args": {
+        "tactical": "...",
+        "strategic": "...",
+        "tooling": "No issues",
+        "planning": "...",
+        "hypothesis": "..."
+      },
+      "args_match_policy": "exact",
+      "rationale": "All mandatory blockers are resolved; advance exactly one turn.",
+      "preconditions": [
+        "No action-required blocker remains"
+      ],
+      "postconditions": [
+        "turn increased by exactly 1 or explicit blocker returned"
+      ],
+      "checkpoint_policy": "required",
+      "on_failure": "need_recovery_plan"
+    }
+  ],
+  "stop_conditions": [
+    "turn advanced beyond target",
+    "game over",
+    "postcondition failed twice"
+  ]
+}

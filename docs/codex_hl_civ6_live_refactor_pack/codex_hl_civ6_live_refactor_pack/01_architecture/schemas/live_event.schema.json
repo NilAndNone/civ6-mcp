@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codex-hl-civ6.local/schemas/live_event.schema.json",
+  "title": "Codex HL Civ6 Live Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "episode_id",
+    "seq",
+    "ts",
+    "event_type",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string"
+    },
+    "episode_id": {
+      "type": "string"
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "ts": {
+      "type": "string"
+    },
+    "turn": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "branch_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "event_type": {
+      "type": "string"
+    },
+    "plan_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "step_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tool": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "mutation_level": {
+      "enum": [
+        "L0",
+        "L1",
+        "L2",
+        "L3",
+        "L4",
+        "L5",
+        null
+      ]
+    },
+    "source": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "context_hash": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "pre_state_hash": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "post_state_hash": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "payload": {
+      "type": "object"
+    }
+  }
+}

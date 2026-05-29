@@ -21,6 +21,7 @@ def test_plugin_is_self_contained_codex_package():
 
     for command in [
         "civ6-observe.md",
+        "civ6-observe-live.md",
         "civ6-review.md",
         "civ6-strategy-assets.md",
         "civ6-strategy-candidates.md",

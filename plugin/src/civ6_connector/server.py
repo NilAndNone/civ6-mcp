@@ -5,6 +5,7 @@ to the running game via FireTuner protocol.
 """
 
 import asyncio
+import hashlib
 import json
 import logging
 import os
@@ -19,6 +20,25 @@ from typing import Any, AsyncIterator, Awaitable, Callable, Optional
 import uvicorn
 from mcp.server.fastmcp import Context, FastMCP
 
+from codex_hl.live.actions import classify_action
+from codex_hl.live.context import (
+    LIVE_BRANCH_ID_ENV,
+    LIVE_CONTEXT_HASH_ENV,
+    LIVE_EPISODE_ID_ENV,
+    LIVE_PLAN_ID_ENV,
+    LIVE_STEP_ID_ENV,
+    action_gateway_for_mcp,
+    gateway_mode_from_env,
+    live_context_from_env,
+    live_episode_root,
+    live_plan_store_for_episode,
+)
+from codex_hl.live.gateway import ActionRequest, GatewayMode
+from codex_hl.live.ledger import now_iso as live_now_iso
+from codex_hl.live.ledger import to_jsonable
+from codex_hl.live.schemas import LivePlanValidationError, normalize_turn_plan
+from codex_hl.live.state_machine import LiveStateError
+from codex_hl.evidence.store import EpisodeStore
 from civ6_connector import game_launcher, heartbeat, lua as lq
 from civ6_connector.game_over_watchdog import GameOverWatchdog
 from civ6_connector import narrate as nr
@@ -450,7 +470,10 @@ async def _logged(
         # Connection-loss recovery: after consecutive failures,
         # the game has likely crashed. Auto-restart from autosave.
         _logged._conn_errors = getattr(_logged, "_conn_errors", 0) + 1
-        if _logged._conn_errors >= 5:
+        if (
+            _logged._conn_errors >= 5
+            and gateway_mode_from_env() is not GatewayMode.LIVE_STRICT
+        ):
             log.error(
                 "CONNECTION RECOVERY: %d consecutive connection failures "
                 "— triggering restart_and_load",
@@ -500,6 +523,325 @@ async def _logged(
     except Exception:
         pass
     return result
+
+
+def _logger_turn_int(ctx: Context) -> int | None:
+    turn = _get_logger(ctx)._turn
+    try:
+        return int(turn) if turn is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+async def _gateway_tool_call(
+    ctx: Context,
+    tool_name: str,
+    params: dict[str, Any],
+    fn: Callable[[], Awaitable[str]],
+    *,
+    episode_id: str | None = None,
+    plan_id: str | None = None,
+    step_id: str | None = None,
+    context_hash: str | None = None,
+    branch_id: str | None = None,
+) -> str:
+    """Route selected mutating MCP calls through the live mutation gateway."""
+    spec = classify_action(tool_name, params)
+    env_context = live_context_from_env(turn=_logger_turn_int(ctx))
+    request_episode_id = episode_id or env_context.episode_id
+    request_plan_id = plan_id or env_context.plan_id
+    request_step_id = step_id or env_context.step_id
+    request_context_hash = context_hash or env_context.context_hash
+    request_branch_id = branch_id or env_context.branch_id
+    gateway = action_gateway_for_mcp(episode_id=request_episode_id)
+    action_result = await gateway.execute(
+        ActionRequest(
+            source="mcp",
+            tool_name=tool_name,
+            args=params,
+            mutation_level=spec.mutation_level,
+            episode_id=request_episode_id,
+            turn=env_context.turn,
+            plan_id=request_plan_id,
+            step_id=request_step_id,
+            context_hash=request_context_hash,
+            branch_id=request_branch_id,
+        ),
+        fn,
+    )
+    if not action_result.allowed:
+        return f"Error: {action_result.error}"
+    return str(action_result.result)
+
+
+async def _logged_gateway(
+    ctx: Context,
+    tool_name: str,
+    params: dict[str, Any],
+    fn: Callable[[], Awaitable[str]],
+) -> str:
+    return await _logged(
+        ctx,
+        tool_name,
+        params,
+        lambda: _gateway_tool_call(ctx, tool_name, params, fn),
+    )
+
+
+def _json_response(payload: dict[str, Any]) -> str:
+    return json.dumps(to_jsonable(payload), ensure_ascii=False, indent=2)
+
+
+def _live_error(exc: Exception) -> str:
+    return _json_response(
+        {
+            "ok": False,
+            "error": str(exc),
+            "error_type": type(exc).__name__,
+        }
+    )
+
+
+def _live_episode_id_or_error(episode_id: str | None) -> str:
+    value = episode_id or os.environ.get(LIVE_EPISODE_ID_ENV)
+    if not value:
+        raise LiveStateError("episode_id is required; call start_live_episode first")
+    return value
+
+
+def _set_live_env(
+    *,
+    episode_id: str | None = None,
+    plan_id: str | None = None,
+    step_id: str | None = None,
+    context_hash: str | None = None,
+    branch_id: str | None = None,
+) -> None:
+    for key, value in (
+        (LIVE_EPISODE_ID_ENV, episode_id),
+        (LIVE_PLAN_ID_ENV, plan_id),
+        (LIVE_STEP_ID_ENV, step_id),
+        (LIVE_CONTEXT_HASH_ENV, context_hash),
+        (LIVE_BRANCH_ID_ENV, branch_id),
+    ):
+        if value is not None:
+            os.environ[key] = value
+
+
+def _episode_id_from_save(save_name: str) -> str:
+    safe = re.sub(r"[^A-Za-z0-9]+", "_", save_name.strip()).strip("_").lower()
+    safe = safe or "save"
+    return f"live_{safe}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+
+def _context_hash(payload: dict[str, Any]) -> str:
+    encoded = json.dumps(
+        to_jsonable(payload),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return f"sha256:{hashlib.sha256(encoded).hexdigest()}"
+
+
+def _turn_from_overview(overview: Any) -> int:
+    if isinstance(overview, dict):
+        value = overview.get("turn")
+    else:
+        value = getattr(overview, "turn", 0)
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+async def _safe_live_context_field(name: str, fn: Callable[[], Awaitable[Any]]) -> Any:
+    try:
+        return await fn()
+    except Exception as exc:  # noqa: BLE001 - context should preserve read gaps.
+        return {"error": f"{type(exc).__name__}: {exc}", "field": name}
+
+
+def _parse_plan_payload(plan: dict[str, Any] | None, plan_json: str) -> dict[str, Any]:
+    if plan is not None:
+        return plan
+    if plan_json.strip():
+        value = json.loads(plan_json)
+        if not isinstance(value, dict):
+            raise LivePlanValidationError("plan_json must decode to a JSON object")
+        return value
+    raise LivePlanValidationError("submit_turn_plan requires plan or plan_json")
+
+
+@mcp.tool()
+async def start_live_episode(
+    ctx: Context,
+    save_name: str = "test 1",
+    target_turns: int = 3,
+    mode: str = "live_strict",
+    runner: str = "live-json-plan",
+    episode_id: str | None = None,
+    branch_id: str = "b000",
+) -> str:
+    """Start a JSON-plan live episode ledger without executing a game action."""
+    del ctx
+    try:
+        if target_turns < 1:
+            raise LiveStateError("target_turns must be >= 1")
+        live_episode_id = episode_id or _episode_id_from_save(save_name)
+        episode_root = live_episode_root(live_episode_id)
+        store = EpisodeStore(episode_root, live_episode_id)
+        store.put_episode_header(
+            {
+                "episode_id": live_episode_id,
+                "workflow": "live-json-plan",
+                "save_name": save_name,
+                "requested_turns": target_turns,
+                "runner": runner,
+                "mode": mode,
+                "created_at": live_now_iso(),
+            },
+            workflow="live-json-plan",
+            save_name=save_name,
+            requested_turns=target_turns,
+        )
+        store.close()
+        plan_store = live_plan_store_for_episode(live_episode_id)
+        episode = plan_store.start_episode(
+            save_name=save_name,
+            target_turns=target_turns,
+            mode=mode,
+            runner=runner,
+            branch_id=branch_id,
+        )
+        _set_live_env(episode_id=live_episode_id, branch_id=branch_id)
+        if mode == GatewayMode.LIVE_STRICT.value:
+            os.environ["CODEX_HL_CIV6_LIVE_GATEWAY_MODE"] = GatewayMode.LIVE_STRICT.value
+        return _json_response(
+            {
+                "episode_id": live_episode_id,
+                "branch_id": branch_id,
+                "status": episode.status.value,
+                "ledger_db": str(episode_root / "episode.db"),
+            }
+        )
+    except (LiveStateError, OSError) as exc:
+        return _live_error(exc)
+
+
+@mcp.tool()
+async def get_live_turn_context(
+    ctx: Context,
+    episode_id: str | None = None,
+    branch_id: str = "b000",
+) -> str:
+    """Capture one read-only context snapshot and context_hash for a live plan."""
+    try:
+        live_episode_id = _live_episode_id_or_error(episode_id)
+        gs = _get_game(ctx)
+        overview = to_jsonable(
+            await _safe_live_context_field("overview", gs.get_game_overview)
+        )
+        cities = to_jsonable(await _safe_live_context_field("cities", gs.get_cities))
+        units = to_jsonable(await _safe_live_context_field("units", gs.get_units))
+        notifications = to_jsonable(
+            await _safe_live_context_field("notifications", gs.get_notifications)
+        )
+        turn = _turn_from_overview(overview)
+        payload = {
+            "episode_id": live_episode_id,
+            "turn": turn,
+            "branch_id": branch_id,
+            "overview": overview,
+            "cities": cities if isinstance(cities, list) else [],
+            "units": units if isinstance(units, list) else [],
+            "notifications": notifications if isinstance(notifications, list) else [],
+            "available_action_summary": {
+                "city_count": len(cities) if isinstance(cities, list) else 0,
+                "unit_count": len(units) if isinstance(units, list) else 0,
+            },
+        }
+        context_hash = _context_hash(payload)
+        payload["context_hash"] = context_hash
+        live_plan_store_for_episode(live_episode_id).record_turn_context(
+            turn=turn,
+            branch_id=branch_id,
+            context_hash=context_hash,
+            payload=payload,
+        )
+        _set_live_env(
+            episode_id=live_episode_id,
+            context_hash=context_hash,
+            branch_id=branch_id,
+        )
+        return _json_response(payload)
+    except (LiveStateError, OSError) as exc:
+        return _live_error(exc)
+
+
+@mcp.tool()
+async def submit_turn_plan(
+    ctx: Context,
+    plan: dict[str, Any] | None = None,
+    plan_json: str = "",
+) -> str:
+    """Submit a JSON turn plan for the active live episode."""
+    del ctx
+    try:
+        normalized = normalize_turn_plan(_parse_plan_payload(plan, plan_json))
+        payload = live_plan_store_for_episode(normalized.episode_id).submit_plan(normalized)
+        _set_live_env(
+            episode_id=normalized.episode_id,
+            plan_id=normalized.plan_id,
+            context_hash=normalized.context_hash,
+            branch_id=normalized.branch_id,
+        )
+        return _json_response(payload)
+    except (json.JSONDecodeError, LivePlanValidationError, LiveStateError, OSError) as exc:
+        return _live_error(exc)
+
+
+@mcp.tool()
+async def arm_live_step(
+    ctx: Context,
+    episode_id: str,
+    plan_id: str,
+    step_id: str,
+) -> str:
+    """Arm exactly one submitted step so the next matching L2+ action may run."""
+    del ctx
+    try:
+        payload = live_plan_store_for_episode(episode_id).arm_step(plan_id, step_id)
+        _set_live_env(episode_id=episode_id, plan_id=plan_id, step_id=step_id)
+        return _json_response(payload)
+    except (LiveStateError, OSError) as exc:
+        return _live_error(exc)
+
+
+@mcp.tool()
+async def abort_live_episode(
+    ctx: Context,
+    episode_id: str,
+    reason: str = "",
+) -> str:
+    """Abort an active live episode without merging any strategy asset."""
+    del ctx
+    try:
+        return _json_response(
+            live_plan_store_for_episode(episode_id).abort_episode(reason=reason)
+        )
+    except (LiveStateError, OSError) as exc:
+        return _live_error(exc)
+
+
+@mcp.tool()
+async def finish_live_episode(ctx: Context, episode_id: str) -> str:
+    """Finish a live episode only if strict lifecycle checks are terminal-safe."""
+    del ctx
+    try:
+        return _json_response(live_plan_store_for_episode(episode_id).finish_episode())
+    except (LiveStateError, OSError) as exc:
+        return _live_error(exc)
 
 
 # ---------------------------------------------------------------------------
@@ -785,7 +1127,7 @@ async def spy_action(
             return await gs.spy_travel(unit_index, target_x, target_y)
         return await gs.spy_mission(unit_index, action.upper(), target_x, target_y)
 
-    result = await _logged(ctx, "spy_action", params, _run)
+    result = await _logged_gateway(ctx, "spy_action", params, _run)
     _get_camera(ctx).push(target_x, target_y, f"spy {action}")
     return result
 
@@ -1127,7 +1469,7 @@ async def appoint_governor(ctx: Context, governor_type: str) -> str:
     Requires available governor points. Use get_governors to see options.
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx,
         "appoint_governor",
         {"governor_type": governor_type},
@@ -1146,7 +1488,7 @@ async def assign_governor(ctx: Context, governor_type: str, city_id: int) -> str
     Governor must already be appointed. Takes several turns to establish.
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx,
         "assign_governor",
         {"governor_type": governor_type, "city_id": city_id},
@@ -1167,7 +1509,7 @@ async def promote_governor(
     Requires available governor points. Use get_governors to see available promotions.
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx,
         "promote_governor",
         {"governor_type": governor_type, "promotion_type": promotion_type},
@@ -1205,7 +1547,7 @@ async def promote_unit(ctx: Context, unit_id: int, promotion_type: str) -> str:
     Use get_unit_promotions first to see available options.
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx,
         "promote_unit",
         {"unit_id": unit_id, "promotion_type": promotion_type},
@@ -1240,7 +1582,7 @@ async def send_envoy(ctx: Context, player_id: int) -> str:
     Requires available envoy tokens. Use get_city_states to see options.
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx, "send_envoy", {"player_id": player_id}, lambda: gs.send_envoy(player_id)
     )
 
@@ -1272,7 +1614,7 @@ async def choose_pantheon(ctx: Context, belief_type: str) -> str:
     and no existing pantheon.
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx,
         "choose_pantheon",
         {"belief_type": belief_type},
@@ -1313,7 +1655,7 @@ async def found_religion(
     first to see available options.
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx,
         "found_religion",
         {
@@ -1336,7 +1678,7 @@ async def upgrade_unit(ctx: Context, unit_id: int) -> str:
     moves remaining. The unit's movement is consumed by upgrading.
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx, "upgrade_unit", {"unit_id": unit_id}, lambda: gs.upgrade_unit(unit_id)
     )
 
@@ -1368,7 +1710,7 @@ async def choose_dedication(ctx: Context, dedication_index: int) -> str:
     Use get_dedications first to see available options and their bonuses.
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx,
         "choose_dedication",
         {"dedication_index": dedication_index},
@@ -1409,7 +1751,7 @@ async def respond_to_trade(ctx: Context, other_player_id: int, accept: bool) -> 
     Use get_pending_trades first to see what's being offered.
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx,
         "respond_to_trade",
         {"other_player_id": other_player_id, "accept": accept},
@@ -1507,7 +1849,7 @@ async def propose_trade(
             lambda: gs.test_trade(other_player_id, offer_items, request_items),
         )
 
-    return await _logged(
+    return await _logged_gateway(
         ctx,
         "propose_trade",
         {
@@ -1530,7 +1872,7 @@ async def propose_peace(ctx: Context, other_player_id: int) -> str:
     The AI may accept or reject based on war score and relationship.
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx,
         "propose_peace",
         {"other_player_id": other_player_id},
@@ -1566,7 +1908,7 @@ async def set_policies(ctx: Context, assignments: str) -> str:
             return "Error: no valid assignments. Format: '0=POLICY_AGOGE,1=POLICY_URBAN_PLANNING'"
         return await gs.set_policies(parsed)
 
-    return await _logged(ctx, "set_policies", {"assignments": assignments}, _run)
+    return await _logged_gateway(ctx, "set_policies", {"assignments": assignments}, _run)
 
 
 @mcp.tool()
@@ -1584,7 +1926,7 @@ async def respond_to_diplomacy(
     If SESSION_CONTINUES is returned, send another response for the next round.
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx,
         "respond_to_diplomacy",
         {"other_player_id": other_player_id, "response": response},
@@ -1613,7 +1955,7 @@ async def send_diplomatic_action(
     (casus belli) require specific civics and conditions.
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx,
         "send_diplomatic_action",
         {"other_player_id": other_player_id, "action": action},
@@ -1635,7 +1977,7 @@ async def form_alliance(
     Use get_trade_options to check alliance eligibility first.
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx,
         "form_alliance",
         {"other_player_id": other_player_id, "alliance_type": alliance_type},
@@ -1674,19 +2016,25 @@ async def city_action(
         case "attack":
             if target_x is None or target_y is None:
                 return "Error: attack requires target_x and target_y"
+            params = {"city_id": city_id, "action": action, "target_x": target_x, "target_y": target_y}
             result = await _logged(
                 ctx,
-                "city_attack",
-                {"city_id": city_id, "x": target_x, "y": target_y},
-                lambda: gs.city_attack(city_id, target_x, target_y),
+                "city_action",
+                params,
+                lambda: _gateway_tool_call(
+                    ctx,
+                    "city_action",
+                    params,
+                    lambda: gs.city_attack(city_id, target_x, target_y),
+                ),
             )
             _get_camera(ctx).push(target_x, target_y, "city attack")
             return result
         case "keep" | "reject" | "raze" | "liberate_founder" | "liberate_previous":
-            return await _logged(
+            return await _logged_gateway(
                 ctx,
-                "resolve_city_capture",
-                {"action": action},
+                "city_action",
+                {"city_id": city_id, "action": action},
                 lambda: gs.resolve_city_capture(action),
             )
         case _:
@@ -1701,6 +2049,10 @@ async def unit_action(
     target_x: Optional[int] = None,
     target_y: Optional[int] = None,
     improvement: Optional[str] = None,
+    episode_id: str | None = None,
+    plan_id: str | None = None,
+    step_id: str | None = None,
+    context_hash: str | None = None,
 ) -> str:
     """Issue a command to a unit.
 
@@ -1794,7 +2146,21 @@ async def unit_action(
             case _:
                 return f"Error: Unknown action '{action}'. Valid: move, attack, fortify, skip, found_city, improve, repair, remove_improvement, remove_feature, build_route, automate, heal, alert, sleep, delete, trade_route, activate, sacrifice_charges, teleport, spread_religion"
 
-    result = await _logged(ctx, "unit_action", params, _run)
+    result = await _logged(
+        ctx,
+        "unit_action",
+        params,
+        lambda: _gateway_tool_call(
+            ctx,
+            "unit_action",
+            params,
+            _run,
+            episode_id=episode_id,
+            plan_id=plan_id,
+            step_id=step_id,
+            context_hash=context_hash,
+        ),
+    )
     if (
         action.lower() in ("move", "attack", "trade_route", "teleport")
         and target_x is not None
@@ -1812,7 +2178,7 @@ async def skip_remaining_units(ctx: Context) -> str:
     Uses GameCore FinishMoves on each unit — fast, reliable, no async issues.
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx, "skip_remaining_units", {}, lambda: gs.skip_remaining_units()
     )
 
@@ -1825,6 +2191,10 @@ async def set_city_production(
     item_name: str,
     target_x: int | None = None,
     target_y: int | None = None,
+    episode_id: str | None = None,
+    plan_id: str | None = None,
+    step_id: str | None = None,
+    context_hash: str | None = None,
 ) -> str:
     """Set what a city should produce.
 
@@ -1846,8 +2216,17 @@ async def set_city_production(
         ctx,
         "set_city_production",
         params,
-        lambda: gs.set_city_production(
-            city_id, item_type, item_name, target_x, target_y
+        lambda: _gateway_tool_call(
+            ctx,
+            "set_city_production",
+            params,
+            lambda: gs.set_city_production(
+                city_id, item_type, item_name, target_x, target_y
+            ),
+            episode_id=episode_id,
+            plan_id=plan_id,
+            step_id=step_id,
+            context_hash=context_hash,
         ),
     )
 
@@ -1859,6 +2238,10 @@ async def purchase_item(
     item_type: str,
     item_name: str,
     yield_type: str = "YIELD_GOLD",
+    episode_id: str | None = None,
+    plan_id: str | None = None,
+    step_id: str | None = None,
+    context_hash: str | None = None,
 ) -> str:
     """Purchase a unit or building instantly with gold or faith.
 
@@ -1871,21 +2254,39 @@ async def purchase_item(
     Costs gold/faith immediately. Use get_city_production to see what's available.
     """
     gs = _get_game(ctx)
+    params = {
+        "city_id": city_id,
+        "item_type": item_type,
+        "item_name": item_name,
+        "yield_type": yield_type,
+    }
     return await _logged(
         ctx,
         "purchase_item",
-        {
-            "city_id": city_id,
-            "item_type": item_type,
-            "item_name": item_name,
-            "yield_type": yield_type,
-        },
-        lambda: gs.purchase_item(city_id, item_type, item_name, yield_type),
+        params,
+        lambda: _gateway_tool_call(
+            ctx,
+            "purchase_item",
+            params,
+            lambda: gs.purchase_item(city_id, item_type, item_name, yield_type),
+            episode_id=episode_id,
+            plan_id=plan_id,
+            step_id=step_id,
+            context_hash=context_hash,
+        ),
     )
 
 
 @mcp.tool()
-async def set_research(ctx: Context, tech_or_civic: str, category: str = "tech") -> str:
+async def set_research(
+    ctx: Context,
+    tech_or_civic: str,
+    category: str = "tech",
+    episode_id: str | None = None,
+    plan_id: str | None = None,
+    step_id: str | None = None,
+    context_hash: str | None = None,
+) -> str:
     """Choose a technology or civic to research.
 
     Args:
@@ -1905,7 +2306,16 @@ async def set_research(ctx: Context, tech_or_civic: str, category: str = "tech")
         ctx,
         "set_research",
         {"tech_or_civic": tech_or_civic, "category": category},
-        _run,
+        lambda: _gateway_tool_call(
+            ctx,
+            "set_research",
+            {"tech_or_civic": tech_or_civic, "category": category},
+            _run,
+            episode_id=episode_id,
+            plan_id=plan_id,
+            step_id=step_id,
+            context_hash=context_hash,
+        ),
     )
 
 
@@ -1917,6 +2327,10 @@ async def end_turn(
     tooling: str = "",
     planning: str = "",
     hypothesis: str = "",
+    episode_id: str | None = None,
+    plan_id: str | None = None,
+    step_id: str | None = None,
+    context_hash: str | None = None,
 ) -> str:
     """End the current turn.
 
@@ -2073,7 +2487,28 @@ async def end_turn(
                 log.warning("Diary: failed to write entry", exc_info=True)
 
     # Advance the turn
-    result = await _logged(ctx, "end_turn", {}, gs.end_turn)
+    end_turn_params = {
+        "tactical": tactical,
+        "strategic": strategic,
+        "tooling": tooling,
+        "planning": planning,
+        "hypothesis": hypothesis,
+    }
+    result = await _logged(
+        ctx,
+        "end_turn",
+        end_turn_params,
+        lambda: _gateway_tool_call(
+            ctx,
+            "end_turn",
+            end_turn_params,
+            gs.end_turn,
+            episode_id=episode_id,
+            plan_id=plan_id,
+            step_id=step_id,
+            context_hash=context_hash,
+        ),
+    )
 
     # ---------------------------------------------------------------
     # Auto-recover from AI turn hangs (transparent to agent).
@@ -2084,6 +2519,11 @@ async def end_turn(
     # ---------------------------------------------------------------
     _MAX_HANG_RETRIES = 3
     _HANG_EXTRA_WAIT = [0, 15, 30]  # extra seconds before retry per attempt
+
+    live_strict = gateway_mode_from_env() is GatewayMode.LIVE_STRICT
+
+    if result.startswith("HANG:") and live_strict:
+        return result
 
     if result.startswith("HANG:") and not gs._hang_retry_active:
         parts = result.split("|", 1)
@@ -2262,7 +2702,7 @@ async def end_turn(
         gs._end_turn_blocked = True
         # Safety net: if WC blocker fires repeatedly on the same turn,
         # auto-submit to break infinite loops (agent used wrong voting tool)
-        if "World Congress fires" in result:
+        if "World Congress fires" in result and not live_strict:
             wc_turn = getattr(gs, "_wc_blocker_turn", -1)
             wc_count = getattr(gs, "_wc_blocker_count", 0)
             current = _diary_turn or 0
@@ -2559,11 +2999,17 @@ async def purchase_tile(ctx: Context, city_id: int, x: int, y: int) -> str:
     Use get_purchasable_tiles first to see costs and options.
     """
     gs = _get_game(ctx)
+    params = {"city_id": city_id, "x": x, "y": y}
     result = await _logged(
         ctx,
         "purchase_tile",
-        {"city_id": city_id, "x": x, "y": y},
-        lambda: gs.purchase_tile(city_id, x, y),
+        params,
+        lambda: _gateway_tool_call(
+            ctx,
+            "purchase_tile",
+            params,
+            lambda: gs.purchase_tile(city_id, x, y),
+        ),
     )
     _get_camera(ctx).push(x, y, f"purchase tile ({x},{y})")
     return result
@@ -2585,7 +3031,7 @@ async def change_government(ctx: Context, government_type: str) -> str:
     unlocking a new tier is free (no anarchy).
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx,
         "change_government",
         {"government_type": government_type},
@@ -2647,7 +3093,7 @@ async def recruit_great_person(ctx: Context, individual_id: int) -> str:
     The GP spawns in your capital. Use get_great_people to check [CAN RECRUIT] status.
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx,
         "recruit_great_person",
         {"id": individual_id},
@@ -2669,7 +3115,7 @@ async def patronize_great_person(
     Requires enough gold/faith to cover the cost.
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx,
         "patronize_great_person",
         {"id": individual_id, "yield": yield_type},
@@ -2688,7 +3134,7 @@ async def reject_great_person(ctx: Context, individual_id: int) -> str:
     Use when you don't want the current GP and want to save points for a better one.
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx,
         "reject_great_person",
         {"id": individual_id},
@@ -2746,7 +3192,7 @@ async def queue_wc_votes(ctx: Context, votes: str) -> str:
     async def _run():
         return await gs.queue_wc_votes(vote_list)
 
-    return await _logged(ctx, "queue_wc_votes", {"votes": vote_list}, _run)
+    return await _logged_gateway(ctx, "queue_wc_votes", {"votes": vote_list}, _run)
 
 
 # ---------------------------------------------------------------------------
@@ -2811,7 +3257,7 @@ async def set_city_focus(ctx: Context, city_id: int, focus: str) -> str:
     toward the chosen yield type when assigning new citizens.
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx,
         "set_city_focus",
         {"city_id": city_id, "focus": focus},
@@ -2832,7 +3278,7 @@ async def dismiss_popup(ctx: Context) -> str:
     is blocking interaction.
     """
     gs = _get_game(ctx)
-    return await _logged(ctx, "dismiss_popup", {}, gs.dismiss_popup)
+    return await _logged_gateway(ctx, "dismiss_popup", {}, gs.dismiss_popup)
 
 
 @mcp.tool(annotations={"destructiveHint": True})
@@ -2853,8 +3299,11 @@ async def run_lua(ctx: Context, code: str, context: str = "gamecore") -> str:
     Always use print() for output (not return).
     """
     gs = _get_game(ctx)
-    return await _logged(
-        ctx, "run_lua", {"context": context}, lambda: gs.execute_lua(code, context)
+    return await _logged_gateway(
+        ctx,
+        "run_lua",
+        {"code": code, "context": context},
+        lambda: gs.execute_lua(code, context),
     )
 
 
@@ -2885,7 +3334,7 @@ async def load_save(ctx: Context, save_index: int) -> str:
     then use get_game_overview to verify the loaded state.
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx, "load_save", {"save_index": save_index}, lambda: gs.load_save(save_index)
     )
 
@@ -2903,7 +3352,7 @@ async def load_game_save(ctx: Context, save_name: str) -> str:
     navigation (~90s) after verifying the file exists on disk.
     """
     gs = _get_game(ctx)
-    return await _logged(
+    return await _logged_gateway(
         ctx,
         "load_game_save",
         {"save_name": save_name},
@@ -2925,7 +3374,7 @@ async def kill_game(ctx: Context) -> str:
     Only kills Civ 6 processes. Waits ~10 seconds for Steam to deregister
     so the game can be relaunched cleanly.
     """
-    return await game_launcher.kill_game()
+    return await _logged_gateway(ctx, "kill_game", {}, game_launcher.kill_game)
 
 
 @mcp.tool(annotations={"destructiveHint": True})
@@ -2939,7 +3388,7 @@ async def launch_game(ctx: Context) -> str:
     NOTE: FireTuner connection is NOT available at the main menu.
     Only in-game MCP tools work after a save is loaded.
     """
-    return await game_launcher.launch_game()
+    return await _logged_gateway(ctx, "launch_game", {}, game_launcher.launch_game)
 
 
 @mcp.tool(annotations={"destructiveHint": True})
@@ -2957,7 +3406,12 @@ async def load_save_from_menu(ctx: Context, save_name: str | None = None) -> str
 
     Requires pyobjc: uv pip install 'codex-hl-civ6[launcher]'
     """
-    return await game_launcher.load_save_from_menu(save_name)
+    return await _logged_gateway(
+        ctx,
+        "load_save_from_menu",
+        {"save_name": save_name},
+        lambda: game_launcher.load_save_from_menu(save_name),
+    )
 
 
 @mcp.tool(annotations={"destructiveHint": True})
@@ -2980,7 +3434,12 @@ async def restart_and_load(ctx: Context, save_name: str | None = None) -> str:
     gs = _get_game(ctx)
     identity_before = gs._game_identity
 
-    result = await game_launcher.restart_and_load(save_name)
+    result = await _logged_gateway(
+        ctx,
+        "restart_and_load",
+        {"save_name": save_name},
+        lambda: game_launcher.restart_and_load(save_name),
+    )
 
     # Reconnect and verify correct game loaded
     conn = gs.conn
@@ -2996,7 +3455,10 @@ async def restart_and_load(ctx: Context, save_name: str | None = None) -> str:
     if conn.gamecore_index is not None and identity_before is not None:
         try:
             actual = await gs.get_game_identity()
-            if actual != identity_before:
+            if (
+                actual != identity_before
+                and gateway_mode_from_env() is not GatewayMode.LIVE_STRICT
+            ):
                 log.warning(
                     "restart_and_load: wrong game loaded "
                     "(expected %s, got %s) — retrying",

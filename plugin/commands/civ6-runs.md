@@ -5,7 +5,7 @@
 编排多局 T20/T50、Review 候选、可选自动确认、Strategy Candidate/5 产物和 governance
 审计。
 
-`/civ6-runs` 可以编排 baseline T50，也可以把 strategy candidate package
+`/civ6-runs` 可以编排 live JSON-plan runs 或 legacy-baseline T50，也可以把 strategy candidate package
 作为只读运行时输入传给 observation runner，用于 `v0.0.2` 策略改进验收。
 
 ## 输入
@@ -17,6 +17,7 @@
 - `--episodes-per-cycle <n>`
 - `--save-name "test 1"`
 - `--execute`：真实启动 Civ6 运行。
+- `--runner live|legacy-baseline`：`--execute` 时必填。
 - `--allow-auto-confirmation`：允许自动确认候选。
 - `--auto-iterate-strategy`：允许自动切换运行策略。
 - `--allow-merge`：允许进入治理合并路径。
@@ -36,6 +37,10 @@
 
 - 默认 plan-only，不启动 Civ6。
 - 没有 `--execute` 不跑真实游戏。
+- `--execute` 没有 `--runner` 会拒绝。
+- `--runner live` 走 JSON plan live path，不调用旧 rules runner。
+- `--runner legacy-baseline` 只用于 deprecated baseline 对照，报告标记
+  `runner_kind=legacy-baseline`。
 - 自动确认必须显式开启。
 - 自动策略迭代必须显式开启。
 - 自动合并必须显式开启。
@@ -53,17 +58,17 @@ $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-ru
 真实执行 T20：
 
 ```powershell
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-runs --execute --turns 20 --save-name "test 1" --cycles 1 --episodes-per-cycle 3
+$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-runs --execute --runner live --turns 20 --save-name "test 1" --cycles 1 --episodes-per-cycle 3
 ```
 
 真实执行 T50：
 
 ```powershell
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-runs --execute --turns 50 --save-name "test 1" --cycles 1 --episodes-per-cycle 3
+$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-runs --execute --runner legacy-baseline --turns 50 --save-name "test 1" --cycles 1 --episodes-per-cycle 3
 ```
 
 候选运行时 T50：
 
 ```powershell
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-runs --execute --turns 50 --save-name "test 1" --cycles 1 --episodes-per-cycle 5 --candidate-package <candidate.json> --candidate-runtime-applied
+$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-runs --execute --runner live --turns 50 --save-name "test 1" --cycles 1 --episodes-per-cycle 5 --candidate-package <candidate.json> --candidate-runtime-applied
 ```

@@ -137,6 +137,48 @@ def _spec(
 
 
 ACTION_REGISTRY: dict[str, ActionSpec] = {
+    "start_live_episode": _spec(
+        "start_live_episode",
+        MutationLevel.L1_RUNTIME_SIDE_EFFECT,
+        ActionKind.RUNTIME_SIDE_EFFECT,
+        (),
+        "Create live episode artifacts; does not mutate Civ6 game state.",
+    ),
+    "get_live_turn_context": _spec(
+        "get_live_turn_context",
+        MutationLevel.L1_RUNTIME_SIDE_EFFECT,
+        ActionKind.RUNTIME_SIDE_EFFECT,
+        (),
+        "Capture and store a read-only live turn context.",
+    ),
+    "submit_turn_plan": _spec(
+        "submit_turn_plan",
+        MutationLevel.L1_RUNTIME_SIDE_EFFECT,
+        ActionKind.RUNTIME_SIDE_EFFECT,
+        (),
+        "Append a JSON live turn plan to the episode ledger.",
+    ),
+    "arm_live_step": _spec(
+        "arm_live_step",
+        MutationLevel.L1_RUNTIME_SIDE_EFFECT,
+        ActionKind.RUNTIME_SIDE_EFFECT,
+        (),
+        "Arm one submitted live step in the episode ledger.",
+    ),
+    "abort_live_episode": _spec(
+        "abort_live_episode",
+        MutationLevel.L1_RUNTIME_SIDE_EFFECT,
+        ActionKind.RUNTIME_SIDE_EFFECT,
+        (),
+        "Abort a live episode ledger without mutating Civ6 game state.",
+    ),
+    "finish_live_episode": _spec(
+        "finish_live_episode",
+        MutationLevel.L1_RUNTIME_SIDE_EFFECT,
+        ActionKind.RUNTIME_SIDE_EFFECT,
+        (),
+        "Finalize a live episode ledger after lifecycle checks.",
+    ),
     "spy_action": _spec(
         "spy_action",
         MutationLevel.L3_HIGH_GAME_MUTATION,
@@ -454,12 +496,30 @@ ACTION_REGISTRY: dict[str, ActionSpec] = {
     ),
 }
 
+ACTION_ALIASES: dict[str, str] = {
+    "end_turn_retry": "end_turn",
+    "end_turn_after_diplomacy": "end_turn",
+    "respond_to_trade_decline_for_end_turn": "respond_to_trade",
+    "respond_to_diplomacy_for_end_turn": "respond_to_diplomacy",
+    "respond_to_diplomacy_exit_for_end_turn": "respond_to_diplomacy",
+}
+
 
 _RAW_LUA_WRITE_RE = re.compile(
     r"RequestOperation|SetResearchingTech|SetProgressingCivic|Change[A-Z]|"
     r"Set[A-Z]|SaveGame|LoadGame|UnitManager|CityManager|DiplomacyManager|"
     r"NotificationManager\.SendActivated|Network\.SaveGame"
 )
+
+
+def canonical_action_name(tool_name: str) -> str:
+    """Map observation-only aliases to their registered action tool."""
+
+    return ACTION_ALIASES.get(tool_name, tool_name)
+
+
+def is_registered_action_tool(tool_name: str) -> bool:
+    return canonical_action_name(tool_name) in ACTION_REGISTRY
 
 
 def _classify_raw_lua(args: dict[str, Any]) -> ActionSpec:
@@ -485,6 +545,7 @@ def classify_action(tool_name: str, args: dict[str, Any] | None = None) -> Actio
     """Return the initial Phase 0 classification for a tool call."""
 
     args = args or {}
+    tool_name = canonical_action_name(tool_name)
     spec = ACTION_REGISTRY[tool_name]
     if tool_name == "unit_action":
         action = str(args.get("action", "") or "").lower()

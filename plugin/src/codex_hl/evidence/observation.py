@@ -41,6 +41,13 @@ from codex_hl.evidence.store import (  # noqa: E402
     reader_for_path,
     rebuild_episode_db,
 )
+from codex_hl.live.actions import (  # noqa: E402
+    canonical_action_name,
+    classify_action,
+    is_registered_action_tool,
+)
+from codex_hl.live.context import action_gateway_for_episode  # noqa: E402
+from codex_hl.live.gateway import ActionRequest  # noqa: E402
 from codex_hl.strategy.registry import write_active_asset_snapshot  # noqa: E402
 from civ6_connector import game_launcher  # noqa: E402
 from civ6_connector.connection import GameConnection  # noqa: E402
@@ -1031,13 +1038,48 @@ class EpisodeRecorder:
             "tool": name,
             "params": to_jsonable(params),
         }
+        gateway_rejected = False
+        gateway_error: str | None = None
         try:
-            result = await fn()
+            if is_registered_action_tool(name):
+                canonical_name = canonical_action_name(name)
+                spec = classify_action(name, params)
+                gateway = action_gateway_for_episode(
+                    self.root,
+                    self.episode_id,
+                    store=self.store,
+                )
+                action_result = await gateway.execute(
+                    ActionRequest(
+                        source="legacy_runner",
+                        tool_name=canonical_name,
+                        args=to_jsonable(params),
+                        mutation_level=spec.mutation_level,
+                        episode_id=self.episode_id,
+                        turn=turn,
+                        original_tool_name=name if canonical_name != name else None,
+                    ),
+                    fn,
+                )
+                if action_result.allowed:
+                    result = action_result.result
+                else:
+                    gateway_rejected = True
+                    gateway_error = action_result.error or "Gateway rejected action."
+                    result = f"Error: {gateway_error}"
+            else:
+                result = await fn()
             row["ts_end"] = now_iso()
             row["duration_ms"] = int((time.perf_counter() - start) * 1000)
-            row["success"] = True
+            row["success"] = not gateway_rejected
             row["result_raw"] = to_jsonable(result)
             row["result_text"] = short_text(result, 6000)
+            if gateway_rejected:
+                row["rejected"] = True
+                row["error"] = {
+                    "type": "GatewayRejected",
+                    "message": gateway_error,
+                }
             return call_id, result
         except Exception as exc:  # noqa: BLE001 - raw evidence capture.
             self.tool_error_count += 1
