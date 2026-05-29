@@ -2,7 +2,7 @@
 
 ## 用途
 
-编排多局 T20/T50、Review 候选、可选自动确认、Strategy Candidate/5 产物和 governance
+编排多局 T3/T20/T50、Review 候选、可选自动确认、Strategy Candidate/5 产物和 governance
 审计。
 
 `/civ6-runs` 可以编排 live JSON-plan runs 或 legacy-baseline T50，也可以把 strategy candidate package
@@ -12,7 +12,7 @@
 
 常用参数：
 
-- `--turns 20|50`
+- `--turns 3|20|50`
 - `--cycles <n>`
 - `--episodes-per-cycle <n>`
 - `--save-name "test 1"`
@@ -61,8 +61,14 @@ $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-ru
 $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-runs --execute --runner live --turns 20 --save-name "test 1" --cycles 1 --episodes-per-cycle 3
 ```
 
+Phase 3 Gate T3 live route artifact:
+```powershell
+$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-runs --execute --runner live --turns 3 --save-name "test 1" --cycles 1 --episodes-per-cycle 1
+```
+
 真实执行 T50：
 
+Legacy-baseline T50:
 ```powershell
 $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-runs --execute --runner legacy-baseline --turns 50 --save-name "test 1" --cycles 1 --episodes-per-cycle 3
 ```

@@ -5,6 +5,7 @@ import json
 
 import pytest
 
+from codex_hl.evidence.store import EpisodeReader, EpisodeStore
 from codex_hl.live.gateway import ActionGateway, ActionRequest, GatewayMode
 from codex_hl.live.ledger import EpisodeLedger
 from codex_hl.live.mutation_levels import MutationLevel
@@ -226,6 +227,42 @@ def test_live_strict_allows_l2_with_plan_step(tmp_path) -> None:
     assert events[-1]["context_hash"] == "ctx-123"
     assert events[-1]["unplanned_mutation"] is False
     assert events[-1]["verifier_status"] == "INCONCLUSIVE"
+
+
+def test_episode_ledger_mirrors_live_events_to_episode_db(tmp_path) -> None:
+    episode_root = tmp_path / "episode"
+    store = EpisodeStore(episode_root, "ep_db_live", create=True, reset=True)
+    store.put_episode_header(
+        {"episode_id": "ep_db_live", "workflow": "live-json-plan"},
+        workflow="live-json-plan",
+        save_name="test 1",
+        requested_turns=3,
+    )
+    store.close()
+
+    ledger = EpisodeLedger.for_episode_root(episode_root, "ep_db_live")
+    request = ActionRequest(
+        source="mcp",
+        tool_name="unit_action",
+        args={"unit_id": 65536, "action": "skip"},
+        mutation_level=MutationLevel.L2_LOW_GAME_MUTATION,
+        episode_id="ep_db_live",
+        turn=1,
+    )
+    event_id = ledger.append_event(
+        event_type="ACTION_FINISHED",
+        request=request,
+        mode=GatewayMode.SHADOW.value,
+        allowed=True,
+        status="executed",
+        unplanned_mutation=True,
+        result="OK",
+    )
+
+    rows = EpisodeReader(episode_root).read_jsonl("raw/live_events.jsonl")
+    assert rows[0]["event_id"] == event_id
+    assert rows[0]["event_type"] == "ACTION_FINISHED"
+    assert rows[0]["tool"] == "unit_action"
 
 
 def test_episode_ledger_keeps_process_local_seq_across_instances(

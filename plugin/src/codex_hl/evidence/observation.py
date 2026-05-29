@@ -9811,6 +9811,14 @@ async def run_short(args: argparse.Namespace) -> int:
             observation_stop_boundary(args.turns),
         ],
     }
+    runner_kind = os.environ.get("CODEX_HL_CIV6_RUNNER_KIND")
+    if runner_kind:
+        header["runner_kind"] = runner_kind
+    if runner_kind == "legacy-baseline":
+        header["runner_deprecation"] = {
+            "deprecated": True,
+            "message": "legacy-baseline is retained only for baseline comparison and report rebuild compatibility.",
+        }
     recorder.write_header(header)
     recorder.add_gap(
         "header.civ6_version_info",

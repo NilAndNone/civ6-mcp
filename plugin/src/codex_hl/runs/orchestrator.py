@@ -28,10 +28,11 @@ from codex_hl.strategy import registry as strategy_registry
 
 WORKSPACE_ROOT = Path(os.environ.get("CODEX_HL_CIV6_WORKSPACE") or Path.cwd()).resolve()
 WORKFLOW_NAME = "Codex HL Evolution Orchestrator"
+T3_TURNS = 3
 T20_TURNS = 20
 T50_TURNS = 50
 DEFAULT_OBSERVATION_TURNS = T50_TURNS
-SUPPORTED_OBSERVATION_TURNS = {T20_TURNS, T50_TURNS}
+SUPPORTED_OBSERVATION_TURNS = {T3_TURNS, T20_TURNS, T50_TURNS}
 RUNNER_LIVE = "live"
 RUNNER_LEGACY_BASELINE = "legacy-baseline"
 SUPPORTED_RUNNERS = {RUNNER_LIVE, RUNNER_LEGACY_BASELINE}
@@ -2330,6 +2331,13 @@ def run_evolution(args: argparse.Namespace, *, runner: CommandRunner = run_subpr
         manifest["completed_episode_count"] = len(episode_ids)
         write_json(run_dir / "manifest.json", manifest)
 
+        if runner_kind == RUNNER_LIVE and observation.get("requires_mcp_runtime"):
+            observation["review_skipped"] = {
+                "reason": "live runner CLI creates a routing artifact only; real live actions must be driven through MCP runtime evidence.",
+            }
+            write_json(run_dir / "manifest.json", manifest)
+            continue
+
         review = run_review_candidates(
             runner=runner,
             workspace=workspace,
@@ -2515,7 +2523,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=int,
         default=DEFAULT_OBSERVATION_TURNS,
         choices=sorted(SUPPORTED_OBSERVATION_TURNS),
-        help="Observation length per game. Use 20 for local strategy exploration, 50 for validation.",
+        help="Observation length per game. Use 3 for Phase 3 gate routing, 20 for local strategy exploration, 50 for validation.",
     )
     parser.add_argument(
         "--strategy-profile",

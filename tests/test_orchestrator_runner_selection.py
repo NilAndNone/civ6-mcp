@@ -66,7 +66,7 @@ def make_asset_root(root: Path) -> Path:
     return root
 
 
-def args_for(tmp_path: Path, *, runner_kind: str | None) -> argparse.Namespace:
+def args_for(tmp_path: Path, *, runner_kind: str | None, turns: int = 20) -> argparse.Namespace:
     return argparse.Namespace(
         workspace=tmp_path,
         asset_root=make_asset_root(tmp_path / "asset_root"),
@@ -74,7 +74,7 @@ def args_for(tmp_path: Path, *, runner_kind: str | None) -> argparse.Namespace:
         output_dir=tmp_path / "evolution_run",
         run_id="evo_test",
         save_name="test 1",
-        turns=20,
+        turns=turns,
         strategy_profile="baseline_static",
         runner=runner_kind,
         cycles=1,
@@ -108,7 +108,13 @@ def fake_runner(command: list[str], cwd: Path, env: dict[str, str] | None) -> or
     if module in {"codex_hl.evidence.observation", "codex_hl.live.runner"}:
         episode_id = command[command.index("--episode-id") + 1]
         runner_kind = "live" if module == "codex_hl.live.runner" else "legacy-baseline"
-        stdout = json.dumps({"episode_id": episode_id, "runner_kind": runner_kind})
+        stdout = json.dumps(
+            {
+                "episode_id": episode_id,
+                "runner_kind": runner_kind,
+                "requires_mcp_runtime": runner_kind == "live",
+            }
+        )
     elif module == "codex_hl.review.failure_labeling":
         episode_id = command[command.index("--episode-id") + 1]
         stdout = json.dumps({"episode_id": episode_id, "candidates": 0})
@@ -120,6 +126,11 @@ def fake_runner(command: list[str], cwd: Path, env: dict[str, str] | None) -> or
 def test_execute_without_runner_fails_clearly(tmp_path) -> None:
     with pytest.raises(orchestrator.EvolutionError, match="--execute requires --runner"):
         orchestrator.run_evolution(args_for(tmp_path, runner_kind=None), runner=fake_runner)
+
+
+def test_execute_t3_without_runner_reaches_runner_gate(tmp_path) -> None:
+    with pytest.raises(orchestrator.EvolutionError, match="--execute requires --runner"):
+        orchestrator.run_evolution(args_for(tmp_path, runner_kind=None, turns=3), runner=fake_runner)
 
 
 def test_legacy_baseline_runner_uses_old_observation_and_marks_report(tmp_path) -> None:
@@ -149,8 +160,11 @@ def test_live_runner_uses_live_episode_path_not_old_rules_runner(tmp_path) -> No
         calls.append(command)
         return fake_runner(command, cwd, env)
 
-    result = orchestrator.run_evolution(args_for(tmp_path, runner_kind="live"), runner=runner)
+    result = orchestrator.run_evolution(args_for(tmp_path, runner_kind="live", turns=3), runner=runner)
 
     assert result["status"] == "completed"
     assert calls[0][2] == "codex_hl.live.runner"
+    assert "--turns" in calls[0]
+    assert calls[0][calls[0].index("--turns") + 1] == "3"
+    assert [command[2] for command in calls] == ["codex_hl.live.runner"]
     assert all(command[2] != "codex_hl.evidence.observation" for command in calls)

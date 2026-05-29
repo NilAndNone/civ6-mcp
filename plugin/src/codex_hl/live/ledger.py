@@ -41,6 +41,47 @@ def to_jsonable(value: Any) -> Any:
     return str(value)
 
 
+def mirror_jsonl_to_episode_db(
+    *,
+    episode_root: Path,
+    episode_id: str,
+    logical_path: str,
+    source_path: Path,
+    kind: str,
+) -> None:
+    """Mirror a live JSONL artifact into episode.db when DB storage exists."""
+    if not source_path.exists():
+        return
+    from codex_hl.evidence.store import EpisodeStore, has_episode_db
+
+    if not has_episode_db(episode_root):
+        return
+    store = EpisodeStore(episode_root, episode_id, create=False)
+    try:
+        store.put_file_artifact(logical_path, source_path, kind=kind)
+    finally:
+        store.close()
+
+
+def read_jsonl_from_episode_db(
+    *,
+    episode_root: Path,
+    episode_id: str,
+    logical_path: str,
+) -> list[dict[str, Any]] | None:
+    from codex_hl.evidence.store import EpisodeStore, has_episode_db
+
+    if not has_episode_db(episode_root):
+        return None
+    store = EpisodeStore(episode_root, episode_id, create=False)
+    try:
+        return store.read_jsonl(logical_path)
+    except FileNotFoundError:
+        return None
+    finally:
+        store.close()
+
+
 class EpisodeLedger:
     """Append-only Phase 1 live event ledger.
 
@@ -99,7 +140,15 @@ class EpisodeLedger:
                 rows = self.store.read_jsonl(LIVE_EVENTS_LOGICAL_PATH)
             except FileNotFoundError:
                 rows = []
-        elif self.event_path.exists():
+        else:
+            db_rows = read_jsonl_from_episode_db(
+                episode_root=self.event_path.parent.parent,
+                episode_id=self.episode_id,
+                logical_path=LIVE_EVENTS_LOGICAL_PATH,
+            )
+            if db_rows is not None:
+                rows = db_rows
+        if not rows and self.event_path.exists():
             rows = [
                 json.loads(line)
                 for line in self.event_path.read_text(encoding="utf-8").splitlines()
@@ -183,4 +232,11 @@ class EpisodeLedger:
                     json.dumps(to_jsonable(row), ensure_ascii=False, sort_keys=False)
                     + "\n"
                 )
+            mirror_jsonl_to_episode_db(
+                episode_root=self.event_path.parent.parent,
+                episode_id=self.episode_id,
+                logical_path=LIVE_EVENTS_LOGICAL_PATH,
+                source_path=self.event_path,
+                kind="live_events",
+            )
             return event_id

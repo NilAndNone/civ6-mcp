@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from codex_hl.evidence.store import EpisodeReader, EpisodeStore
 from codex_hl.live.plan_store import LivePlanStore
 from codex_hl.live.schemas import EpisodeStatus, StepStatus, normalize_turn_plan
 from codex_hl.live.state_machine import LiveStateError
@@ -71,6 +72,38 @@ def test_live_plan_store_replays_submit_arm_verify_finish(tmp_path) -> None:
 
     finished = store.finish_episode()
     assert finished["status"] == EpisodeStatus.EPISODE_FINISHED.value
+
+
+def test_live_plan_store_mirrors_events_to_episode_db(tmp_path) -> None:
+    episode_root = tmp_path / "ep_db_live"
+    episode_store = EpisodeStore(episode_root, "ep_db_live", create=True, reset=True)
+    episode_store.put_episode_header(
+        {"episode_id": "ep_db_live", "workflow": "live-json-plan"},
+        workflow="live-json-plan",
+        save_name="test 1",
+        requested_turns=3,
+    )
+    episode_store.close()
+
+    store = LivePlanStore.for_episode_root(episode_root, "ep_db_live")
+    store.start_episode(
+        save_name="test 1",
+        target_turns=3,
+        mode="live_strict",
+        runner="live-json-plan",
+    )
+    store.record_turn_context(
+        turn=1,
+        branch_id="b000",
+        context_hash="sha256:ctx",
+        payload={"overview": {"turn": 1}},
+    )
+
+    rows = EpisodeReader(episode_root).read_jsonl("raw/live_plan_events.jsonl")
+    assert [row["event_type"] for row in rows] == [
+        "EPISODE_STARTED",
+        "TURN_CONTEXT_RECORDED",
+    ]
 
 
 def test_arm_step_requires_submitted_step(tmp_path) -> None:

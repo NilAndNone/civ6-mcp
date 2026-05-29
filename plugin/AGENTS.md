@@ -29,6 +29,7 @@
 
 - `/civ6-observe --report-only`
 - `/civ6-observe-live`
+- `/civ6-load-test1`
 - `/civ6-observe`（legacy-baseline / deprecated compatibility）
 - `/civ6-debug`
 

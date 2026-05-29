@@ -22,6 +22,7 @@ def test_plugin_is_self_contained_codex_package():
     for command in [
         "civ6-observe.md",
         "civ6-observe-live.md",
+        "civ6-load-test1.md",
         "civ6-review.md",
         "civ6-strategy-assets.md",
         "civ6-strategy-candidates.md",
@@ -67,7 +68,9 @@ def test_project_metadata_includes_strategy_asset_surface():
     assert project["scripts"]["codex-hl-civ6-governance"] == "codex_hl.governance.gates:main"
     assert project["scripts"]["codex-hl-civ6-runs"] == "codex_hl.runs.orchestrator:main"
     assert project["scripts"]["codex-hl-civ6-acceptance"] == "codex_hl.reports.acceptance:main"
+    assert project["scripts"]["codex-hl-civ6-load-test1"] == "codex_hl.diagnostics.load_test1:main"
     assert project["scripts"]["codex-hl-civ6-human-demo-record"] == "codex_hl.demos.cli:main"
+    assert "Pillow>=10.0" in pyproject["project"]["optional-dependencies"]["launcher-windows"]
     assert pyproject["tool"]["hatch"]["build"]["targets"]["wheel"]["force-include"][
         "plugin/assets"
     ] == "assets"

@@ -6,7 +6,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from codex_hl.live.ledger import now_iso, to_jsonable
+from codex_hl.live.ledger import (
+    mirror_jsonl_to_episode_db,
+    now_iso,
+    read_jsonl_from_episode_db,
+    to_jsonable,
+)
 from codex_hl.live.mutation_levels import MutationLevel
 from codex_hl.live.schemas import (
     EpisodeStatus,
@@ -95,6 +100,13 @@ class LivePlanStore:
         return cls(episode_root=episode_root, episode_id=episode_id)
 
     def _read_events(self) -> list[dict[str, Any]]:
+        db_rows = read_jsonl_from_episode_db(
+            episode_root=self.episode_root,
+            episode_id=self.episode_id,
+            logical_path=LIVE_PLAN_EVENTS_LOGICAL_PATH,
+        )
+        if db_rows is not None:
+            return db_rows
         if not self.events_path.exists():
             return []
         rows: list[dict[str, Any]] = []
@@ -116,6 +128,13 @@ class LivePlanStore:
         self.events_path.parent.mkdir(parents=True, exist_ok=True)
         with self.events_path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(row, ensure_ascii=False, sort_keys=False) + "\n")
+        mirror_jsonl_to_episode_db(
+            episode_root=self.episode_root,
+            episode_id=self.episode_id,
+            logical_path=LIVE_PLAN_EVENTS_LOGICAL_PATH,
+            source_path=self.events_path,
+            kind="live_plan_events",
+        )
         return row
 
     def replay(self) -> LivePlanState:

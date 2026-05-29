@@ -33,6 +33,8 @@ launcher-windows = [
     "winrt-Windows.Storage.Streams>=2.1",
     "winrt-Windows.Foundation>=2.1",
     "winrt-Windows.Foundation.Collections>=2.1",
+    "Pillow>=10.0",
+    "pywin32>=306",
 ]
 launcher-linux = [
     "mss>=9.0",
@@ -51,6 +53,7 @@ codex-hl-civ6-governance = "codex_hl.governance.gates:main"
 codex-hl-civ6-runs = "codex_hl.runs.orchestrator:main"
 codex-hl-civ6-acceptance = "codex_hl.reports.acceptance:main"
 codex-hl-civ6-debug = "codex_hl.diagnostics.connector:main"
+codex-hl-civ6-load-test1 = "codex_hl.diagnostics.load_test1:main"
 codex-hl-civ6-human-demo-record = "codex_hl.demos.cli:main"
 civ6-connector = "civ6_connector.server:main"
 
