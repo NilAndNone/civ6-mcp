@@ -8,7 +8,7 @@
                        "asset_type":  "prompt",
                        "version":  "1.0.0",
                        "content_path":  "assets/prompt-default-boundary.md",
-                       "content_sha256":  "c68b9d8b304ed0fa99edab3bcfc1b9e7a8811bd7c2f6aa371f9ce7a2c966a507",
+                       "content_sha256":  "44fa80834c4f3b8e5654d573bb50fc05121b61b8e427bbbc215514a5fe1eaafe",
                        "source_refs":  [
                                            "docs/codex-hl-evolution-roadmap.md",
                                            "plugin/AGENTS.md",
@@ -32,7 +32,7 @@
                        "asset_type":  "playbook",
                        "version":  "1.0.0",
                        "content_path":  "assets/playbook-observation.md",
-                       "content_sha256":  "b27591025f213b82213ffa2e65341b246482ced4f276c6da2d894e09a06277eb",
+                       "content_sha256":  "58342d6c961cbd094b871382dad02c47bd2c96e95b01db5686a092e5c23bfc1c",
                        "source_refs":  [
                                            "docs/codex-hl-observation.md",
                                            "plugin/commands/civ6-observe.md",
@@ -58,7 +58,7 @@
                        "asset_type":  "playbook",
                        "version":  "1.0.0",
                        "content_path":  "assets/playbook-review-offline-labeling.md",
-                       "content_sha256":  "834ddc9df472bc245b9df2000227106d068311b4c4dc51f965650cde972311e1",
+                       "content_sha256":  "8c9108d813fae9bc6842b54ee711bc43645f7f2eb91d5f6d09d1b5752f3d7e7f",
                        "source_refs":  [
                                            "docs/codex-hl-review.md",
                                            "plugin/commands/civ6-review.md",
@@ -82,7 +82,7 @@
                        "asset_type":  "tool_policy",
                        "version":  "1.0.0",
                        "content_path":  "assets/tool-policy-observation-run-and-evidence.md",
-                       "content_sha256":  "53c87e34c191895fdbffef1943d4ffadf432eb36e08ef9aac1f7d8a78514a649",
+                       "content_sha256":  "bf44f871449446a9f3e74dc368cb9164f148b0930927b2393b97f7cc8177f32b",
                        "source_refs":  [
                                            "docs/codex-hl-observation.md",
                                            "plugin/skills/civ6-observation/SKILL.md",
@@ -107,7 +107,7 @@
                        "asset_type":  "tool_policy",
                        "version":  "1.0.0",
                        "content_path":  "assets/tool-policy-review-confirmation-apply.md",
-                       "content_sha256":  "928e98de6090579b9bc97a4e887e38c8a3d3a2b2bed8c88d86e3064439c4902b",
+                       "content_sha256":  "dd8098032c6b32bba09dcb973cd84f00e9fc9c321a8adf63d91b3a8f6ecc5d50",
                        "source_refs":  [
                                            "docs/codex-hl-review.md",
                                            "plugin/commands/civ6-review.md",
@@ -131,7 +131,7 @@
                        "asset_type":  "memory",
                        "version":  "1.0.0",
                        "content_path":  "assets/memory-low-trust-policy.md",
-                       "content_sha256":  "0461b527bab2d7456152a4eaf23595fcd23f1b02325e854514a45a1d56518dfd",
+                       "content_sha256":  "fdf17ffe70821daf7b7211414215420a11fe5b7d94d36bb35d5f43999a516992",
                        "source_refs":  [
                                            "docs/codex-hl-evolution-roadmap.md",
                                            "plugin/AGENTS.md",
@@ -155,7 +155,7 @@
                        "asset_type":  "tool_policy",
                        "version":  "1.0.0",
                        "content_path":  "assets/tool-policy-t50-metrics-review.md",
-                       "content_sha256":  "834d84e20a6889e6ee31e165f3acbd95b4572ffe4db4aa45fdc8edebff6defce",
+                       "content_sha256":  "a76b28f8705b2b03b45292725a48900f703d9c658a7a762db847d48c25ee7ec8",
                        "source_refs":  [
                                            "docs/codex-hl-evolution-roadmap.md",
                                            "human plan: strategy asset 首批资产迁移计划"
@@ -177,7 +177,7 @@
                        "asset_type":  "playbook",
                        "version":  "1.0.0",
                        "content_path":  "assets/playbook-strategy-candidates.md",
-                       "content_sha256":  "c88d1cc93e15394493bb12a898494af14dde3518726831939a39e86ad6da9b5e",
+                       "content_sha256":  "ceabccf968d2c7fd98777aa3c72f8ec0444dbf69f7886ffad1a6890b1887ef5f",
                        "source_refs":  [
                                            "docs/codex-hl-strategy-candidates.md",
                                            "plugin/commands/civ6-strategy-candidates.md",
@@ -201,7 +201,7 @@
                        "asset_type":  "tool_policy",
                        "version":  "1.0.0",
                        "content_path":  "assets/tool-policy-strategy-candidate-gate.md",
-                       "content_sha256":  "ad86a90d97096a29ec63b178f69b22f6a3dfd7ff291b95de31d31cea6a833c51",
+                       "content_sha256":  "adda5d4873ddf2771f1f41458c01bc272805fc8cfcc833c37618d06ff4f874d5",
                        "source_refs":  [
                                            "docs/codex-hl-strategy-candidates.md",
                                            "plugin/commands/civ6-strategy-candidates.md",
@@ -225,7 +225,7 @@
                        "asset_type":  "playbook",
                        "version":  "1.0.0",
                        "content_path":  "assets/playbook-validation-scenarios.md",
-                       "content_sha256":  "7788fab6d1808a690f1c539d78d130625f7475217d3ed52e6fd7d1dfbfd490a5",
+                       "content_sha256":  "5b62523ca659af9723ba60f39dc9057484630c123b4daa09378d1c164e93c54c",
                        "source_refs":  [
                                            "docs/codex-hl-validation-scenarios.md",
                                            "plugin/commands/civ6-validation-scenarios.md",
