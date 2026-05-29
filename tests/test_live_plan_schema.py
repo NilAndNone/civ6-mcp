@@ -46,6 +46,24 @@ def test_normalize_turn_plan_accepts_documented_shape() -> None:
     assert plan.steps[0].tool == "unit_action"
     assert plan.steps[0].allowed_mutation_level == MutationLevel.L3_HIGH_GAME_MUTATION
     assert plan.steps[0].args["target_x"] == 4
+    assert plan.steps[0].fragment_allowed is False
+
+
+def test_normalize_turn_plan_accepts_explicit_fragment_opt_in() -> None:
+    payload = valid_plan()
+    payload["steps"][0]["fragment_allowed"] = True
+
+    plan = normalize_turn_plan(payload)
+
+    assert plan.steps[0].fragment_allowed is True
+
+
+def test_normalize_turn_plan_rejects_non_boolean_fragment_opt_in() -> None:
+    payload = valid_plan()
+    payload["steps"][0]["fragment_allowed"] = "true"
+
+    with pytest.raises(LivePlanValidationError, match="fragment_allowed"):
+        normalize_turn_plan(payload)
 
 
 @pytest.mark.parametrize(

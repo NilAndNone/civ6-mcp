@@ -179,6 +179,23 @@ ACTION_REGISTRY: dict[str, ActionSpec] = {
         (),
         "Finalize a live episode ledger after lifecycle checks.",
     ),
+    "register_live_fragment": _spec(
+        "register_live_fragment",
+        MutationLevel.L1_RUNTIME_SIDE_EFFECT,
+        ActionKind.RUNTIME_SIDE_EFFECT,
+        (),
+        "Register one optional safe fragment against a live plan step.",
+    ),
+    "execute_live_fragment": _spec(
+        "execute_live_fragment",
+        MutationLevel.L1_RUNTIME_SIDE_EFFECT,
+        ActionKind.RUNTIME_SIDE_EFFECT,
+        (),
+        (
+            "Execute one registered safe fragment wrapper; the bound tool records "
+            "its real mutation level through ActionGateway source=fragment."
+        ),
+    ),
     "spy_action": _spec(
         "spy_action",
         MutationLevel.L3_HIGH_GAME_MUTATION,
@@ -492,7 +509,7 @@ ACTION_REGISTRY: dict[str, ActionSpec] = {
         MutationLevel.L4_BOUNDARY_RECOVERY,
         ActionKind.PROCESS_LIFECYCLE,
         (),
-        "Kill, relaunch, and load a save.",
+        "Load a save through the shared Lua path, with GUI restart fallback.",
     ),
 }
 

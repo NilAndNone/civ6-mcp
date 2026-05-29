@@ -51,7 +51,11 @@ from codex_hl.live.gateway import ActionRequest  # noqa: E402
 from codex_hl.strategy.registry import write_active_asset_snapshot  # noqa: E402
 from civ6_connector import game_launcher  # noqa: E402
 from civ6_connector.connection import GameConnection  # noqa: E402
-from civ6_connector.game_lifecycle import load_game_save, save_game  # noqa: E402
+from civ6_connector.game_lifecycle import (  # noqa: E402
+    front_end_load_game_save as lifecycle_front_end_load_game_save,
+    load_game_save,
+    save_game,
+)
 from civ6_connector.game_state import GameState  # noqa: E402
 
 
@@ -3801,67 +3805,8 @@ async def capture_state(
 
 
 async def front_end_load_game_save(conn: GameConnection, save_name: str) -> str:
-    """Load a save from the main menu using FrontEnd/LoadGameMenu Lua state."""
-    states = [
-        idx
-        for idx, name in conn.lua_states.items()
-        if name in {"LoadGameMenu", "FrontEnd"}
-    ]
-    if not states:
-        return "Error: no LoadGameMenu/FrontEnd Lua state is available."
-    state = states[0]
-    target = json.dumps(save_name)
-    target_ext = json.dumps(f"{save_name}.Civ6Save")
-    marker = "CodexPhase1Load"
-    lua = f"""
-if not ExposedMembers then ExposedMembers = {{}} end;
-ExposedMembers.{marker}Result = nil;
-ExposedMembers.{marker}Done = false;
-pcall(function() Automation.SetAutoStartEnabled(true) end);
-local target = {target};
-local targetExt = {target_ext};
-local function OnResults(fileList, qid)
-  UI.CloseFileListQuery(qid);
-  LuaEvents.FileListQueryResults.Remove(OnResults);
-  for i, s in ipairs(fileList) do
-    if s.Name == target or s.Name == targetExt then
-      ExposedMembers.{marker}Result = "FOUND|" .. tostring(s.Name);
-      ExposedMembers.{marker}Done = true;
-      Network.LoadGame(s, ServerType.SERVER_TYPE_NONE);
-      return;
-    end
-  end;
-  ExposedMembers.{marker}Result = "NOT_FOUND|" .. tostring(fileList and #fileList or 0);
-  ExposedMembers.{marker}Done = true;
-end;
-LuaEvents.FileListQueryResults.Add(OnResults);
-local opts = SaveLocationOptions.NORMAL + SaveLocationOptions.AUTOSAVE
-  + SaveLocationOptions.QUICKSAVE + SaveLocationOptions.LOAD_METADATA;
-UI.QuerySaveGameList(SaveLocations.LOCAL_STORAGE, SaveTypes.SINGLE_PLAYER, opts);
-print("QUERY_SENT|" .. tostring({state}));
-print("---END---");
-"""
-    await conn.execute_in_state(state, lua, timeout=5)
-    check_lua = f"""
-if ExposedMembers and ExposedMembers.{marker}Done then
-  print("RESULT|" .. tostring(ExposedMembers.{marker}Result));
-else
-  print("PENDING");
-end;
-print("---END---");
-"""
-    for _ in range(40):
-        await asyncio.sleep(0.25)
-        try:
-            lines = await conn.execute_in_state(state, check_lua, timeout=5)
-        except Exception:
-            return f"Loading save: {save_name}. Connection changed during front-end load."
-        for line in lines:
-            if line.startswith("RESULT|FOUND|"):
-                return f"Loading save: {line.split('|', 2)[2]} via front-end Lua state {state}."
-            if line.startswith("RESULT|NOT_FOUND|"):
-                return f"Error: save '{save_name}' not found in front-end save list ({line})."
-    return f"Error: timed out waiting for front-end save query for '{save_name}'."
+    """Compatibility wrapper for the public lifecycle save loader."""
+    return await lifecycle_front_end_load_game_save(conn, save_name)
 
 
 async def connect_with_retry(

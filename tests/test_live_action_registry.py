@@ -34,6 +34,14 @@ def test_registry_specs_have_action_kind_and_level() -> None:
         assert spec.description
 
 
+def test_fragment_wrapper_registry_describes_delegated_mutation_level() -> None:
+    spec = ACTION_REGISTRY["execute_live_fragment"]
+
+    assert spec.mutation_level is MutationLevel.L1_RUNTIME_SIDE_EFFECT
+    assert "bound tool" in spec.description
+    assert "source=fragment" in spec.description
+
+
 def test_required_mutation_levels_are_pinned() -> None:
     expected = {
         "set_research": MutationLevel.L2_LOW_GAME_MUTATION,

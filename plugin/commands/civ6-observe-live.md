@@ -30,3 +30,11 @@ MCP action 必须绑定 `episode_id`、`plan_id`、`step_id` 和 `context_hash`�
 ```
 
 真实 T3 验收需要 Windows Civ6/FireTuner 运行时和安装后的 MCP tools。
+
+## Phase 4 optional fragments
+
+- `register_live_fragment` / `execute_live_fragment` are disabled unless `CODEX_HL_CIV6_ENABLE_LIVE_FRAGMENTS=1`.
+- A plan step must opt in with `fragment_allowed: true`; the fragment must bind to that exact `episode_id` / `plan_id` / `step_id` / `context_hash`.
+- Fragment execution is one armed step only. The sandbox rejects imports, loops, `open`, subprocess/shell/network surfaces, raw `GameState`, and multiple mutating `live.*` calls.
+- The extracted mutating call must match the planned tool and args exactly, and the actual game mutation still runs through `ActionGateway` with `source="fragment"`.
+- Fragment lifecycle events are written to the live ledger; `raw/live_fragments.jsonl` is only a compatibility export. `read_context` and precondition helpers are interpreted before mutation, while postconditions stay verifier-owned.

@@ -61,6 +61,52 @@ def test_city_production_set_passes_when_post_state_matches() -> None:
     assert verification.status == VerifierStatus.PASS
 
 
+def test_city_production_set_uses_currently_building_from_observation() -> None:
+    verification = PostconditionVerifier().verify(
+        request=request(
+            "set_city_production",
+            {"city_id": 1, "item_type": "UNIT", "item_name": "UNIT_SLINGER"},
+        ),
+        result="Production set",
+        post_state={"cities": [{"city_id": 1, "currently_building": "UNIT_SLINGER"}]},
+    )
+
+    assert verification.status == VerifierStatus.PASS
+
+
+def test_found_city_passes_when_city_count_increases() -> None:
+    verification = PostconditionVerifier().verify(
+        request=request("unit_action", {"unit_id": 65536, "action": "found_city"}),
+        result="Founded city",
+        pre_state={"cities": [[], []]},
+        post_state={"cities": [[{"city_id": 1, "name": "Capital"}], []]},
+    )
+
+    assert verification.status == VerifierStatus.PASS
+
+
+def test_found_city_uses_overview_city_count_when_city_rows_are_sparse() -> None:
+    verification = PostconditionVerifier().verify(
+        request=request("unit_action", {"unit_id": 65536, "action": "found_city"}),
+        result="Founded city",
+        pre_state={"overview": {"num_cities": 0}, "cities": []},
+        post_state={"overview": {"num_cities": 1}, "cities": []},
+    )
+
+    assert verification.status == VerifierStatus.PASS
+
+
+def test_skip_unit_passes_when_moves_are_spent() -> None:
+    verification = PostconditionVerifier().verify(
+        request=request("unit_action", {"unit_id": 7, "action": "skip"}),
+        result="Skipped unit",
+        pre_state={"units": [{"unit_id": 7, "moves_remaining": 2}]},
+        post_state={"units": [{"unit_id": 7, "moves_remaining": 0}]},
+    )
+
+    assert verification.status == VerifierStatus.PASS
+
+
 @pytest.mark.parametrize(
     ("category", "field", "value"),
     [
@@ -76,6 +122,26 @@ def test_research_and_civic_selected(category: str, field: str, value: str) -> N
         ),
         result="Selected",
         post_state={"research_civic": {field: value}},
+    )
+
+    assert verification.status == VerifierStatus.PASS
+
+
+def test_research_selected_matches_observed_localized_name_to_type() -> None:
+    verification = PostconditionVerifier().verify(
+        request=request(
+            "set_research",
+            {"tech_or_civic": "TECH_MINING", "category": "tech"},
+        ),
+        result="Selected",
+        post_state={
+            "research_civic": {
+                "current_research": "\u91c7\u77ff\u4e1a",
+                "available_techs": [
+                    {"name": "\u91c7\u77ff\u4e1a", "tech_type": "TECH_MINING"}
+                ],
+            }
+        },
     )
 
     assert verification.status == VerifierStatus.PASS
@@ -122,3 +188,23 @@ def test_purchase_gold_delta_roughly_consistent() -> None:
 
     assert verification.status == VerifierStatus.PASS
     assert verification.objective_delta["gold_delta"] == -64
+
+
+def test_tool_result_ok_for_diplomacy_wrapper() -> None:
+    verification = PostconditionVerifier().verify(
+        request=request("respond_to_diplomacy", {"other_player_id": 3, "response": "POSITIVE"}),
+        result="Responded to diplomacy request",
+        postconditions=[{"type": "tool_result_ok"}],
+    )
+
+    assert verification.status == VerifierStatus.PASS
+
+
+def test_tool_result_ok_rejects_blocked_wrapper_result() -> None:
+    verification = PostconditionVerifier().verify(
+        request=request("respond_to_diplomacy", {"other_player_id": 3, "response": "POSITIVE"}),
+        result="Cannot respond: no pending diplomacy",
+        postconditions=[{"type": "tool_result_ok"}],
+    )
+
+    assert verification.status == VerifierStatus.FAIL

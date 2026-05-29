@@ -70,6 +70,7 @@ class LiveStepRecord:
     args: dict[str, Any]
     args_fingerprint: str
     allowed_mutation_level: str
+    fragment_allowed: bool = False
     postconditions: list[dict[str, Any]] = field(default_factory=list)
     status: StepStatus = StepStatus.SUBMITTED
     request_id: str | None = None
@@ -192,6 +193,7 @@ class LivePlanStore:
                             allowed_mutation_level=str(
                                 raw_step.get("allowed_mutation_level") or ""
                             ),
+                            fragment_allowed=bool(raw_step.get("fragment_allowed", False)),
                             postconditions=list(raw_step.get("postconditions") or []),
                             status=StepStatus.SUBMITTED,
                         )
@@ -461,4 +463,5 @@ class LivePlanStore:
             args=record.args,
             allowed_mutation_level=MutationLevel(record.allowed_mutation_level),
             postconditions=tuple(record.postconditions),
+            fragment_allowed=record.fragment_allowed,
         )

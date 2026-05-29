@@ -171,8 +171,9 @@ def is_game_running() -> bool:
                 ["tasklist", "/FI", f"IMAGENAME eq {name}", "/NH"],
                 capture_output=True,
                 text=True,
+                errors="replace",
             )
-            if name.lower() in r.stdout.lower():
+            if name.lower() in (r.stdout or "").lower():
                 return True
         return False
     raise NotImplementedError(f"is_game_running not supported on {sys.platform}")

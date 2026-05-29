@@ -49,7 +49,9 @@
 
 - 默认不要越过当前命令对应的职责边界。
 - live 主线使用 `/civ6-observe-live`；不要把 legacy-baseline 当默认真实执行入口。
-- Phase 3 不启用 fragment；不要调用或暴露 `register_live_fragment` / `execute_live_fragment`。
+- Phase 4 fragment 是可选能力，默认关闭；只有设置 `CODEX_HL_CIV6_ENABLE_LIVE_FRAGMENTS=1`、目标 plan step 显式 `fragment_allowed: true`，并且只执行一个已 armed step 时，才可以调用 `register_live_fragment` / `execute_live_fragment`。
+- Fragment 只能作为单 step helper；不得 import、读写文件、调用 subprocess/shell/network、拿 raw `GameState`，也不得执行多个 mutating `live.*` call。
+- Fragment lifecycle 必须进入 live ledger；`read_context` / `assert_precondition` 只能解释为受控 helper，postcondition 仍由 verifier 判定，不能覆盖工程验证。
 - 候选不是正式资产修改。
 - Governance 默认只审计。
 - `episodes/` 默认是本地产物，不提交。

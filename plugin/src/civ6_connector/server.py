@@ -22,6 +22,7 @@ from mcp.server.fastmcp import Context, FastMCP
 
 from codex_hl.live.actions import classify_action
 from codex_hl.live.context import (
+    GATEWAY_MODE_ENV,
     LIVE_BRANCH_ID_ENV,
     LIVE_CONTEXT_HASH_ENV,
     LIVE_EPISODE_ID_ENV,
@@ -32,6 +33,14 @@ from codex_hl.live.context import (
     live_context_from_env,
     live_episode_root,
     live_plan_store_for_episode,
+)
+from codex_hl.live.fragment_sandbox import (
+    FragmentSandboxError,
+    append_fragment_event,
+    execute_fragment_post_helpers,
+    execute_fragment_pre_helpers,
+    register_fragment_binding,
+    validate_fragment_execution_binding,
 )
 from codex_hl.live.gateway import ActionRequest, GatewayMode
 from codex_hl.live.ledger import now_iso as live_now_iso
@@ -427,6 +436,25 @@ def _result_summary(result: str) -> str:
     return line[:120] + "..." if len(line) > 120 else line
 
 
+async def _load_game_save_for_recovery(
+    gs: GameState,
+    save_name: str | None,
+    *,
+    label: str,
+) -> str:
+    """Recovery load path: common FireTuner loader first, GUI restart fallback."""
+    if save_name:
+        try:
+            result = await gs.load_game_save(save_name)
+            if not str(result).startswith(("Error", "ERR", "FAILED")):
+                return result
+            log.warning("%s: common save loader returned: %s", label, result)
+        except Exception:
+            log.warning("%s: common save loader failed", label, exc_info=True)
+
+    return await game_launcher.restart_and_load(save_name)
+
+
 async def _logged(
     ctx: Context,
     tool_name: str,
@@ -476,7 +504,7 @@ async def _logged(
         ):
             log.error(
                 "CONNECTION RECOVERY: %d consecutive connection failures "
-                "— triggering restart_and_load",
+                "— triggering save reload",
                 _logged._conn_errors,
             )
             _logged._conn_errors = 0
@@ -489,9 +517,13 @@ async def _logged(
                     if turn_num
                     else get_latest_autosave()
                 )
-                restart_result = await game_launcher.restart_and_load(save)
-                log.info("CONNECTION RECOVERY: %s", restart_result)
                 gs = _get_game(ctx)
+                restart_result = await _load_game_save_for_recovery(
+                    gs,
+                    save,
+                    label="CONNECTION RECOVERY",
+                )
+                log.info("CONNECTION RECOVERY: %s", restart_result)
                 for rc_attempt in range(30):
                     try:
                         await gs.conn.reconnect()
@@ -544,6 +576,7 @@ async def _gateway_tool_call(
     step_id: str | None = None,
     context_hash: str | None = None,
     branch_id: str | None = None,
+    source: str = "mcp",
 ) -> str:
     """Route selected mutating MCP calls through the live mutation gateway."""
     spec = classify_action(tool_name, params)
@@ -556,7 +589,7 @@ async def _gateway_tool_call(
     gateway = action_gateway_for_mcp(episode_id=request_episode_id)
     action_result = await gateway.execute(
         ActionRequest(
-            source="mcp",
+            source=source,
             tool_name=tool_name,
             args=params,
             mutation_level=spec.mutation_level,
@@ -627,6 +660,18 @@ def _set_live_env(
     ):
         if value is not None:
             os.environ[key] = value
+
+
+def _clear_live_env() -> None:
+    for key in (
+        LIVE_EPISODE_ID_ENV,
+        LIVE_PLAN_ID_ENV,
+        LIVE_STEP_ID_ENV,
+        LIVE_CONTEXT_HASH_ENV,
+        LIVE_BRANCH_ID_ENV,
+        GATEWAY_MODE_ENV,
+    ):
+        os.environ.pop(key, None)
 
 
 def _episode_id_from_save(save_name: str) -> str:
@@ -851,9 +896,9 @@ async def abort_live_episode(
     """Abort an active live episode without merging any strategy asset."""
     del ctx
     try:
-        return _json_response(
-            live_plan_store_for_episode(episode_id).abort_episode(reason=reason)
-        )
+        payload = live_plan_store_for_episode(episode_id).abort_episode(reason=reason)
+        _clear_live_env()
+        return _json_response(payload)
     except (LiveStateError, OSError) as exc:
         return _live_error(exc)
 
@@ -863,9 +908,461 @@ async def finish_live_episode(ctx: Context, episode_id: str) -> str:
     """Finish a live episode only if strict lifecycle checks are terminal-safe."""
     del ctx
     try:
-        return _json_response(live_plan_store_for_episode(episode_id).finish_episode())
+        payload = live_plan_store_for_episode(episode_id).finish_episode()
+        _clear_live_env()
+        return _json_response(payload)
     except (LiveStateError, OSError) as exc:
         return _live_error(exc)
+
+
+@mcp.tool()
+async def register_live_fragment(
+    ctx: Context,
+    episode_id: str,
+    plan_id: str,
+    step_id: str,
+    context_hash: str,
+    source: str,
+) -> str:
+    """Register one optional safe Python fragment against one live plan step."""
+    del ctx
+    try:
+        binding = register_fragment_binding(
+            plan_store=live_plan_store_for_episode(episode_id),
+            source=source,
+            episode_id=episode_id,
+            plan_id=plan_id,
+            step_id=step_id,
+            context_hash=context_hash,
+        )
+        return _json_response({"ok": True, **binding})
+    except (FragmentSandboxError, LiveStateError, OSError) as exc:
+        return _live_error(exc)
+
+
+@mcp.tool()
+async def execute_live_fragment(
+    ctx: Context,
+    fragment_id: str,
+    episode_id: str,
+    plan_id: str,
+    step_id: str,
+    context_hash: str,
+) -> str:
+    """Execute one registered fragment helper through the armed live step gate."""
+    binding: dict[str, Any] | None = None
+    helper_trace: list[dict[str, Any]] = []
+    ledger_event_ids: list[str] = []
+    try:
+        store = live_plan_store_for_episode(episode_id)
+        binding = validate_fragment_execution_binding(
+            plan_store=store,
+            fragment_id=fragment_id,
+            episode_id=episode_id,
+            plan_id=plan_id,
+            step_id=step_id,
+            context_hash=context_hash,
+        )
+        plan = store.get_plan(plan_id)
+        helper_trace.extend(
+            execute_fragment_pre_helpers(plan_store=store, binding=binding)
+        )
+        started_event = append_fragment_event(
+            episode_root=store.episode_root,
+            episode_id=episode_id,
+            event_type="FRAGMENT_EXECUTION_STARTED",
+            payload={
+                "fragment_id": fragment_id,
+                "episode_id": episode_id,
+                "plan_id": plan_id,
+                "step_id": step_id,
+                "context_hash": context_hash,
+                "tool_name": binding["tool_name"],
+                "args": binding["args"],
+                "source_sha256": binding["source_sha256"],
+                "helper_trace": helper_trace,
+            },
+        )
+        ledger_event_ids.extend(started_event.get("ledger_event_ids") or [])
+        result = await _execute_fragment_bound_tool(
+            ctx,
+            binding=binding,
+            episode_id=episode_id,
+            plan_id=plan_id,
+            step_id=step_id,
+            context_hash=context_hash,
+            branch_id=plan.branch_id,
+        )
+        helper_trace.extend(
+            execute_fragment_post_helpers(plan_store=store, binding=binding)
+        )
+        event_type = (
+            "FRAGMENT_EXECUTION_REJECTED"
+            if result.startswith("Error:")
+            else "FRAGMENT_EXECUTION_FINISHED"
+        )
+        finished_event = append_fragment_event(
+            episode_root=store.episode_root,
+            episode_id=episode_id,
+            event_type=event_type,
+            payload={
+                "fragment_id": fragment_id,
+                "episode_id": episode_id,
+                "plan_id": plan_id,
+                "step_id": step_id,
+                "context_hash": context_hash,
+                "tool_name": binding["tool_name"],
+                "args": binding["args"],
+                "source_sha256": binding["source_sha256"],
+                "result": result,
+                "helper_trace": helper_trace,
+            },
+        )
+        ledger_event_ids.extend(finished_event.get("ledger_event_ids") or [])
+        return _json_response(
+            {
+                "ok": event_type == "FRAGMENT_EXECUTION_FINISHED",
+                "fragment_id": fragment_id,
+                "tool_name": binding["tool_name"],
+                "result": result,
+                "ledger_event_ids": ledger_event_ids,
+                "helper_trace": helper_trace,
+            }
+        )
+    except (
+        FragmentSandboxError,
+        KeyError,
+        LiveStateError,
+        OSError,
+        TypeError,
+        ValueError,
+    ) as exc:
+        try:
+            payload = {
+                "fragment_id": fragment_id,
+                "episode_id": episode_id,
+                "plan_id": plan_id,
+                "step_id": step_id,
+                "context_hash": context_hash,
+                "error": str(exc),
+                "error_type": type(exc).__name__,
+                "helper_trace": helper_trace,
+            }
+            if binding is not None:
+                payload.update(
+                    {
+                        "tool_name": binding.get("tool_name"),
+                        "args": binding.get("args"),
+                        "source_sha256": binding.get("source_sha256"),
+                    }
+                )
+            rejected_event = append_fragment_event(
+                episode_root=live_episode_root(episode_id),
+                episode_id=episode_id,
+                event_type="FRAGMENT_EXECUTION_REJECTED",
+                payload=payload,
+            )
+            ledger_event_ids.extend(rejected_event.get("ledger_event_ids") or [])
+        except OSError:
+            pass
+        return _json_response(
+            {
+                "ok": False,
+                "error": str(exc),
+                "error_type": type(exc).__name__,
+                "ledger_event_ids": ledger_event_ids,
+                "helper_trace": helper_trace,
+            }
+        )
+
+
+async def _execute_fragment_bound_tool(
+    ctx: Context,
+    *,
+    binding: dict[str, Any],
+    episode_id: str,
+    plan_id: str,
+    step_id: str,
+    context_hash: str,
+    branch_id: str,
+) -> str:
+    tool_name = str(binding["tool_name"])
+    args = dict(binding["args"])
+    match tool_name:
+        case "unit_action":
+            return await _execute_fragment_unit_action(
+                ctx,
+                args,
+                episode_id=episode_id,
+                plan_id=plan_id,
+                step_id=step_id,
+                context_hash=context_hash,
+                branch_id=branch_id,
+            )
+        case "city_action":
+            return await _execute_fragment_city_action(
+                ctx,
+                args,
+                episode_id=episode_id,
+                plan_id=plan_id,
+                step_id=step_id,
+                context_hash=context_hash,
+                branch_id=branch_id,
+            )
+        case "set_city_production":
+            gs = _get_game(ctx)
+            return await _logged(
+                ctx,
+                tool_name,
+                args,
+                lambda: _gateway_tool_call(
+                    ctx,
+                    tool_name,
+                    args,
+                    lambda: gs.set_city_production(
+                        int(args["city_id"]),
+                        str(args["item_type"]),
+                        str(args["item_name"]),
+                        args.get("target_x"),
+                        args.get("target_y"),
+                    ),
+                    episode_id=episode_id,
+                    plan_id=plan_id,
+                    step_id=step_id,
+                    context_hash=context_hash,
+                    branch_id=branch_id,
+                    source="fragment",
+                ),
+            )
+        case "purchase_item":
+            gs = _get_game(ctx)
+            return await _logged(
+                ctx,
+                tool_name,
+                args,
+                lambda: _gateway_tool_call(
+                    ctx,
+                    tool_name,
+                    args,
+                    lambda: gs.purchase_item(
+                        int(args["city_id"]),
+                        str(args["item_type"]),
+                        str(args["item_name"]),
+                        str(args.get("yield_type") or "YIELD_GOLD"),
+                    ),
+                    episode_id=episode_id,
+                    plan_id=plan_id,
+                    step_id=step_id,
+                    context_hash=context_hash,
+                    branch_id=branch_id,
+                    source="fragment",
+                ),
+            )
+        case "set_research":
+            gs = _get_game(ctx)
+
+            async def _run_research() -> str:
+                if str(args.get("category") or "tech").lower() == "civic":
+                    return await gs.set_civic(str(args["tech_or_civic"]))
+                return await gs.set_research(str(args["tech_or_civic"]))
+
+            return await _logged(
+                ctx,
+                tool_name,
+                args,
+                lambda: _gateway_tool_call(
+                    ctx,
+                    tool_name,
+                    args,
+                    _run_research,
+                    episode_id=episode_id,
+                    plan_id=plan_id,
+                    step_id=step_id,
+                    context_hash=context_hash,
+                    branch_id=branch_id,
+                    source="fragment",
+                ),
+            )
+        case "purchase_tile":
+            gs = _get_game(ctx)
+            return await _logged(
+                ctx,
+                tool_name,
+                args,
+                lambda: _gateway_tool_call(
+                    ctx,
+                    tool_name,
+                    args,
+                    lambda: gs.purchase_tile(
+                        int(args["city_id"]), int(args["x"]), int(args["y"])
+                    ),
+                    episode_id=episode_id,
+                    plan_id=plan_id,
+                    step_id=step_id,
+                    context_hash=context_hash,
+                    branch_id=branch_id,
+                    source="fragment",
+                ),
+            )
+    raise FragmentSandboxError(f"fragment tool dispatch is not implemented: {tool_name}")
+
+
+async def _execute_fragment_unit_action(
+    ctx: Context,
+    args: dict[str, Any],
+    *,
+    episode_id: str,
+    plan_id: str,
+    step_id: str,
+    context_hash: str,
+    branch_id: str,
+) -> str:
+    gs = _get_game(ctx)
+    unit_id = int(args["unit_id"])
+    unit_index = unit_id % 65536
+    action = str(args["action"])
+    target_x = args.get("target_x")
+    target_y = args.get("target_y")
+    improvement = args.get("improvement")
+
+    async def _run() -> str:
+        match action.lower():
+            case "move":
+                if target_x is None or target_y is None:
+                    return "Error: move requires target_x and target_y"
+                return await gs.move_unit(unit_index, int(target_x), int(target_y))
+            case "attack":
+                if target_x is None or target_y is None:
+                    return "Error: attack requires target_x and target_y"
+                return await gs.attack_unit(unit_index, int(target_x), int(target_y))
+            case "fortify":
+                return await gs.fortify_unit(unit_index)
+            case "skip":
+                return await gs.skip_unit(unit_index)
+            case "found_city":
+                return await gs.found_city(unit_index)
+            case "improve":
+                if not improvement:
+                    return "Error: improve requires improvement name"
+                return await gs.improve_tile(unit_index, str(improvement))
+            case "repair":
+                return await gs.repair_improvement(unit_index)
+            case "remove_improvement":
+                return await gs.remove_improvement(unit_index)
+            case "remove_feature":
+                return await gs.remove_feature(unit_index)
+            case "build_route":
+                return await gs.build_route(unit_index)
+            case "automate":
+                return await gs.automate_explore(unit_index)
+            case "heal":
+                return await gs.heal_unit(unit_index)
+            case "alert":
+                return await gs.alert_unit(unit_index)
+            case "sleep":
+                return await gs.sleep_unit(unit_index)
+            case "delete":
+                return await gs.delete_unit(unit_index)
+            case "trade_route":
+                if target_x is None or target_y is None:
+                    return "Error: trade_route requires target_x and target_y"
+                return await gs.make_trade_route(unit_index, int(target_x), int(target_y))
+            case "activate":
+                return await gs.activate_great_person(unit_index)
+            case "sacrifice_charges":
+                return await gs.sacrifice_builder_charges(unit_index)
+            case "spread_religion":
+                return await gs.spread_religion(unit_index)
+            case "teleport":
+                if target_x is None or target_y is None:
+                    return "Error: teleport requires target_x and target_y"
+                return await gs.teleport_to_city(unit_index, int(target_x), int(target_y))
+            case _:
+                return f"Error: Unknown action '{action}'."
+
+    result = await _logged(
+        ctx,
+        "unit_action",
+        args,
+        lambda: _gateway_tool_call(
+            ctx,
+            "unit_action",
+            args,
+            _run,
+            episode_id=episode_id,
+            plan_id=plan_id,
+            step_id=step_id,
+            context_hash=context_hash,
+            branch_id=branch_id,
+            source="fragment",
+        ),
+    )
+    if (
+        action.lower() in ("move", "attack", "trade_route", "teleport")
+        and target_x is not None
+        and target_y is not None
+    ):
+        _get_camera(ctx).push(int(target_x), int(target_y), f"{action} fragment")
+    return result
+
+
+async def _execute_fragment_city_action(
+    ctx: Context,
+    args: dict[str, Any],
+    *,
+    episode_id: str,
+    plan_id: str,
+    step_id: str,
+    context_hash: str,
+    branch_id: str,
+) -> str:
+    gs = _get_game(ctx)
+    action = str(args["action"])
+    city_id = int(args["city_id"])
+    target_x = args.get("target_x")
+    target_y = args.get("target_y")
+    match action:
+        case "attack":
+            if target_x is None or target_y is None:
+                return "Error: attack requires target_x and target_y"
+            result = await _logged(
+                ctx,
+                "city_action",
+                args,
+                lambda: _gateway_tool_call(
+                    ctx,
+                    "city_action",
+                    args,
+                    lambda: gs.city_attack(city_id, int(target_x), int(target_y)),
+                    episode_id=episode_id,
+                    plan_id=plan_id,
+                    step_id=step_id,
+                    context_hash=context_hash,
+                    branch_id=branch_id,
+                    source="fragment",
+                ),
+            )
+            _get_camera(ctx).push(int(target_x), int(target_y), "city attack fragment")
+            return result
+        case "keep" | "reject" | "raze" | "liberate_founder" | "liberate_previous":
+            return await _logged(
+                ctx,
+                "city_action",
+                args,
+                lambda: _gateway_tool_call(
+                    ctx,
+                    "city_action",
+                    args,
+                    lambda: gs.resolve_city_capture(action),
+                    episode_id=episode_id,
+                    plan_id=plan_id,
+                    step_id=step_id,
+                    context_hash=context_hash,
+                    branch_id=branch_id,
+                    source="fragment",
+                ),
+            )
+    return f"Error: Unknown city action '{action}'."
 
 
 # ---------------------------------------------------------------------------
@@ -2587,9 +3084,13 @@ async def end_turn(
                         hang_save,
                     )
 
-                    # Step 1: Kill + relaunch + OCR load
-                    restart_result = await game_launcher.restart_and_load(hang_save)
-                    log.info("HANG RECOVERY: restart_and_load: %s", restart_result)
+                    # Step 1: common save loader first, GUI restart fallback
+                    restart_result = await _load_game_save_for_recovery(
+                        gs,
+                        hang_save,
+                        label="HANG RECOVERY",
+                    )
+                    log.info("HANG RECOVERY: save reload: %s", restart_result)
 
                     # Step 2: Reconnect
                     conn = gs.conn
@@ -3440,18 +3941,16 @@ async def load_save_from_menu(ctx: Context, save_name: str | None = None) -> str
 
 @mcp.tool(annotations={"destructiveHint": True})
 async def restart_and_load(ctx: Context, save_name: str | None = None) -> str:
-    """Full game recovery: kill, relaunch, and load a save.
+    """Recovery load: common FireTuner save loader, then GUI restart fallback.
 
     Args:
         save_name: Autosave name (e.g. "AutoSave_0221"). If not provided,
                    loads the most recent autosave.
 
     This is the recommended tool for recovering from game hangs (e.g. AI turn
-    processing stuck in infinite loop). Takes 60-120 seconds total:
-    1. Kills the game process
-    2. Waits for Steam to deregister (~10s)
-    3. Relaunches via Steam (~15-30s for process start + main menu)
-    4. Navigates menus via OCR to load the save (~30-60s)
+    processing stuck in infinite loop). It first tries the shared Lua save
+    loader through FireTuner. Only if that fails does it kill, relaunch, and
+    navigate menus via OCR.
 
     After completion, wait ~10 seconds then call get_game_overview to verify.
     """
@@ -3462,7 +3961,11 @@ async def restart_and_load(ctx: Context, save_name: str | None = None) -> str:
         ctx,
         "restart_and_load",
         {"save_name": save_name},
-        lambda: game_launcher.restart_and_load(save_name),
+        lambda: _load_game_save_for_recovery(
+            gs,
+            save_name,
+            label="restart_and_load",
+        ),
     )
 
     # Reconnect and verify correct game loaded
@@ -3489,7 +3992,11 @@ async def restart_and_load(ctx: Context, save_name: str | None = None) -> str:
                     identity_before,
                     actual,
                 )
-                result2 = await game_launcher.restart_and_load(save_name)
+                result2 = await _load_game_save_for_recovery(
+                    gs,
+                    save_name,
+                    label="restart_and_load retry",
+                )
                 for attempt in range(30):
                     try:
                         await conn.reconnect()

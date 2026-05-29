@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 
 from civ6_connector import lua as lq
 from civ6_connector.connection import GameConnection
 
 log = logging.getLogger(__name__)
+
+_CIV6_SAVE_EXT = ".Civ6Save"
+_FRONTEND_SAVE_STATES = {"LoadGameMenu", "FrontEnd"}
 
 
 async def dismiss_popup(conn: GameConnection) -> str:
@@ -274,6 +279,91 @@ async def dismiss_popup(conn: GameConnection) -> str:
 # ------------------------------------------------------------------
 
 
+def _save_name_targets(save_name: str) -> tuple[str, str]:
+    """Return save name variants accepted by Civ6 save-list entries."""
+    base = save_name
+    if save_name.lower().endswith(_CIV6_SAVE_EXT.lower()):
+        base = save_name[: -len(_CIV6_SAVE_EXT)]
+    return base, f"{base}{_CIV6_SAVE_EXT}"
+
+
+def _front_end_state(conn: GameConnection) -> int | None:
+    states = [
+        idx
+        for idx, name in conn.lua_states.items()
+        if name in _FRONTEND_SAVE_STATES
+    ]
+    return states[0] if states else None
+
+
+async def front_end_load_game_save(conn: GameConnection, save_name: str) -> str:
+    """Load a save from FrontEnd/LoadGameMenu Lua without OCR navigation."""
+    state = _front_end_state(conn)
+    if state is None:
+        return "Error: no LoadGameMenu/FrontEnd Lua state is available."
+
+    target, target_ext = _save_name_targets(save_name)
+    marker = "CodexFrontEndLoad"
+    lua = f"""
+if not ExposedMembers then ExposedMembers = {{}} end;
+ExposedMembers.{marker}Result = nil;
+ExposedMembers.{marker}Done = false;
+pcall(function() Automation.SetAutoStartEnabled(true) end);
+local target = {json.dumps(target)};
+local targetExt = {json.dumps(target_ext)};
+local function OnResults(fileList, qid)
+  UI.CloseFileListQuery(qid);
+  LuaEvents.FileListQueryResults.Remove(OnResults);
+  for i, s in ipairs(fileList) do
+    if s.Name == target or s.Name == targetExt then
+      ExposedMembers.{marker}Result = "FOUND|" .. tostring(s.Name);
+      ExposedMembers.{marker}Done = true;
+      pcall(function() Network.LeaveGame() end);
+      Network.LoadGame(s, ServerType.SERVER_TYPE_NONE);
+      return;
+    end
+  end;
+  ExposedMembers.{marker}Result = "NOT_FOUND|" .. tostring(fileList and #fileList or 0);
+  ExposedMembers.{marker}Done = true;
+end;
+LuaEvents.FileListQueryResults.Add(OnResults);
+local opts = SaveLocationOptions.NORMAL + SaveLocationOptions.AUTOSAVE
+  + SaveLocationOptions.QUICKSAVE + SaveLocationOptions.LOAD_METADATA;
+UI.QuerySaveGameList(SaveLocations.LOCAL_STORAGE, SaveTypes.SINGLE_PLAYER, opts);
+print("QUERY_SENT|" .. tostring({state}));
+print("{lq.SENTINEL}");
+"""
+    try:
+        await conn.execute_in_state(state, lua, timeout=5)
+    except Exception as exc:
+        log.debug("FrontEnd save query failed", exc_info=True)
+        return (
+            f"Error: front-end save query failed for '{target}': "
+            f"{type(exc).__name__}: {exc}"
+        )
+    check_lua = f"""
+if ExposedMembers and ExposedMembers.{marker}Done then
+  print("RESULT|" .. tostring(ExposedMembers.{marker}Result));
+else
+  print("PENDING");
+end;
+print("{lq.SENTINEL}");
+"""
+    for _ in range(40):
+        await asyncio.sleep(0.25)
+        try:
+            lines = await conn.execute_in_state(state, check_lua, timeout=5)
+        except Exception:
+            return f"Loading save: {target}. Connection changed during front-end load."
+        for line in lines:
+            if line.startswith("RESULT|FOUND|"):
+                loaded = line.split("|", 2)[2]
+                return f"Loading save: {loaded} via front-end Lua state {state}."
+            if line.startswith("RESULT|NOT_FOUND|"):
+                return f"Error: save '{target}' not found in front-end save list ({line})."
+    return f"Error: timed out waiting for front-end save query for '{target}'."
+
+
 async def save_game(conn: GameConnection, name: str) -> str:
     """Create a named save. Used for MCP per-turn autosaves."""
     lines = await conn.execute_write(
@@ -443,7 +533,7 @@ async def load_save(conn: GameConnection, save_index: int) -> str:
     return "Load command sent. Wait for game to reload."
 
 
-async def load_game_save(conn: GameConnection, save_name: str) -> str:
+async def _load_game_save_legacy_fallback(conn: GameConnection, save_name: str) -> str:
     """Load a save by name — no list_saves() prerequisite.
 
     Two-tier approach:
@@ -541,6 +631,86 @@ async def load_game_save(conn: GameConnection, save_name: str) -> str:
     else:
         log.info("In-game — restart_and_load for '%s'", save_name)
         return await game_launcher.restart_and_load(save_name)
+
+
+async def load_game_save(conn: GameConnection, save_name: str) -> str:
+    """Load a save by name, preferring FireTuner Lua over GUI/OCR."""
+    import sys
+
+    target, target_ext = _save_name_targets(save_name)
+
+    if sys.platform != "linux":
+        if _front_end_state(conn) is not None and conn.gamecore_index is None:
+            result = await front_end_load_game_save(conn, target)
+            if not result.startswith("Error:"):
+                return result
+            log.info("FrontEnd load did not load '%s': %s", target, result)
+
+        try:
+            await conn.execute_write(
+                f"if not ExposedMembers then ExposedMembers = {{}} end; "
+                f"ExposedMembers.MCPLoadResult = nil; "
+                f"ExposedMembers.MCPLoadDone = false; "
+                f"local target = {json.dumps(target)}; "
+                f"local targetExt = {json.dumps(target_ext)}; "
+                f"local function OnResults(fileList, qid) "
+                f"  UI.CloseFileListQuery(qid); "
+                f"  LuaEvents.FileListQueryResults.Remove(OnResults); "
+                f"  for i, s in ipairs(fileList) do "
+                f"    if s.Name == target or s.Name == targetExt then "
+                f'      ExposedMembers.MCPLoadResult = "FOUND"; '
+                f"      ExposedMembers.MCPLoadDone = true; "
+                f"      pcall(function() Network.LeaveGame() end); "
+                f"      Network.LoadGame(s, ServerType.SERVER_TYPE_NONE); "
+                f"      return "
+                f"    end "
+                f"  end; "
+                f'  ExposedMembers.MCPLoadResult = "NOT_FOUND"; '
+                f"  ExposedMembers.MCPLoadDone = true; "
+                f"end; "
+                f"LuaEvents.FileListQueryResults.Add(OnResults); "
+                f"local opts = SaveLocationOptions.NORMAL + SaveLocationOptions.AUTOSAVE "
+                f"  + SaveLocationOptions.QUICKSAVE + SaveLocationOptions.LOAD_METADATA; "
+                f"UI.QuerySaveGameList(SaveLocations.LOCAL_STORAGE, SaveTypes.SINGLE_PLAYER, opts); "
+                f'print("QUERY_SENT"); '
+                f'print("{lq.SENTINEL}")'
+            )
+
+            for _ in range(20):
+                await asyncio.sleep(0.25)
+                check = await conn.execute_write(
+                    f"if ExposedMembers.MCPLoadDone then "
+                    f'  print("RESULT|" .. tostring(ExposedMembers.MCPLoadResult)) '
+                    f'else print("PENDING") end; '
+                    f'print("{lq.SENTINEL}")'
+                )
+                for line in check:
+                    if line == "RESULT|FOUND":
+                        return (
+                            f"Loading save: {target}. Game will reload; "
+                            f"wait ~10 seconds then call get_game_overview to verify."
+                        )
+                    if line == "RESULT|NOT_FOUND":
+                        break
+                else:
+                    continue
+                break
+            log.info("Lua query did not find '%s', trying fallback", target)
+        except Exception:
+            log.debug("Lua load_game_save failed", exc_info=True)
+
+        if _front_end_state(conn) is not None:
+            result = await front_end_load_game_save(conn, target)
+            if not result.startswith("Error:"):
+                return result
+            log.info("FrontEnd retry did not load '%s': %s", target, result)
+    else:
+        log.info(
+            "Linux: skipping Lua load (Aspyr port bug), using OCR nav for '%s'",
+            target,
+        )
+
+    return await _load_game_save_legacy_fallback(conn, target)
 
 
 async def execute_lua(

@@ -13,6 +13,7 @@ from codex_hl.live.actions import (
     is_registered_action_tool,
 )
 from codex_hl.live.gateway import ActionGateway, ActionRequest, ActionResult, GatewayMode
+from codex_hl.live.fragment_sandbox import FragmentSandboxError
 from codex_hl.live.mutation_levels import ActionKind, MutationLevel
 from codex_hl.live.plan_store import LivePlanStore
 from codex_hl.live.schemas import (
@@ -33,6 +34,7 @@ __all__ = [
     "ActionResult",
     "ActionSpec",
     "GatewayMode",
+    "FragmentSandboxError",
     "LivePlanStep",
     "LivePlanStore",
     "LivePlanValidationError",

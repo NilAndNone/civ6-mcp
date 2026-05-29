@@ -86,6 +86,13 @@ class PostconditionVerifier:
                         item_name=condition.get("item_name") or getattr(request, "args", {}).get("item_name"),
                     )
                 )
+            elif condition_type == "city_count_increased":
+                results.append(
+                    self._verify_city_count_increased(
+                        pre_state=pre_state,
+                        post_state=post_state,
+                    )
+                )
             elif condition_type == "research_or_civic_selected":
                 results.append(
                     self._verify_research_civic(
@@ -103,6 +110,14 @@ class PostconditionVerifier:
                         post_state=post_state,
                     )
                 )
+            elif condition_type == "unit_has_no_moves_or_blocked":
+                results.append(
+                    self._verify_unit_has_no_moves_or_blocked(
+                        result=result,
+                        post_state=post_state,
+                        unit_id=condition.get("unit_id") or getattr(request, "args", {}).get("unit_id"),
+                    )
+                )
             elif condition_type == "purchase_gold_delta":
                 results.append(
                     self._verify_purchase_delta(
@@ -112,6 +127,8 @@ class PostconditionVerifier:
                         post_state=post_state,
                     )
                 )
+            elif condition_type == "tool_result_ok":
+                results.append(self._verify_tool_result_ok(result=result))
             else:
                 results.append(
                     VerificationResult(
@@ -131,6 +148,11 @@ class PostconditionVerifier:
     ) -> VerificationResult:
         tool = str(getattr(request, "tool_name", "") or "")
         args = getattr(request, "args", {}) if isinstance(getattr(request, "args", {}), dict) else {}
+        if tool == "unit_action" and str(args.get("action") or "").lower() == "found_city":
+            return self._verify_city_count_increased(
+                pre_state=pre_state,
+                post_state=post_state,
+            )
         if tool == "unit_action" and str(args.get("action") or "").lower() in {
             "move",
             "attack",
@@ -141,6 +163,19 @@ class PostconditionVerifier:
                 request=request,
                 result=result,
                 pre_state=pre_state,
+                post_state=post_state,
+                unit_id=args.get("unit_id"),
+            )
+        if tool == "unit_action" and str(args.get("action") or "").lower() in {
+            "skip",
+            "fortify",
+            "heal",
+            "alert",
+            "sleep",
+            "automate",
+        }:
+            return self._verify_unit_has_no_moves_or_blocked(
+                result=result,
                 post_state=post_state,
                 unit_id=args.get("unit_id"),
             )
@@ -171,6 +206,13 @@ class PostconditionVerifier:
                 pre_state=pre_state,
                 post_state=post_state,
             )
+        if tool in {
+            "respond_to_diplomacy",
+            "respond_to_trade",
+            "set_policies",
+            "dismiss_popup",
+        }:
+            return self._verify_tool_result_ok(result=result)
         return VerificationResult(
             status=VerifierStatus.INCONCLUSIVE,
             reason="No deterministic postcondition available for this action.",
@@ -251,6 +293,69 @@ class PostconditionVerifier:
             reason="city production does not match requested item",
         )
 
+    def _verify_city_count_increased(
+        self,
+        *,
+        pre_state: dict[str, Any],
+        post_state: dict[str, Any],
+    ) -> VerificationResult:
+        pre_count = _city_count(pre_state)
+        post_count = _city_count(post_state)
+        if post_count > pre_count:
+            return VerificationResult(
+                status=VerifierStatus.PASS,
+                objective_delta={"city_count_before": pre_count, "city_count_after": post_count},
+                reason="city count increased",
+            )
+        return VerificationResult(
+            status=VerifierStatus.FAIL,
+            objective_delta={"city_count_before": pre_count, "city_count_after": post_count},
+            reason="city count did not increase",
+        )
+
+    def _verify_unit_has_no_moves_or_blocked(
+        self,
+        *,
+        result: Any,
+        post_state: dict[str, Any],
+        unit_id: Any,
+    ) -> VerificationResult:
+        unit = _find_by_id(post_state.get("units"), unit_id)
+        if unit is None:
+            if _result_indicates_blocked(result):
+                return VerificationResult(
+                    status=VerifierStatus.PASS,
+                    objective_delta={"blocked": True},
+                    reason="unit action was blocked and unit is no longer present",
+                )
+            return VerificationResult(
+                status=VerifierStatus.INCONCLUSIVE,
+                reason="unit move check needs post unit state",
+            )
+        moves = _number(unit.get("moves_remaining"))
+        if moves is None:
+            return VerificationResult(
+                status=VerifierStatus.INCONCLUSIVE,
+                reason="unit move check needs moves_remaining",
+            )
+        if moves <= 0:
+            return VerificationResult(
+                status=VerifierStatus.PASS,
+                objective_delta={"moves_remaining": _clean_number(moves)},
+                reason="unit has no moves remaining",
+            )
+        if _result_indicates_blocked(result):
+            return VerificationResult(
+                status=VerifierStatus.PASS,
+                objective_delta={"moves_remaining": _clean_number(moves), "blocked": True},
+                reason="unit action was blocked",
+            )
+        return VerificationResult(
+            status=VerifierStatus.FAIL,
+            objective_delta={"moves_remaining": _clean_number(moves)},
+            reason="unit still has moves remaining",
+        )
+
     def _verify_research_civic(
         self,
         *,
@@ -268,7 +373,7 @@ class PostconditionVerifier:
             )
         key = "current_civic" if category.lower() == "civic" else "current_research"
         current = research.get(key)
-        if _same_symbol(current, value):
+        if _research_civic_matches(research, category=category, current=current, expected=value):
             return VerificationResult(
                 status=VerifierStatus.PASS,
                 objective_delta={key: current},
@@ -349,6 +454,19 @@ class PostconditionVerifier:
             reason="gold delta is roughly consistent with purchase",
         )
 
+    def _verify_tool_result_ok(self, *, result: Any) -> VerificationResult:
+        if _result_indicates_blocked(result):
+            return VerificationResult(
+                status=VerifierStatus.FAIL,
+                objective_delta={"result": str(result)},
+                reason="tool result indicates the action was blocked or failed",
+            )
+        return VerificationResult(
+            status=VerifierStatus.PASS,
+            objective_delta={"result": str(result)},
+            reason="tool result does not indicate a blocked or failed action",
+        )
+
     @staticmethod
     def _combine(results: list[VerificationResult]) -> VerificationResult:
         if any(result.status is VerifierStatus.FAIL for result in results):
@@ -376,11 +494,7 @@ class StubVerifier(PostconditionVerifier):
 
 
 def _find_by_id(rows: Any, value: Any) -> dict[str, Any] | None:
-    if not isinstance(rows, list):
-        return None
-    for row in rows:
-        if not isinstance(row, dict):
-            continue
+    for row in _entity_rows(rows):
         identifiers = [
             row.get("unit_id"),
             row.get("unit_index"),
@@ -391,6 +505,18 @@ def _find_by_id(rows: Any, value: Any) -> dict[str, Any] | None:
         if any(str(identifier) == str(value) for identifier in identifiers if identifier is not None):
             return row
     return None
+
+
+def _entity_rows(rows: Any) -> list[dict[str, Any]]:
+    if not isinstance(rows, list):
+        return []
+    result: list[dict[str, Any]] = []
+    for row in rows:
+        if isinstance(row, dict):
+            result.append(row)
+        elif isinstance(row, list):
+            result.extend(item for item in row if isinstance(item, dict))
+    return result
 
 
 def _xy(row: dict[str, Any]) -> dict[str, int] | None:
@@ -422,7 +548,7 @@ def _result_indicates_blocked(result: Any) -> bool:
 
 
 def _city_production_name(city: dict[str, Any]) -> Any:
-    for key in ("current_production", "production_item", "item_name"):
+    for key in ("currently_building", "current_production", "production_item", "item_name"):
         if city.get(key):
             return city[key]
     production = city.get("production")
@@ -442,12 +568,46 @@ def _same_symbol(a: Any, b: Any) -> bool:
     return str(a or "").strip().upper() == str(b or "").strip().upper()
 
 
+def _research_civic_matches(
+    research: dict[str, Any], *, category: str, current: Any, expected: Any
+) -> bool:
+    if _same_symbol(current, expected):
+        return True
+    option_key = "available_civics" if category.lower() == "civic" else "available_techs"
+    type_key = "civic_type" if category.lower() == "civic" else "tech_type"
+    for option in _entity_rows(research.get(option_key)):
+        option_type = option.get(type_key)
+        option_name = option.get("name")
+        if _same_symbol(option_type, expected) and _same_symbol(option_name, current):
+            return True
+        if _same_symbol(option_name, expected) and _same_symbol(option_type, current):
+            return True
+    return False
+
+
+def _city_count(state: dict[str, Any]) -> int:
+    row_count = len(_entity_rows(state.get("cities")))
+    overview_count = _overview_number(state, "num_cities")
+    if overview_count is None:
+        return row_count
+    return max(row_count, int(overview_count))
+
+
 def _overview_number(state: dict[str, Any], key: str) -> float | None:
     overview = state.get("overview")
     if not isinstance(overview, dict):
         return None
-    value = overview.get(key)
-    return float(value) if isinstance(value, (int, float)) else None
+    return _number(overview.get(key))
+
+
+def _number(value: Any) -> float | None:
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if text.replace(".", "", 1).isdigit():
+            return float(text)
+    return None
 
 
 def _expected_cost(args: dict[str, Any], result: Any) -> float | None:

@@ -51,6 +51,7 @@ class LivePlanStep:
     allowed_mutation_level: MutationLevel
     postconditions: tuple[dict[str, Any], ...] = field(default_factory=tuple)
     rationale: str = ""
+    fragment_allowed: bool = False
 
     def args_fingerprint(self) -> str:
         return canonical_json(self.args)
@@ -142,6 +143,11 @@ def normalize_turn_plan(payload: Any) -> LiveTurnPlan:
         rationale = step.get("rationale", "")
         if rationale is not None and not isinstance(rationale, str):
             raise LivePlanValidationError(f"steps[{index}].rationale must be a string")
+        fragment_allowed = step.get("fragment_allowed", False)
+        if not isinstance(fragment_allowed, bool):
+            raise LivePlanValidationError(
+                f"steps[{index}].fragment_allowed must be a boolean"
+            )
         steps.append(
             LivePlanStep(
                 step_id=step_id,
@@ -150,6 +156,7 @@ def normalize_turn_plan(payload: Any) -> LiveTurnPlan:
                 allowed_mutation_level=allowed_level,
                 postconditions=tuple(normalized_postconditions),
                 rationale=str(rationale or ""),
+                fragment_allowed=fragment_allowed,
             )
         )
 
@@ -185,6 +192,7 @@ def plan_to_payload(plan: LiveTurnPlan) -> dict[str, Any]:
                 "allowed_mutation_level": step.allowed_mutation_level.value,
                 "postconditions": list(step.postconditions),
                 "rationale": step.rationale,
+                "fragment_allowed": step.fragment_allowed,
             }
             for step in plan.steps
         ],

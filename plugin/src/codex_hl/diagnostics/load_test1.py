@@ -55,9 +55,8 @@ async def load_and_verify(
 ) -> dict[str, Any]:
     from civ6_connector.connection import GameConnection
     from civ6_connector import game_launcher
-    from civ6_connector.game_lifecycle import load_game_save
+    from civ6_connector.game_lifecycle import front_end_load_game_save, load_game_save
     from civ6_connector.game_state import GameState
-    from codex_hl.evidence.observation import front_end_load_game_save
 
     conn = GameConnection(port=port)
     payload: dict[str, Any] = {
@@ -90,14 +89,7 @@ async def load_and_verify(
         last_load_error = ""
         for attempt in range(1, max(1, load_retries + 1) + 1):
             try:
-                lua_result = await asyncio.wait_for(
-                    _load_save_via_lua_query(conn, save_name),
-                    timeout=min(load_timeout, 20.0),
-                )
-                if lua_result:
-                    payload["load_path"] = "lua_query"
-                    payload["load_result"] = lua_result
-                elif _front_end_ready(conn):
+                if _front_end_ready(conn) and conn.gamecore_index is None:
                     payload["load_path"] = "front_end_lua"
                     payload["load_result"] = await asyncio.wait_for(
                         front_end_load_game_save(conn, save_name),
@@ -109,6 +101,8 @@ async def load_and_verify(
                         load_game_save(conn, save_name),
                         timeout=load_timeout,
                     )
+                if str(payload["load_result"]).startswith("Error:"):
+                    raise RuntimeError(str(payload["load_result"]))
                 payload["load_attempts"] = attempt
                 break
             except Exception as exc:  # noqa: BLE001 - reload often resets FireTuner once.
@@ -172,78 +166,6 @@ async def load_and_verify(
 
 def _front_end_ready(conn: Any) -> bool:
     return any(name in {"LoadGameMenu", "FrontEnd"} for name in conn.lua_states.values())
-
-
-async def _load_save_via_lua_query(conn: Any, save_name: str) -> str | None:
-    """Fast save load path that avoids OCR/restart fallbacks when Lua can see the save."""
-    from civ6_connector import lua as lq
-
-    if conn.gamecore_index is None and not _front_end_ready(conn):
-        return None
-    state = next(
-        (
-            idx
-            for idx, name in conn.lua_states.items()
-            if name in {"LoadGameMenu", "FrontEnd"}
-        ),
-        None,
-    )
-    target = json.dumps(save_name)
-    target_ext = json.dumps(f"{save_name}.Civ6Save")
-    marker = "CodexLoadTest1"
-    lua = f"""
-if not ExposedMembers then ExposedMembers = {{}} end;
-ExposedMembers.{marker}Result = nil;
-ExposedMembers.{marker}Done = false;
-local target = {target};
-local targetExt = {target_ext};
-local function OnResults(fileList, qid)
-  UI.CloseFileListQuery(qid);
-  LuaEvents.FileListQueryResults.Remove(OnResults);
-  for i, s in ipairs(fileList) do
-    if s.Name == target or s.Name == targetExt then
-      ExposedMembers.{marker}Result = "FOUND|" .. tostring(s.Name);
-      ExposedMembers.{marker}Done = true;
-      pcall(function() Network.LeaveGame() end);
-      Network.LoadGame(s, ServerType.SERVER_TYPE_NONE);
-      return;
-    end
-  end;
-  ExposedMembers.{marker}Result = "NOT_FOUND|" .. tostring(fileList and #fileList or 0);
-  ExposedMembers.{marker}Done = true;
-end;
-LuaEvents.FileListQueryResults.Add(OnResults);
-local opts = SaveLocationOptions.NORMAL + SaveLocationOptions.AUTOSAVE
-  + SaveLocationOptions.QUICKSAVE + SaveLocationOptions.LOAD_METADATA;
-UI.QuerySaveGameList(SaveLocations.LOCAL_STORAGE, SaveTypes.SINGLE_PLAYER, opts);
-print("QUERY_SENT");
-print("{lq.SENTINEL}");
-"""
-    check_lua = f"""
-if ExposedMembers and ExposedMembers.{marker}Done then
-  print("RESULT|" .. tostring(ExposedMembers.{marker}Result));
-else
-  print("PENDING");
-end;
-print("{lq.SENTINEL}");
-"""
-    if conn.gamecore_index is None and state is not None:
-        execute = lambda code: conn.execute_in_state(state, code, timeout=5)
-    else:
-        execute = lambda code: conn.execute_write(code, timeout=5)
-    await execute(lua)
-    for _ in range(40):
-        await asyncio.sleep(0.25)
-        try:
-            lines = await execute(check_lua)
-        except Exception:
-            return f"Loading save: {save_name}. Connection changed during Lua load."
-        for line in lines:
-            if line.startswith("RESULT|FOUND|"):
-                return f"Loading save: {line.split('|', 2)[2]} via Lua save-list query."
-            if line.startswith("RESULT|NOT_FOUND|"):
-                return None
-    return None
 
 
 def _try_continue_from_leader_screen(game_launcher: Any) -> str:
