@@ -568,6 +568,7 @@ async def _gateway_tool_call(
             branch_id=request_branch_id,
         ),
         fn,
+        state_reader=lambda: _capture_live_verifier_state(ctx),
     )
     if not action_result.allowed:
         return f"Error: {action_result.error}"
@@ -660,6 +661,29 @@ async def _safe_live_context_field(name: str, fn: Callable[[], Awaitable[Any]]) 
         return await fn()
     except Exception as exc:  # noqa: BLE001 - context should preserve read gaps.
         return {"error": f"{type(exc).__name__}: {exc}", "field": name}
+
+
+async def _capture_live_verifier_state(ctx: Context) -> dict[str, Any]:
+    """Capture the deterministic state fields needed by live postcondition checks."""
+    gs = _get_game(ctx)
+    overview = to_jsonable(
+        await _safe_live_context_field("overview", gs.get_game_overview)
+    )
+    cities = to_jsonable(await _safe_live_context_field("cities", gs.get_cities))
+    units = to_jsonable(await _safe_live_context_field("units", gs.get_units))
+    notifications = to_jsonable(
+        await _safe_live_context_field("notifications", gs.get_notifications)
+    )
+    research_civic = to_jsonable(
+        await _safe_live_context_field("research_civic", gs.get_tech_civics)
+    )
+    return {
+        "overview": overview if isinstance(overview, dict) else {},
+        "cities": cities if isinstance(cities, list) else [],
+        "units": units if isinstance(units, list) else [],
+        "notifications": notifications if isinstance(notifications, list) else [],
+        "research_civic": research_civic if isinstance(research_civic, dict) else {},
+    }
 
 
 def _parse_plan_payload(plan: dict[str, Any] | None, plan_json: str) -> dict[str, Any]:

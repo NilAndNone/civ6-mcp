@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+import hashlib
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
@@ -208,6 +209,8 @@ class ActionGateway:
         self,
         request: ActionRequest,
         fn: Callable[[], Awaitable[Any] | Any],
+        *,
+        state_reader: Callable[[], Awaitable[dict[str, Any]] | dict[str, Any]] | None = None,
     ) -> ActionResult:
         event_ids: list[str] = []
         unplanned = self._is_unplanned_mutation(request)
@@ -269,6 +272,21 @@ class ActionGateway:
                     ledger_event_ids=event_ids,
                 )
 
+        should_verify_with_state = (
+            self.mode is GatewayMode.LIVE_STRICT
+            and request.mutation_level.is_game_mutation_or_higher()
+            and strict.step is not None
+            and state_reader is not None
+        )
+        pre_state: dict[str, Any] | None = None
+        post_state: dict[str, Any] | None = None
+        pre_state_hash: str | None = None
+        post_state_hash: str | None = None
+        if should_verify_with_state:
+            assert state_reader is not None
+            pre_state = await _read_state(state_reader)
+            pre_state_hash = _state_hash(pre_state)
+
         if self.ledger is not None:
             event_ids.append(
                 self.ledger.append_event(
@@ -311,9 +329,18 @@ class ActionGateway:
                 )
             raise
 
+        if should_verify_with_state:
+            assert state_reader is not None
+            post_state = await _read_state(state_reader)
+            post_state_hash = _state_hash(post_state)
+
         verification = self.verifier.verify(
             request=request,
             result=result,
+            pre_state_hash=pre_state_hash,
+            post_state_hash=post_state_hash,
+            pre_state=pre_state,
+            post_state=post_state,
             postconditions=strict.step.postconditions if strict.step is not None else None,
         )
         verifier_status = verification.status.value
@@ -327,6 +354,8 @@ class ActionGateway:
                     status="executed",
                     unplanned_mutation=unplanned,
                     result=result,
+                    pre_state_hash=pre_state_hash,
+                    post_state_hash=post_state_hash,
                     verifier_status=verifier_status,
                     payload={"verifier": verification},
                 )
@@ -341,6 +370,8 @@ class ActionGateway:
                 str(request.step_id),
                 request_id=request.request_id,
                 verifier_status=verifier_status,
+                pre_state_hash=pre_state_hash,
+                post_state_hash=post_state_hash,
                 ledger_event_ids=event_ids,
             )
 
@@ -349,6 +380,8 @@ class ActionGateway:
             allowed=True,
             status="executed",
             result=result,
+            pre_state_hash=pre_state_hash,
+            post_state_hash=post_state_hash,
             verifier_status=verifier_status,
             ledger_event_ids=event_ids,
         )
@@ -363,3 +396,18 @@ def _mutation_level_rank(level: MutationLevel) -> int:
         MutationLevel.L4_BOUNDARY_RECOVERY: 4,
         MutationLevel.L5_UNSAFE_ESCAPE: 5,
     }[level]
+
+
+async def _read_state(
+    state_reader: Callable[[], Awaitable[dict[str, Any]] | dict[str, Any]],
+) -> dict[str, Any]:
+    value = state_reader()
+    state = await value if inspect.isawaitable(value) else value
+    return state if isinstance(state, dict) else {"value": state}
+
+
+def _state_hash(state: dict[str, Any] | None) -> str | None:
+    if state is None:
+        return None
+    encoded = canonical_json(state).encode("utf-8")
+    return f"sha256:{hashlib.sha256(encoded).hexdigest()}"

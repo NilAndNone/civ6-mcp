@@ -69,6 +69,8 @@ class LiveStepRecord:
     status: StepStatus = StepStatus.SUBMITTED
     request_id: str | None = None
     verifier_status: str | None = None
+    pre_state_hash: str | None = None
+    post_state_hash: str | None = None
     ledger_event_ids: list[str] = field(default_factory=list)
 
 
@@ -200,6 +202,8 @@ class LivePlanStore:
                     step.status = step_status
                     step.request_id = str(payload.get("request_id") or "")
                     step.verifier_status = str(payload.get("verifier_status") or "")
+                    step.pre_state_hash = payload.get("pre_state_hash")
+                    step.post_state_hash = payload.get("post_state_hash")
                     step.ledger_event_ids = list(payload.get("ledger_event_ids") or [])
                 state.episode.status = episode_status
                 state.episode.updated_at = ts
@@ -354,7 +358,9 @@ class LivePlanStore:
         *,
         request_id: str,
         verifier_status: str,
-        ledger_event_ids: list[str],
+        pre_state_hash: str | None = None,
+        post_state_hash: str | None = None,
+        ledger_event_ids: list[str] | None = None,
     ) -> None:
         episode_status, step_status = next_after_verifier(verifier_status)
         self._append_event(
@@ -366,7 +372,9 @@ class LivePlanStore:
                 "step_id": step_id,
                 "request_id": request_id,
                 "verifier_status": verifier_status,
-                "ledger_event_ids": ledger_event_ids,
+                "pre_state_hash": pre_state_hash,
+                "post_state_hash": post_state_hash,
+                "ledger_event_ids": ledger_event_ids or [],
             },
         )
 

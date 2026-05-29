@@ -146,3 +146,49 @@ def test_live_strict_executes_once_then_rejects_duplicate_step(tmp_path) -> None
     ]
     assert rows[-1]["event_type"] == "ACTION_REJECTED"
     assert rows[-1]["payload"]["error_code"] == "LIVE_STEP_NOT_ARMED"
+
+
+def test_live_strict_verifies_with_pre_post_state_and_can_finish(tmp_path) -> None:
+    plan = plan_payload(
+        args={"unit_id": 65536, "action": "move"},
+        postconditions=[{"type": "unit_position_changed_or_blocked", "unit_id": 65536}],
+    )
+    gateway = make_gateway(tmp_path, plan=plan)
+    states = [
+        {"units": [{"unit_id": 65536, "x": 1, "y": 1}], "overview": {"turn": 1}},
+        {"units": [{"unit_id": 65536, "x": 2, "y": 1}], "overview": {"turn": 1}},
+    ]
+
+    def state_reader() -> dict:
+        return states.pop(0)
+
+    result = asyncio.run(
+        gateway.execute(
+            request(args={"unit_id": 65536, "action": "move"}),
+            lambda: "OK",
+            state_reader=state_reader,
+        )
+    )
+
+    assert result.allowed is True
+    assert result.verifier_status == "PASS"
+    assert result.pre_state_hash and result.pre_state_hash.startswith("sha256:")
+    assert result.post_state_hash and result.post_state_hash.startswith("sha256:")
+
+    assert gateway.plan_store is not None
+    step = gateway.plan_store.get_step("plan_t0001_v01", "s001")
+    assert step.status.value == "VERIFIED"
+    assert step.verifier_status == "PASS"
+    assert step.pre_state_hash == result.pre_state_hash
+    assert step.post_state_hash == result.post_state_hash
+    assert gateway.plan_store.finish_episode()["status"] == "EPISODE_FINISHED"
+
+    rows = [
+        json.loads(line)
+        for line in (tmp_path / "ep_guard" / "raw" / "live_events.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    assert rows[-1]["verifier_status"] == "PASS"
+    assert rows[-1]["pre_state_hash"] == result.pre_state_hash
+    assert rows[-1]["post_state_hash"] == result.post_state_hash
