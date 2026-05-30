@@ -9,6 +9,7 @@ from codex_hl.live.gateway import ActionRequest
 from codex_hl.live.ledger import EpisodeLedger
 from codex_hl.live.mutation_levels import MutationLevel
 from codex_hl.live.plan_store import LivePlanStore
+from codex_hl.live.schemas import normalize_turn_plan
 
 
 def write_json(path: Path, data: dict) -> None:
@@ -26,6 +27,8 @@ def live_context(
     techs: int = 3,
     civics: int = 2,
     era_score: int = 5,
+    threats: list[dict] | None = None,
+    loyalty_per_turn: float = 1.0,
 ) -> dict:
     return {
         "episode_id": episode_id,
@@ -50,9 +53,20 @@ def live_context(
             "current_research": "TECH_WRITING",
             "current_civic": "CIVIC_CRAFTSMANSHIP",
         },
-        "cities": [[{"city_id": index + 1, "name": f"City {index + 1}"} for index in range(cities)]],
+        "cities": [
+            [
+                {
+                    "city_id": index + 1,
+                    "name": f"City {index + 1}",
+                    "loyalty": 100 - index * 5,
+                    "loyalty_per_turn": loyalty_per_turn,
+                }
+                for index in range(cities)
+            ]
+        ],
         "units": [],
         "notifications": [],
+        "threats": threats or [],
     }
 
 
@@ -65,6 +79,8 @@ def make_live_episode(
     verifier_statuses: list[str] | None = None,
     unplanned: bool = False,
     rejected_error: str | None = None,
+    threats: list[dict] | None = None,
+    loyalty_per_turn: float = 1.0,
 ) -> None:
     root = workspace / "episodes" / episode_id
     store = EpisodeStore(root, episode_id)
@@ -86,7 +102,13 @@ def make_live_episode(
         mode="live_strict",
         runner="live-json-plan",
     )
-    context = live_context(episode_id=episode_id, turn=final_turn, cities=cities)
+    context = live_context(
+        episode_id=episode_id,
+        turn=final_turn,
+        cities=cities,
+        threats=threats,
+        loyalty_per_turn=loyalty_per_turn,
+    )
     plan_store.record_turn_context(
         turn=final_turn,
         branch_id="b000",
@@ -196,6 +218,42 @@ def make_legacy_episode(
     )
 
 
+def leave_live_step_executing(workspace: Path, episode_id: str) -> None:
+    root = workspace / "episodes" / episode_id
+    store = LivePlanStore.for_episode_root(root, episode_id)
+    state = store.replay()
+    context = next(iter(state.contexts.values()))
+    turn = int(context["turn"])
+    branch_id = str(context["branch_id"])
+    context_hash = str(context["context_hash"])
+    store.submit_plan(
+        normalize_turn_plan(
+            {
+                "episode_id": episode_id,
+                "plan_id": "plan_unfinished",
+                "turn": turn,
+                "branch_id": branch_id,
+                "context_hash": context_hash,
+                "steps": [
+                    {
+                        "step_id": "s_unfinished",
+                        "tool": "set_research",
+                        "args": {"tech_or_civic": "TECH_POTTERY", "category": "tech"},
+                        "allowed_mutation_level": "L2",
+                        "postconditions": [],
+                    }
+                ],
+            }
+        )
+    )
+    store.arm_step("plan_unfinished", "s_unfinished")
+    store.mark_step_executing(
+        "plan_unfinished",
+        "s_unfinished",
+        request_id="act-unfinished",
+    )
+
+
 def test_extract_live_phase5_metrics_from_ledger_and_context(tmp_path: Path) -> None:
     make_live_episode(
         tmp_path,
@@ -209,6 +267,7 @@ def test_extract_live_phase5_metrics_from_ledger_and_context(tmp_path: Path) -> 
 
     assert metrics["turn_reached"] is True
     assert metrics["objective_metrics"]["num_cities"] == 2
+    assert metrics["objective_metrics"]["city_retention_ok"] is True
     assert metrics["objective_metrics"]["completed_tech_count"] == 3
     assert metrics["objective_metrics_complete"] is True
     assert metrics["verifier"]["pass_rate"] == 0.5
@@ -221,11 +280,12 @@ def test_phase5_gate_uses_multi_episode_objective_delta_not_self_eval(tmp_path: 
     make_legacy_episode(tmp_path, "baseline", cities=1, science=3.0, culture=1.0)
     make_live_episode(tmp_path, "live_a", cities=2, verifier_statuses=["PASS", "PASS"])
     make_live_episode(tmp_path, "live_b", cities=3, verifier_statuses=["PASS", "PASS"])
+    make_live_episode(tmp_path, "live_c", cities=4, verifier_statuses=["PASS", "PASS"])
 
     report = evaluation.build_phase5_report(
         workspace=tmp_path,
         baseline_episodes=["baseline"],
-        candidate_episodes=["live_a", "live_b"],
+        candidate_episodes=["live_a", "live_b", "live_c"],
         target_turns=20,
         output_path=tmp_path / "phase5.json",
     )
@@ -234,7 +294,8 @@ def test_phase5_gate_uses_multi_episode_objective_delta_not_self_eval(tmp_path: 
     assert gate["allowed"] is True
     assert gate["claim_basis"] == "objective_ledger_metrics_only"
     assert gate["gates"]["not_codex_self_eval"] is True
-    assert report["aggregate"]["delta"]["num_cities"] == 1.5
+    assert gate["gate_parameters"]["min_candidate_episodes"] == 3
+    assert report["aggregate"]["delta"]["num_cities"] == 2
     assert (tmp_path / "phase5.json").exists()
     assert (tmp_path / "phase5.md").exists()
 
@@ -252,6 +313,87 @@ def test_phase5_gate_rejects_single_live_episode(tmp_path: Path) -> None:
 
     assert report["strategy_candidate_gate"]["allowed"] is False
     assert report["strategy_candidate_gate"]["gates"]["multi_episode_reproduced"] is False
+
+
+def test_phase5_gate_rejects_unverified_live_steps(tmp_path: Path) -> None:
+    make_legacy_episode(tmp_path, "baseline", cities=1)
+    make_live_episode(tmp_path, "live_a", cities=2, verifier_statuses=["PASS"])
+    make_live_episode(tmp_path, "live_b", cities=2, verifier_statuses=["PASS"])
+    make_live_episode(tmp_path, "live_c", cities=2, verifier_statuses=["PASS"])
+    leave_live_step_executing(tmp_path, "live_b")
+
+    report = evaluation.build_phase5_report(
+        workspace=tmp_path,
+        baseline_episodes=["baseline"],
+        candidate_episodes=["live_a", "live_b", "live_c"],
+        target_turns=20,
+    )
+
+    live_b = next(row for row in report["candidate_episodes"] if row["episode_id"] == "live_b")
+    assert live_b["step_status_counts"]["EXECUTING"] == 1
+    assert live_b["unverified_step_count"] == 1
+    assert report["strategy_candidate_gate"]["allowed"] is False
+    assert report["strategy_candidate_gate"]["gates"]["live_strict_no_unverified_steps"] is False
+
+
+def test_phase5_gate_rejects_codex_self_eval_provenance() -> None:
+    baseline = {
+        "evidence_kind": "legacy-baseline",
+        "objective_metrics_complete": True,
+        "failures": [],
+        "provenance": {
+            "objective_metrics_source": "legacy_state_snapshot",
+            "codex_self_eval_used": False,
+        },
+    }
+    candidate = {
+        "evidence_kind": "live",
+        "objective_metrics_complete": True,
+        "unplanned_mutation_count": 0,
+        "unverified_step_count": 0,
+        "verifier": {"total": 1, "inconclusive": 0},
+        "evidence": {"live_plan_events_rows": 1},
+        "failures": [],
+        "provenance": {
+            "objective_metrics_source": "live_plan_context",
+            "objective_metrics_path": "raw/live_plan_events.jsonl",
+            "codex_self_eval_used": False,
+        },
+    }
+    bad_candidate = {
+        **candidate,
+        "provenance": {
+            **candidate["provenance"],
+            "codex_self_eval_used": True,
+        },
+    }
+
+    gate = evaluation.evaluate_strategy_candidate_gate(
+        baseline_rows=[baseline],
+        candidate_rows=[candidate, bad_candidate, candidate],
+        comparison_delta={"num_cities": 1},
+    )
+
+    assert gate["allowed"] is False
+    assert gate["gates"]["not_codex_self_eval"] is False
+
+
+def test_phase5_objective_metrics_capture_loyalty_and_threat_pressure(tmp_path: Path) -> None:
+    make_live_episode(
+        tmp_path,
+        "live_risk",
+        cities=2,
+        verifier_statuses=["PASS"],
+        threats=[{"kind": "barbarian", "distance": 3}],
+        loyalty_per_turn=-2.0,
+    )
+
+    metrics = evaluation.extract_episode_metrics("live_risk", workspace=tmp_path, target_turns=20)
+
+    objective = metrics["objective_metrics"]
+    assert objective["threat_pressure"] == 1
+    assert objective["min_city_loyalty"] == 95
+    assert objective["loyalty_risk_city_count"] == 2
 
 
 def test_phase5_failure_taxonomy_classifies_rejections(tmp_path: Path) -> None:
@@ -279,3 +421,24 @@ def test_phase5_failure_taxonomy_classifies_rejections(tmp_path: Path) -> None:
     assert report["failure_taxonomy"]["args_mismatch"] == 1
     assert report["failure_taxonomy"]["civ6_firetuner_instability"] == 1
     assert report["strategy_candidate_gate"]["gates"]["failure_taxonomy_complete"] is True
+
+
+def test_phase5_failure_taxonomy_classifies_turn_delta_conflict() -> None:
+    taxonomy = evaluation.classify_failure(
+        {
+            "event_type": "ACTION_FINISHED",
+            "tool": "end_turn",
+            "verifier_status": "INCONCLUSIVE",
+            "payload": {
+                "verifier": {
+                    "reason": "state/result turn delta conflict",
+                    "objective_delta": {
+                        "state_turn_delta": 2,
+                        "result_turn_delta": 0,
+                    },
+                }
+            },
+        }
+    )
+
+    assert taxonomy == "verifier_too_strict"

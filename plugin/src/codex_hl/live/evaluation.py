@@ -22,6 +22,10 @@ from codex_hl.strategy.registry import NUMERIC_T50_METRICS
 
 WORKSPACE_ROOT = Path(os.environ.get("CODEX_HL_CIV6_WORKSPACE") or Path.cwd()).resolve()
 WORKFLOW_NAME = "Live Phase 5 Evaluation"
+DEFAULT_MIN_CANDIDATE_EPISODES = 3
+RECOMMENDED_TREND_CANDIDATE_EPISODES = 10
+UNVERIFIED_STEP_STATUSES = {"SUBMITTED", "ARMED", "EXECUTING", "EXECUTED"}
+OBJECTIVE_PROVENANCE_SOURCES = {"live_plan_context", "legacy_state_snapshot"}
 
 FAILURE_TAXONOMY = {
     "state_representation_gap",
@@ -51,6 +55,10 @@ OBJECTIVE_METRICS = [
     "golden_age_gap",
     "military_strength",
     "barb_threat_count",
+    "threat_pressure",
+    "city_retention_ok",
+    "min_city_loyalty",
+    "loyalty_risk_city_count",
 ]
 
 REQUIRED_GATE_METRICS = [
@@ -243,6 +251,80 @@ def _count_barb_threats(context: dict[str, Any], live_events: list[dict[str, Any
     return last_result.count("threat:")
 
 
+def _threat_pressure(context: dict[str, Any], live_events: list[dict[str, Any]]) -> int:
+    threats = context.get("threats")
+    if isinstance(threats, list):
+        return len([item for item in threats if item is not None])
+    if isinstance(threats, dict):
+        for key in ("threat_pressure", "threat_count", "count", "total"):
+            value = _number(threats.get(key))
+            if isinstance(value, (int, float)):
+                return int(value)
+        count = 0
+        for value in threats.values():
+            if isinstance(value, list):
+                count += len(value)
+            elif isinstance(value, dict) and value:
+                count += 1
+        if count:
+            return count
+    return _count_barb_threats(context, live_events)
+
+
+def _nested_number(row: dict[str, Any], *keys: str) -> float | int | None:
+    for key in keys:
+        value = row.get(key)
+        if isinstance(value, dict):
+            for nested_key in ("value", "current", "amount", "delta", "per_turn", "turns"):
+                number = _number(value.get(nested_key))
+                if isinstance(number, (int, float)):
+                    return number
+        else:
+            number = _number(value)
+            if isinstance(number, (int, float)):
+                return number
+    return None
+
+
+def _loyalty_metrics(cities: list[dict[str, Any]]) -> dict[str, Any]:
+    loyalty_values: list[float | int] = []
+    risk_count = 0
+    for city in cities:
+        loyalty = _nested_number(
+            city,
+            "loyalty",
+            "current_loyalty",
+            "loyalty_current",
+            "loyalty_value",
+        )
+        loyalty_delta = _nested_number(
+            city,
+            "loyalty_per_turn",
+            "loyalty_delta",
+            "loyalty_change",
+            "loyalty_pressure",
+        )
+        flip_turns = _nested_number(
+            city,
+            "turns_to_loyalty_flip",
+            "turns_until_rebellion",
+            "turns_to_rebellion",
+        )
+        if isinstance(loyalty, (int, float)):
+            loyalty_values.append(loyalty)
+        if (
+            (isinstance(loyalty, (int, float)) and loyalty < 40)
+            or (isinstance(loyalty_delta, (int, float)) and loyalty_delta < 0)
+            or (isinstance(flip_turns, (int, float)) and flip_turns <= 10)
+        ):
+            risk_count += 1
+    min_loyalty = min(loyalty_values) if loyalty_values else None
+    return {
+        "min_city_loyalty": _clean_number(min_loyalty) if min_loyalty is not None else None,
+        "loyalty_risk_city_count": risk_count,
+    }
+
+
 def _objective_metrics_from_context(
     context: dict[str, Any],
     *,
@@ -260,6 +342,8 @@ def _objective_metrics_from_context(
     golden_age_gap = None
     if isinstance(era_score, (int, float)) and isinstance(golden_threshold, (int, float)):
         golden_age_gap = max(0, golden_threshold - era_score)
+    loyalty = _loyalty_metrics(cities)
+    threat_pressure = _threat_pressure(context, live_events or [])
     return {
         "final_turn": final_turn,
         "num_cities": city_count,
@@ -281,6 +365,9 @@ def _objective_metrics_from_context(
             or overview.get("soldiers")
         ),
         "barb_threat_count": _count_barb_threats(context, live_events or []),
+        "threat_pressure": threat_pressure,
+        "city_retention_ok": bool(isinstance(city_count, (int, float)) and city_count >= 2),
+        **loyalty,
     }
 
 
@@ -293,6 +380,7 @@ def _objective_metrics_from_state(state: dict[str, Any]) -> dict[str, Any]:
         "research_civic": research_civic,
         "cities": state.get("cities"),
         "notifications": state.get("notifications"),
+        "threats": state.get("threats"),
     }
     return _objective_metrics_from_context(context, final_turn=final_turn)
 
@@ -320,6 +408,10 @@ def _step_status_counts(workspace: Path, episode_id: str) -> dict[str, int]:
     except (OSError, json.JSONDecodeError, EpisodeStoreError):
         return {}
     return dict(Counter(step.status.value for step in state.steps.values()))
+
+
+def _unverified_step_count(step_status_counts: dict[str, int]) -> int:
+    return sum(int(step_status_counts.get(status) or 0) for status in UNVERIFIED_STEP_STATUSES)
 
 
 def _plan_counts(plan_events: list[dict[str, Any]]) -> dict[str, Any]:
@@ -382,6 +474,8 @@ def classify_failure(row: dict[str, Any]) -> str:
         return "invalid_plan_schema"
     if "firetuner" in text or "connection" in text or "timeout" in text or "port" in text:
         return "civ6_firetuner_instability"
+    if "state/result turn delta conflict" in text or "state snapshot unstable" in text:
+        return "verifier_too_strict"
     if event_type == "ACTION_REJECTED":
         return "invalid_plan_schema"
     if event_type == "ACTION_FAILED":
@@ -457,6 +551,7 @@ def extract_episode_metrics(
         )
         plan_counts = _plan_counts(plan_events)
         verifier = _verifier_counts(live_events)
+        step_status_counts = _step_status_counts(workspace, episode_id)
         unplanned = len(
             [
                 row
@@ -493,9 +588,17 @@ def extract_episode_metrics(
             "invalid_plan_count": plan_counts["invalid"],
             "invalid_plan_rate": plan_counts["invalid_plan_rate"],
             "plan_count": plan_counts["submitted"],
-            "step_status_counts": _step_status_counts(workspace, episode_id),
+            "step_status_counts": step_status_counts,
+            "unverified_step_count": _unverified_step_count(step_status_counts),
             "failure_count": len(failures),
             "failures": failures,
+            "provenance": {
+                "objective_metrics_source": "live_plan_context",
+                "objective_metrics_path": LIVE_PLAN_EVENTS_LOGICAL_PATH,
+                "objective_metrics_authority": "episode_ledger",
+                "storage_backend": reader.backend,
+                "codex_self_eval_used": False,
+            },
             "evidence": {
                 "storage_backend": reader.backend,
                 "live_events_rows": len(live_events),
@@ -530,8 +633,16 @@ def extract_episode_metrics(
         "invalid_plan_rate": 0.0,
         "plan_count": 0,
         "step_status_counts": {},
+        "unverified_step_count": 0,
         "failure_count": len(evidence_issues),
         "failures": [dict(issue) for issue in evidence_issues],
+        "provenance": {
+            "objective_metrics_source": "legacy_state_snapshot",
+            "objective_metrics_path": state_path,
+            "objective_metrics_authority": "episode_state_snapshot",
+            "storage_backend": reader.backend,
+            "codex_self_eval_used": False,
+        },
         "evidence": {
             "storage_backend": reader.backend,
             "state_path": state_path,
@@ -588,13 +699,32 @@ def taxonomy_summary(rows: list[dict[str, Any]]) -> dict[str, int]:
     return dict(sorted(counter.items()))
 
 
+def _objective_provenance_ok(row: dict[str, Any]) -> bool:
+    provenance = _safe_dict(row.get("provenance"))
+    source = provenance.get("objective_metrics_source")
+    if source not in OBJECTIVE_PROVENANCE_SOURCES:
+        return False
+    if provenance.get("codex_self_eval_used") is not False:
+        return False
+    if row.get("evidence_kind") != "live":
+        return True
+    evidence = _safe_dict(row.get("evidence"))
+    return (
+        source == "live_plan_context"
+        and provenance.get("objective_metrics_path") == LIVE_PLAN_EVENTS_LOGICAL_PATH
+        and int(evidence.get("live_plan_events_rows") or 0) > 0
+    )
+
+
 def evaluate_strategy_candidate_gate(
     *,
     baseline_rows: list[dict[str, Any]],
     candidate_rows: list[dict[str, Any]],
     comparison_delta: dict[str, Any],
+    min_candidate_episodes: int = DEFAULT_MIN_CANDIDATE_EPISODES,
 ) -> dict[str, Any]:
     all_rows = baseline_rows + candidate_rows
+    min_candidate_episodes = max(1, int(min_candidate_episodes))
     taxonomy_values = {
         str(failure.get("taxonomy"))
         for row in all_rows
@@ -609,11 +739,16 @@ def evaluate_strategy_candidate_gate(
     }
     gates = {
         "baseline_present": bool(baseline_rows),
-        "multi_episode_reproduced": len(candidate_rows) >= 2,
+        "multi_episode_reproduced": len(candidate_rows) >= min_candidate_episodes,
         "live_strict_unplanned_mutation_zero": all(
             int(row.get("unplanned_mutation_count") or 0) == 0
             for row in candidate_rows
             if row.get("evidence_kind") == "live"
+        ),
+        "live_strict_no_unverified_steps": all(
+            row.get("evidence_kind") != "live"
+            or int(row.get("unverified_step_count") or 0) == 0
+            for row in candidate_rows
         ),
         "verifier_evidence_complete": all(
             (
@@ -635,12 +770,16 @@ def evaluate_strategy_candidate_gate(
             value >= 0 for value in comparable_deltas.values()
         ),
         "failure_taxonomy_complete": taxonomy_values.issubset(FAILURE_TAXONOMY),
-        "not_codex_self_eval": True,
+        "not_codex_self_eval": all(_objective_provenance_ok(row) for row in all_rows),
     }
     return {
         "allowed": all(gates.values()),
         "gates": gates,
         "comparison_delta": comparison_delta,
+        "gate_parameters": {
+            "min_candidate_episodes": min_candidate_episodes,
+            "recommended_trend_candidate_episodes": RECOMMENDED_TREND_CANDIDATE_EPISODES,
+        },
         "claim_basis": "objective_ledger_metrics_only",
         "not_general_proof": True,
         "notes": [
@@ -657,6 +796,7 @@ def build_phase5_report(
     baseline_episodes: list[str],
     candidate_episodes: list[str],
     target_turns: int,
+    min_candidate_episodes: int = DEFAULT_MIN_CANDIDATE_EPISODES,
     output_path: Path | None = None,
 ) -> dict[str, Any]:
     if not baseline_episodes:
@@ -682,6 +822,8 @@ def build_phase5_report(
         "generated_at": now_iso(),
         "workspace": str(workspace),
         "target_turns": target_turns,
+        "min_candidate_episodes": max(1, int(min_candidate_episodes)),
+        "recommended_trend_candidate_episodes": RECOMMENDED_TREND_CANDIDATE_EPISODES,
         "baseline_episodes": baseline_rows,
         "candidate_episodes": candidate_rows,
         "aggregate": {
@@ -695,6 +837,7 @@ def build_phase5_report(
         baseline_rows=baseline_rows,
         candidate_rows=candidate_rows,
         comparison_delta=delta,
+        min_candidate_episodes=min_candidate_episodes,
     )
     if output_path is not None:
         output_path = output_path.resolve()
@@ -721,6 +864,8 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"- Claim basis: `{gate.get('claim_basis')}`",
         f"- Baseline episodes: `{len(_safe_list(report.get('baseline_episodes')))}`",
         f"- Candidate episodes: `{len(_safe_list(report.get('candidate_episodes')))}`",
+        f"- Min candidate episodes: `{report.get('min_candidate_episodes')}`",
+        f"- Trend candidate recommendation: `{report.get('recommended_trend_candidate_episodes')}`",
         "",
         "## Objective Delta",
         "",
@@ -765,6 +910,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--workspace", type=Path, default=WORKSPACE_ROOT)
     parser.add_argument("--target-turns", type=int, default=20)
     parser.add_argument(
+        "--min-candidate-episodes",
+        type=int,
+        default=DEFAULT_MIN_CANDIDATE_EPISODES,
+        help="Minimum candidate/live episodes required by the smoke gate.",
+    )
+    parser.add_argument(
         "--baseline-episode",
         action="append",
         default=[],
@@ -788,6 +939,7 @@ def main(argv: list[str] | None = None) -> None:
             baseline_episodes=_parse_episode_list(args.baseline_episode),
             candidate_episodes=_parse_episode_list(args.candidate_episode),
             target_turns=args.target_turns,
+            min_candidate_episodes=args.min_candidate_episodes,
             output_path=args.output,
         )
     except (LiveEvaluationError, OSError, EpisodeStoreError, json.JSONDecodeError) as exc:

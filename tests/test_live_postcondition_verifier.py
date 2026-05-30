@@ -156,6 +156,23 @@ def test_turn_advanced_exactly_one() -> None:
     )
 
     assert verification.status == VerifierStatus.PASS
+    assert verification.objective_delta["state_turn_delta"] == 1
+    assert verification.objective_delta["result_turn_delta"] == 1
+
+
+def test_turn_advance_accepts_tool_result_when_post_state_is_stale() -> None:
+    verification = PostconditionVerifier().verify(
+        request=request("end_turn", {}),
+        result="Turn 12 -> 13",
+        pre_state={"overview": {"turn": 12}},
+        post_state={"overview": {"turn": 12}},
+    )
+
+    assert verification.status == VerifierStatus.PASS
+    assert verification.objective_delta["turn_delta"] == 1
+    assert verification.objective_delta["state_turn_delta"] == 0
+    assert verification.objective_delta["result_turn_delta"] == 1
+    assert verification.objective_delta["state_snapshot_unstable"] is True
 
 
 def test_turn_advance_fails_when_turn_jumps() -> None:
@@ -167,6 +184,19 @@ def test_turn_advance_fails_when_turn_jumps() -> None:
     )
 
     assert verification.status == VerifierStatus.FAIL
+
+
+def test_turn_advance_marks_unresolved_state_result_conflict_inconclusive() -> None:
+    verification = PostconditionVerifier().verify(
+        request=request("end_turn", {}),
+        result="Turn 12 -> 12",
+        pre_state={"overview": {"turn": 12}},
+        post_state={"overview": {"turn": 14}},
+    )
+
+    assert verification.status == VerifierStatus.INCONCLUSIVE
+    assert verification.objective_delta["state_result_conflict"] is True
+    assert "state/result" in verification.reason
 
 
 def test_purchase_gold_delta_roughly_consistent() -> None:

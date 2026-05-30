@@ -708,27 +708,132 @@ async def _safe_live_context_field(name: str, fn: Callable[[], Awaitable[Any]]) 
         return {"error": f"{type(exc).__name__}: {exc}", "field": name}
 
 
+def _live_field_gap(name: str, value: Any, expected: str) -> dict[str, str] | None:
+    if isinstance(value, dict) and value.get("error"):
+        return {"field": str(value.get("field") or name), "reason": str(value["error"])}
+    if expected == "dict" and value is not None and not isinstance(value, dict):
+        return {"field": name, "reason": f"expected dict, got {type(value).__name__}"}
+    if expected == "list" and value is not None and not isinstance(value, list):
+        return {"field": name, "reason": f"expected list, got {type(value).__name__}"}
+    return None
+
+
+def _live_dict_field(name: str, value: Any, gaps: list[dict[str, str]]) -> dict[str, Any]:
+    gap = _live_field_gap(name, value, "dict")
+    if gap is not None:
+        gaps.append(gap)
+    return value if isinstance(value, dict) else {}
+
+
+def _live_list_field(name: str, value: Any, gaps: list[dict[str, str]]) -> list[Any]:
+    gap = _live_field_gap(name, value, "list")
+    if gap is not None:
+        gaps.append(gap)
+    return value if isinstance(value, list) else []
+
+
+def _split_live_cities(value: Any, gaps: list[dict[str, str]]) -> tuple[list[Any], list[Any]]:
+    if isinstance(value, list):
+        if (
+            len(value) == 2
+            and isinstance(value[0], list)
+            and isinstance(value[1], list)
+        ):
+            return value[0], value[1]
+        return value, []
+    gap = _live_field_gap("cities", value, "list")
+    if gap is not None:
+        gaps.append(gap)
+    return [], []
+
+
+def _city_id_from_row(city: Any) -> Any | None:
+    if isinstance(city, dict):
+        for key in ("city_id", "id", "index"):
+            if city.get(key) is not None:
+                return city[key]
+    return getattr(city, "city_id", None)
+
+
+async def _capture_live_observation_state(ctx: Context) -> dict[str, Any]:
+    """Capture live read-only fields shared by planning context and verifier."""
+    gs = _get_game(ctx)
+    gaps: list[dict[str, str]] = []
+
+    async def _read(name: str, fn: Callable[[], Awaitable[Any]]) -> Any:
+        return to_jsonable(await _safe_live_context_field(name, fn))
+
+    async def _read_optional(name: str, method_name: str) -> Any:
+        method = getattr(gs, method_name, None)
+        if method is None:
+            gaps.append({"field": name, "reason": f"{method_name} is not available"})
+            return None
+        value = await _read(name, method)
+        gap = _live_field_gap(name, value, "any")
+        if gap is not None:
+            gaps.append(gap)
+        return value
+
+    overview_value = await _read("overview", gs.get_game_overview)
+    cities_value = await _read("cities", gs.get_cities)
+    units_value = await _read("units", gs.get_units)
+    notifications_value = await _read("notifications", gs.get_notifications)
+    research_civic_value = await _read("research_civic", gs.get_tech_civics)
+    cities, city_distances = _split_live_cities(cities_value, gaps)
+
+    production: dict[str, Any] = {}
+    production_method = getattr(gs, "list_city_production", None)
+    if production_method is None:
+        gaps.append({"field": "production", "reason": "list_city_production is not available"})
+    else:
+        for city in cities:
+            city_id = _city_id_from_row(city)
+            if city_id is None:
+                continue
+            production_value = await _read(
+                f"production.city_{city_id}",
+                lambda city_id=city_id: production_method(city_id),
+            )
+            gap = _live_field_gap(f"production.city_{city_id}", production_value, "any")
+            if gap is not None:
+                gaps.append(gap)
+            production[str(city_id)] = production_value
+
+    overview = _live_dict_field("overview", overview_value, gaps)
+    units = _live_list_field("units", units_value, gaps)
+    notifications = _live_list_field("notifications", notifications_value, gaps)
+    research_civic = _live_dict_field("research_civic", research_civic_value, gaps)
+
+    state = {
+        "overview": overview,
+        "cities": cities,
+        "city_distances": city_distances,
+        "units": units,
+        "notifications": notifications,
+        "research_civic": research_civic,
+        "threats": await _read_optional("threats", "get_threat_scan"),
+        "policies": await _read_optional("policies", "get_policies"),
+        "resources": await _read_optional("resources", "get_empire_resources"),
+        "diplomacy": await _read_optional("diplomacy", "get_diplomacy"),
+        "trade_routes": await _read_optional("trade_routes", "get_trade_routes"),
+        "production": production,
+        "pantheon_status": await _read_optional("pantheon_status", "get_pantheon_status"),
+        "religion_founding_status": await _read_optional(
+            "religion_founding_status",
+            "get_religion_founding_status",
+        ),
+        "available_action_summary": {
+            "city_count": len(cities),
+            "unit_count": len(units),
+        },
+    }
+    state["known_gaps"] = gaps
+    return state
+
+
 async def _capture_live_verifier_state(ctx: Context) -> dict[str, Any]:
     """Capture the deterministic state fields needed by live postcondition checks."""
-    gs = _get_game(ctx)
-    overview = to_jsonable(
-        await _safe_live_context_field("overview", gs.get_game_overview)
-    )
-    cities = to_jsonable(await _safe_live_context_field("cities", gs.get_cities))
-    units = to_jsonable(await _safe_live_context_field("units", gs.get_units))
-    notifications = to_jsonable(
-        await _safe_live_context_field("notifications", gs.get_notifications)
-    )
-    research_civic = to_jsonable(
-        await _safe_live_context_field("research_civic", gs.get_tech_civics)
-    )
-    return {
-        "overview": overview if isinstance(overview, dict) else {},
-        "cities": cities if isinstance(cities, list) else [],
-        "units": units if isinstance(units, list) else [],
-        "notifications": notifications if isinstance(notifications, list) else [],
-        "research_civic": research_civic if isinstance(research_civic, dict) else {},
-    }
+    return await _capture_live_observation_state(ctx)
 
 
 def _parse_plan_payload(plan: dict[str, Any] | None, plan_json: str) -> dict[str, Any]:
@@ -807,32 +912,13 @@ async def get_live_turn_context(
     """Capture one read-only context snapshot and context_hash for a live plan."""
     try:
         live_episode_id = _live_episode_id_or_error(episode_id)
-        gs = _get_game(ctx)
-        overview = to_jsonable(
-            await _safe_live_context_field("overview", gs.get_game_overview)
-        )
-        cities = to_jsonable(await _safe_live_context_field("cities", gs.get_cities))
-        units = to_jsonable(await _safe_live_context_field("units", gs.get_units))
-        notifications = to_jsonable(
-            await _safe_live_context_field("notifications", gs.get_notifications)
-        )
-        research_civic = to_jsonable(
-            await _safe_live_context_field("research_civic", gs.get_tech_civics)
-        )
-        turn = _turn_from_overview(overview)
+        state = await _capture_live_observation_state(ctx)
+        turn = _turn_from_overview(state.get("overview"))
         payload = {
             "episode_id": live_episode_id,
             "turn": turn,
             "branch_id": branch_id,
-            "overview": overview,
-            "cities": cities if isinstance(cities, list) else [],
-            "units": units if isinstance(units, list) else [],
-            "notifications": notifications if isinstance(notifications, list) else [],
-            "research_civic": research_civic if isinstance(research_civic, dict) else {},
-            "available_action_summary": {
-                "city_count": len(cities) if isinstance(cities, list) else 0,
-                "unit_count": len(units) if isinstance(units, list) else 0,
-            },
+            **state,
         }
         context_hash = _context_hash(payload)
         payload["context_hash"] = context_hash

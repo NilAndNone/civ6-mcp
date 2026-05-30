@@ -17,6 +17,14 @@ from codex_hl.live.verifier import StubVerifier
 
 ActionSource = Literal["mcp", "legacy_runner", "live_plan", "fragment", "recovery"]
 ActionStatus = Literal["executed", "rejected", "failed", "verified", "inconclusive"]
+RECOVERY_ONLY_L4_TOOLS = {
+    "load_save",
+    "load_game_save",
+    "load_save_from_menu",
+    "restart_and_load",
+    "kill_game",
+    "launch_game",
+}
 
 
 class GatewayMode(str, Enum):
@@ -62,6 +70,7 @@ class StrictValidation:
     error_code: str | None = None
     message: str | None = None
     step: LiveStepRecord | None = None
+    plan_metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class ActionGateway:
@@ -155,6 +164,8 @@ class ActionGateway:
                 error_code="LIVE_PLAN_NOT_FOUND",
                 message=str(exc),
             )
+        raw_metadata = plan.payload.get("metadata")
+        plan_metadata = dict(raw_metadata) if isinstance(raw_metadata, dict) else {}
         try:
             step = self.plan_store.get_step(str(request.plan_id), str(request.step_id))
         except LiveStateError as exc:
@@ -162,6 +173,17 @@ class ActionGateway:
                 allowed=False,
                 error_code="LIVE_STEP_NOT_FOUND",
                 message=str(exc),
+                plan_metadata=plan_metadata,
+            )
+        l4_error = _l4_recovery_error(request, plan_metadata)
+        if l4_error is not None:
+            error_code, message = l4_error
+            return StrictValidation(
+                allowed=False,
+                error_code=error_code,
+                message=message,
+                step=step,
+                plan_metadata=plan_metadata,
             )
         if step.status is not StepStatus.ARMED:
             return StrictValidation(
@@ -171,12 +193,16 @@ class ActionGateway:
                     f"step {request.plan_id}/{request.step_id} must be ARMED, "
                     f"got {step.status.value}."
                 ),
+                step=step,
+                plan_metadata=plan_metadata,
             )
         if plan.context_hash != request.context_hash:
             return StrictValidation(
                 allowed=False,
                 error_code="LIVE_CONTEXT_STALE",
                 message="request context_hash does not match the submitted plan context_hash.",
+                step=step,
+                plan_metadata=plan_metadata,
             )
         if step.tool != request.tool_name:
             return StrictValidation(
@@ -185,12 +211,16 @@ class ActionGateway:
                 message=(
                     f"step tool {step.tool} does not match request tool {request.tool_name}."
                 ),
+                step=step,
+                plan_metadata=plan_metadata,
             )
         if step.args_fingerprint != canonical_json(request.args):
             return StrictValidation(
                 allowed=False,
                 error_code="LIVE_ARGS_MISMATCH",
                 message="request args do not match the armed step args.",
+                step=step,
+                plan_metadata=plan_metadata,
             )
         if _mutation_level_rank(request.mutation_level) > _mutation_level_rank(
             MutationLevel(step.allowed_mutation_level)
@@ -202,8 +232,10 @@ class ActionGateway:
                     f"request mutation level {request.mutation_level.value} exceeds "
                     f"armed step allowance {step.allowed_mutation_level}."
                 ),
+                step=step,
+                plan_metadata=plan_metadata,
             )
-        return StrictValidation(allowed=True, step=step)
+        return StrictValidation(allowed=True, step=step, plan_metadata=plan_metadata)
 
     async def execute(
         self,
@@ -226,7 +258,11 @@ class ActionGateway:
                         status="rejected",
                         unplanned_mutation=unplanned,
                         error=strict.message,
-                        payload={"error_code": strict.error_code},
+                        payload=_gateway_event_payload(
+                            request,
+                            strict,
+                            {"error_code": strict.error_code},
+                        ),
                     )
                 )
             return ActionResult(
@@ -260,7 +296,11 @@ class ActionGateway:
                             status="rejected",
                             unplanned_mutation=unplanned,
                             error=str(exc),
-                            payload={"error_code": "LIVE_STEP_NOT_ARMED"},
+                            payload=_gateway_event_payload(
+                                request,
+                                strict,
+                                {"error_code": "LIVE_STEP_NOT_ARMED"},
+                            ),
                         )
                     )
                 return ActionResult(
@@ -296,6 +336,7 @@ class ActionGateway:
                     allowed=True,
                     status="executing",
                     unplanned_mutation=unplanned,
+                    payload=_gateway_event_payload(request, strict),
                 )
             )
 
@@ -313,6 +354,7 @@ class ActionGateway:
                         status="failed",
                         unplanned_mutation=unplanned,
                         error=f"{type(exc).__name__}: {exc}",
+                        payload=_gateway_event_payload(request, strict),
                     )
                 )
             if (
@@ -357,7 +399,11 @@ class ActionGateway:
                     pre_state_hash=pre_state_hash,
                     post_state_hash=post_state_hash,
                     verifier_status=verifier_status,
-                    payload={"verifier": verification},
+                    payload=_gateway_event_payload(
+                        request,
+                        strict,
+                        {"verifier": verification},
+                    ),
                 )
             )
         if (
@@ -396,6 +442,66 @@ def _mutation_level_rank(level: MutationLevel) -> int:
         MutationLevel.L4_BOUNDARY_RECOVERY: 4,
         MutationLevel.L5_UNSAFE_ESCAPE: 5,
     }[level]
+
+
+def _plan_kind(plan_metadata: dict[str, Any]) -> str:
+    return str(
+        plan_metadata.get("plan_kind")
+        or plan_metadata.get("source")
+        or plan_metadata.get("kind")
+        or ""
+    ).strip().lower()
+
+
+def _l4_semantics(request: ActionRequest, plan_metadata: dict[str, Any]) -> str | None:
+    if request.mutation_level is not MutationLevel.L4_BOUNDARY_RECOVERY:
+        return None
+    if _plan_kind(plan_metadata) == "recovery" or request.source == "recovery":
+        return "recovery_plan"
+    if request.tool_name == "end_turn":
+        return "normal_turn_boundary"
+    return "l4_boundary"
+
+
+def _l4_recovery_error(
+    request: ActionRequest,
+    plan_metadata: dict[str, Any],
+) -> tuple[str, str] | None:
+    if request.mutation_level is not MutationLevel.L4_BOUNDARY_RECOVERY:
+        return None
+    plan_kind = _plan_kind(plan_metadata)
+    if request.source == "recovery" and plan_kind != "recovery":
+        return (
+            "LIVE_RECOVERY_PLAN_REQUIRED",
+            "L4 recovery source requires plan metadata plan_kind='recovery'.",
+        )
+    if request.tool_name in RECOVERY_ONLY_L4_TOOLS and plan_kind != "recovery":
+        return (
+            "LIVE_RECOVERY_PLAN_REQUIRED",
+            f"{request.tool_name} must be submitted as an explicit recovery plan.",
+        )
+    return None
+
+
+def _gateway_event_payload(
+    request: ActionRequest,
+    strict: StrictValidation,
+    extra: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    payload = dict(extra or {})
+    if strict.plan_metadata:
+        payload["plan_metadata"] = strict.plan_metadata
+    semantics = _l4_semantics(request, strict.plan_metadata)
+    if semantics is not None:
+        payload["l4_semantics"] = semantics
+        lineage = (
+            strict.plan_metadata.get("recovery_lineage")
+            or strict.plan_metadata.get("recovery_for")
+            or strict.plan_metadata.get("recovery_parent_step_id")
+        )
+        if lineage is not None:
+            payload["recovery_lineage"] = lineage
+    return payload
 
 
 async def _read_state(

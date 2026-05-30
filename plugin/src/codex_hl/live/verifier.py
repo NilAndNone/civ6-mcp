@@ -106,6 +106,7 @@ class PostconditionVerifier:
                 results.append(
                     self._verify_turn_advanced(
                         request=request,
+                        result=result,
                         pre_state=pre_state,
                         post_state=post_state,
                     )
@@ -196,6 +197,7 @@ class PostconditionVerifier:
         if tool == "end_turn":
             return self._verify_turn_advanced(
                 request=request,
+                result=result,
                 pre_state=pre_state,
                 post_state=post_state,
             )
@@ -389,27 +391,63 @@ class PostconditionVerifier:
         self,
         *,
         request: Any,
+        result: Any,
         pre_state: dict[str, Any],
         post_state: dict[str, Any],
     ) -> VerificationResult:
         del request
         pre_turn = _overview_number(pre_state, "turn")
         post_turn = _overview_number(post_state, "turn")
+        result_delta = _turn_delta_from_result(result)
         if pre_turn is None or post_turn is None:
+            if result_delta == 1:
+                return VerificationResult(
+                    status=VerifierStatus.PASS,
+                    objective_delta={"turn_delta": 1, "result_turn_delta": 1},
+                    reason="turn advanced according to tool result; state snapshot missing",
+                )
             return VerificationResult(
                 status=VerifierStatus.INCONCLUSIVE,
                 reason="turn check needs pre and post overview.turn",
             )
         delta = int(post_turn) - int(pre_turn)
+        objective_delta: dict[str, Any] = {
+            "turn_delta": delta,
+            "state_turn_delta": delta,
+        }
+        if result_delta is not None:
+            objective_delta["result_turn_delta"] = result_delta
         if delta == 1:
+            if result_delta is not None and result_delta != 1:
+                objective_delta["state_result_conflict"] = True
+                return VerificationResult(
+                    status=VerifierStatus.PASS,
+                    objective_delta=objective_delta,
+                    reason="turn advanced according to state snapshot; tool result conflicts",
+                )
             return VerificationResult(
                 status=VerifierStatus.PASS,
-                objective_delta={"turn_delta": delta},
+                objective_delta=objective_delta,
                 reason="turn advanced exactly one",
+            )
+        if result_delta == 1:
+            objective_delta["turn_delta"] = 1
+            objective_delta["state_snapshot_unstable"] = True
+            return VerificationResult(
+                status=VerifierStatus.PASS,
+                objective_delta=objective_delta,
+                reason="turn advanced according to tool result; state snapshot unstable",
+            )
+        if result_delta is not None and result_delta != delta:
+            objective_delta["state_result_conflict"] = True
+            return VerificationResult(
+                status=VerifierStatus.INCONCLUSIVE,
+                objective_delta=objective_delta,
+                reason="state/result turn delta conflict",
             )
         return VerificationResult(
             status=VerifierStatus.FAIL,
-            objective_delta={"turn_delta": delta},
+            objective_delta=objective_delta,
             reason="turn did not advance exactly one",
         )
 
@@ -618,6 +656,19 @@ def _expected_cost(args: dict[str, Any], result: Any) -> float | None:
     match = re.search(r"(\d+(?:\.\d+)?)\s*(?:gold|金币)", str(result), re.IGNORECASE)
     if match:
         return float(match.group(1))
+    return None
+
+
+def _turn_delta_from_result(result: Any) -> int | None:
+    text = str(result)
+    patterns = [
+        r"\bturn\s+(\d+)\s*(?:->|to)\s*(\d+)\b",
+        r"\bT(\d+)\s*(?:->|to)\s*T?(\d+)\b",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            return int(match.group(2)) - int(match.group(1))
     return None
 
 

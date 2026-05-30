@@ -9,6 +9,8 @@ actions, run fragments, or merge strategy assets.
 ## Inputs
 
 - `--target-turns 20|50`
+- `--min-candidate-episodes <n>`: optional smoke-gate threshold; default is
+  `3`, while trend evidence should still prefer `10+`.
 - `--baseline-episode <episode_id>`: repeat or pass comma-separated ids.
 - `--candidate-episode <episode_id>`: repeat or pass comma-separated ids.
 - `--output <path>`: optional JSON report path; a Markdown report is written
@@ -33,7 +35,8 @@ does not merge assets; use `/civ6-governance` for guarded audit/merge flow.
 $env:PYTHONPATH='O:\civ6\codex-hl-civ6\plugin\src'
 python -m codex_hl.live.evaluation `
   --target-turns 20 `
+  --min-candidate-episodes 3 `
   --baseline-episode legacy_t20_a,legacy_t20_b `
-  --candidate-episode live_t20_a,live_t20_b `
+  --candidate-episode live_t20_a,live_t20_b,live_t20_c `
   --output outputs\phase5\live_eval_t20.json
 ```
