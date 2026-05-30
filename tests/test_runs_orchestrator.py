@@ -1,4 +1,4 @@
-import argparse
+﻿import argparse
 import json
 from pathlib import Path
 
@@ -135,7 +135,7 @@ def make_t50_episode(
                     }
                 ]
             },
-            "t50_strategy_audit": {
+            "historical_t50_fact_summary": {
                 "turn": final_turn,
                 "current_era": current_era or "ERA_ANCIENT",
                 "current_age": current_age or "NORMAL",
@@ -219,7 +219,7 @@ def base_args(tmp_path: Path, *, execute: bool = False) -> argparse.Namespace:
         save_name="test 1",
         turns=50,
         strategy_profile="baseline_static",
-        runner="legacy-baseline",
+        runner="live",
         cycles=1,
         episodes_per_cycle=3,
         target_completed_episodes=None,
@@ -539,7 +539,7 @@ def test_t50_execute_caps_total_observation_attempts_including_retries(tmp_path)
         cwd: Path,
         env: dict[str, str] | None,
     ) -> orchestrator.CommandResult:
-        assert command[2] == "codex_hl.evidence.observation"
+        assert command[2] == "codex_hl.live.driver"
         observation_calls.append(command[command.index("--episode-id") + 1])
         started = orchestrator.now_iso()
         return orchestrator.CommandResult(command, 1, "", "observation failed", started, orchestrator.now_iso())
@@ -567,11 +567,11 @@ def test_t50_execute_writes_partial_checkpoint_when_target_not_reached(tmp_path)
     ) -> orchestrator.CommandResult:
         module = command[2]
         started = orchestrator.now_iso()
-        if module == "codex_hl.evidence.observation":
+        if module == "codex_hl.live.driver":
             episode_id = command[command.index("--episode-id") + 1]
             observation_calls.append(episode_id)
             if len(observation_calls) == 1:
-                turns = int(command[command.index("--turns") + 1])
+                turns = int(command[command.index("--turn-budget") + 1])
                 make_t50_episode(
                     cwd,
                     episode_id,
@@ -621,11 +621,11 @@ def test_t50_checkpoint_triggers_on_observation_attempts_including_failures(tmp_
     ) -> orchestrator.CommandResult:
         module = command[2]
         started = orchestrator.now_iso()
-        if module == "codex_hl.evidence.observation":
+        if module == "codex_hl.live.driver":
             episode_id = command[command.index("--episode-id") + 1]
             observation_calls.append(episode_id)
             if len(observation_calls) <= 8:
-                turns = int(command[command.index("--turns") + 1])
+                turns = int(command[command.index("--turn-budget") + 1])
                 make_t50_episode(
                     cwd,
                     episode_id,
@@ -680,7 +680,7 @@ def test_t50_checkpoint_stops_after_all_failed_attempts(tmp_path):
         cwd: Path,
         env: dict[str, str] | None,
     ) -> orchestrator.CommandResult:
-        assert command[2] == "codex_hl.evidence.observation"
+        assert command[2] == "codex_hl.live.driver"
         observation_calls.append(command[command.index("--episode-id") + 1])
         started = orchestrator.now_iso()
         return orchestrator.CommandResult(command, 1, "", "observation failed", started, orchestrator.now_iso())
@@ -1295,9 +1295,9 @@ def test_execute_runs_t50_review_and_optional_downstream(tmp_path):
         calls.append(command)
         module = command[2]
         started = orchestrator.now_iso()
-        if module == "codex_hl.evidence.observation":
+        if module == "codex_hl.live.driver":
             episode_id = command[command.index("--episode-id") + 1]
-            turns = int(command[command.index("--turns") + 1])
+            turns = int(command[command.index("--turn-budget") + 1])
             assert command[command.index("--strategy-profile") + 1] == args.strategy_profile
             index = int(episode_id.split("_e")[-1].split("_")[0])
             make_t50_episode(cwd, episode_id, cities=index, techs=index + 1, civics=index, turns=turns)
@@ -1361,9 +1361,9 @@ def test_execute_stops_after_checkpoint_alert_when_no_golden_age_pass(tmp_path):
         calls.append(command)
         module = command[2]
         started = orchestrator.now_iso()
-        if module == "codex_hl.evidence.observation":
+        if module == "codex_hl.live.driver":
             episode_id = command[command.index("--episode-id") + 1]
-            turns = int(command[command.index("--turns") + 1])
+            turns = int(command[command.index("--turn-budget") + 1])
             make_t50_episode(
                 cwd,
                 episode_id,
@@ -1388,7 +1388,7 @@ def test_execute_stops_after_checkpoint_alert_when_no_golden_age_pass(tmp_path):
     manifest = json.loads((tmp_path / "evolution_run" / "manifest.json").read_text(encoding="utf-8"))
     assert result["status"] == "stopped_for_checkpoint_review"
     assert len(result["episodes"]) == 2
-    assert len([call for call in calls if call[2] == "codex_hl.evidence.observation"]) == 2
+    assert len([call for call in calls if call[2] == "codex_hl.live.driver"]) == 2
     assert len(result["checkpoints"]) == 1
     assert manifest["status"] == "stopped_for_checkpoint_review"
     assert manifest["latest_checkpoint_summary"]["checkpoint_alerts"]["stop_recommended"] is True
@@ -1427,10 +1427,10 @@ def test_execute_can_resume_from_existing_manifest_without_rerunning_completed_s
     def fake_runner(command: list[str], cwd: Path, env: dict[str, str] | None) -> orchestrator.CommandResult:
         module = command[2]
         started = orchestrator.now_iso()
-        if module == "codex_hl.evidence.observation":
+        if module == "codex_hl.live.driver":
             episode_id = command[command.index("--episode-id") + 1]
             observation_episode_ids.append(episode_id)
-            turns = int(command[command.index("--turns") + 1])
+            turns = int(command[command.index("--turn-budget") + 1])
             make_t50_episode(
                 cwd,
                 episode_id,
@@ -1500,10 +1500,10 @@ def test_execute_resume_skips_failed_slots_and_counts_attempt_budget(tmp_path):
     def fake_runner(command: list[str], cwd: Path, env: dict[str, str] | None) -> orchestrator.CommandResult:
         module = command[2]
         started = orchestrator.now_iso()
-        if module == "codex_hl.evidence.observation":
+        if module == "codex_hl.live.driver":
             episode_id = command[command.index("--episode-id") + 1]
             observation_episode_ids.append(episode_id)
-            turns = int(command[command.index("--turns") + 1])
+            turns = int(command[command.index("--turn-budget") + 1])
             make_t50_episode(
                 cwd,
                 episode_id,

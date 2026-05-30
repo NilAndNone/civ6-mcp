@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 from pathlib import Path
@@ -189,7 +189,7 @@ def make_legacy_episode(
         {
             "episode_id": episode_id,
             "workflow": "observation",
-            "runner_kind": "legacy-baseline",
+            "runner_kind": "archived_state_snapshot",
             "requested_turns": turn,
         },
     )
@@ -338,7 +338,7 @@ def test_phase5_gate_rejects_unverified_live_steps(tmp_path: Path) -> None:
 
 def test_phase5_gate_rejects_codex_self_eval_provenance() -> None:
     baseline = {
-        "evidence_kind": "legacy-baseline",
+        "evidence_kind": "archived_state_snapshot",
         "objective_metrics_complete": True,
         "failures": [],
         "provenance": {
@@ -380,7 +380,7 @@ def test_phase5_gate_rejects_codex_self_eval_provenance() -> None:
 
 def test_phase5_gate_requires_target_two_cities_and_clean_live_strict_steps() -> None:
     baseline = {
-        "evidence_kind": "legacy-baseline",
+        "evidence_kind": "archived_state_snapshot",
         "turn_reached": True,
         "objective_metrics_complete": True,
         "objective_metrics": {"num_cities": 2},

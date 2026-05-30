@@ -2,57 +2,45 @@
 
 ## Purpose
 
-This playbook defines the Observation short-run and T50 observation workflow for the
-installed plugin.
+This playbook defines live strict evidence runs for the installed plugin.
 
 ## Short-Run Flow
 
-1. Confirm the repo root and branch. If `git` is not on PATH, use
-   `C:\Program Files\Git\cmd\git.exe`.
-2. Check `git status --short --branch --untracked-files=all` and do not revert
-   unrelated dirty files.
-3. Run a short observation on the real `test 1` single-player save:
+1. Confirm the repo root and branch. Do not revert unrelated dirty files.
+2. Use `/civ6-observe-live` for interactive MCP-driven operation, or run the
+   automated driver for a T3 gate:
 
    ```powershell
-   $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-observe --save-name "test 1" --turns 3
+   $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run --extra launcher-windows codex-hl-civ6-live-driver --load-test1 --objective t3 --turn-budget 3 --min-cities 1
    ```
 
-4. Use a stable `--episode-id <id>` only when the validation needs a stable name.
-5. Do not start a separate `civ6-connector` service. The runner connects through
-   the normal Observation path.
-6. Do not use `--keep-existing-mcp-server` or `--reuse-running-game` unless the
-   user is explicitly doing manual troubleshooting.
-7. After the report is generated, stop and return the episode id, Chinese human
-   report path, agent handoff path, audit report path, and evidence PASS/FAIL
-   status.
+3. Record the episode id, `episode.db` path, live plan events, live gateway
+   events, and driver summary.
+4. Stop after the requested objective unless the user explicitly asks for a
+   longer run.
 
 ## T50 Flow
 
-1. Run T50 only after the user explicitly accepts the short-run report or asks
-   for T50 on that basis.
-2. Use one complete episode from the real `test 1` start point:
+1. Run T50 only when the user explicitly asks for T50 or accepts the shorter
+   gate as sufficient setup.
+2. Use a single live strict episode from the real `test 1` start point:
 
    ```powershell
-   $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-observe --save-name "test 1" --turns 50
+   $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run --extra launcher-windows codex-hl-civ6-live-driver --load-test1 --objective t50 --turn-budget 50 --min-cities 2
    ```
 
 3. Do not stitch multiple short episodes into T50.
-4. If the runner rejects `--turns 50`, fix the runner rather than faking T50.
-5. T50 is still Observation observation: it records evidence and stops at the
-   report. It does not enter Review, T51+, strategy optimization, Replay Arena,
-   or asset promotion.
+4. Do not treat archived lessons as executable policy.
+5. Full Windows Civ6 `test 1` validation is required before claiming complete
+   replacement proof.
 
-## Required Episode Artifacts
+## Required Evidence Classes
 
-- `header.json`
-- `raw/tool_calls.jsonl`
-- `raw/mcp.jsonl`
-- `raw/civ6_states/*.json`
-- `raw/saves/save_index.jsonl`
-- `derived/decision_atoms.jsonl`
-- `derived/report_pack.json`
-- `outcome/observation_report.draft.html`
-- `outcome/observation_report.html`
-- `outcome/agent_report.md`
-- `outcome/agent_audit_report.html`
-- `assets_snapshot/active_assets.json` for strategy-aware runs
+- episode header with `start_turn`, `turn_budget`, `target_turn`, and
+  `objective`;
+- `episode.db`;
+- live plan lifecycle events;
+- gateway/verifier events for L2+ mutations;
+- context hashes for planned turns;
+- explicit gaps when connector state is unavailable;
+- driver summary under `outputs/live_driver/`.

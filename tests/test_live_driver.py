@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 import json
@@ -9,7 +9,7 @@ from codex_hl.live.gateway import ActionGateway, GatewayMode
 from codex_hl.live.ledger import EpisodeLedger
 from codex_hl.live.plan_store import LivePlanStore
 from codex_hl.live.schemas import StepStatus
-from codex_hl.live.t50_driver import (
+from codex_hl.live.driver import (
     capture_context,
     end_turn,
     execute_step,
@@ -91,6 +91,8 @@ class FakeGameState:
             {
                 "city_id": 1,
                 "name": "Capital",
+                "x": 62,
+                "y": 41,
                 "currently_building": "NONE",
                 "production_turns_left": 0,
                 "loyalty": 100,
@@ -138,6 +140,19 @@ class SlowEndTurnGameState(FakeGameState):
         return "never"
 
 
+class ScoredSettleScanGameState(FakeGameState):
+    async def get_global_settle_scan(self) -> list[dict]:
+        return [
+            {"x": 57, "y": 42, "score": 200, "total_food": 30, "total_prod": 30},
+            {"x": 62, "y": 37, "score": 100, "total_food": 25, "total_prod": 25},
+        ]
+
+    async def get_pathing_estimate(self, unit_index: int, target_x: int, target_y: int) -> dict:
+        if (target_x, target_y) == (57, 42):
+            return {"turns": -1, "total_tiles": 0, "reachable_this_turn": 0, "waypoints": []}
+        return {"turns": 2, "total_tiles": 4, "reachable_this_turn": 1, "waypoints": []}
+
+
 def _gateway(tmp_path: Path, episode_id: str) -> tuple[Path, LivePlanStore, ActionGateway]:
     root = tmp_path / episode_id
     store = LivePlanStore.for_episode_root(root, episode_id)
@@ -145,7 +160,7 @@ def _gateway(tmp_path: Path, episode_id: str) -> tuple[Path, LivePlanStore, Acti
         save_name="test 1",
         target_turns=51,
         mode="live_strict",
-        runner="codex-hl-civ6-live-t50-driver",
+        runner="codex-hl-civ6-live-driver",
     )
     ledger = EpisodeLedger.for_episode_root(root, episode_id)
     gateway = ActionGateway(
@@ -162,7 +177,7 @@ def _events(root: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
 
 
-def test_live_t50_driver_founds_city_before_skipping_units(tmp_path: Path) -> None:
+def test_live_driver_founds_city_before_skipping_units(tmp_path: Path) -> None:
     episode_id = "ep_found_first"
     _root, store, gateway = _gateway(tmp_path, episode_id)
     gs = FakeGameState()
@@ -189,7 +204,7 @@ def test_live_t50_driver_founds_city_before_skipping_units(tmp_path: Path) -> No
     assert len(gs.cities) == 1
 
 
-def test_live_t50_driver_found_city_step_reaches_verified_city_count_state(tmp_path: Path) -> None:
+def test_live_driver_found_city_step_reaches_verified_city_count_state(tmp_path: Path) -> None:
     episode_id = "ep_found_verified"
     root, store, gateway = _gateway(tmp_path, episode_id)
     gs = FakeGameState()
@@ -218,7 +233,7 @@ def test_live_t50_driver_found_city_step_reaches_verified_city_count_state(tmp_p
     assert finished["payload"]["verifier"]["objective_delta"]["city_count_after"] == 1
 
 
-def test_live_t50_driver_sets_safe_initial_city_production(tmp_path: Path) -> None:
+def test_live_driver_sets_safe_initial_city_production(tmp_path: Path) -> None:
     episode_id = "ep_production"
     _root, store, gateway = _gateway(tmp_path, episode_id)
     gs = FakeGameState()
@@ -244,7 +259,7 @@ def test_live_t50_driver_sets_safe_initial_city_production(tmp_path: Path) -> No
     assert actions[0]["verifier_status"] == "PASS"
 
 
-def test_live_t50_driver_moves_expansion_settler_when_settle_scan_is_empty(tmp_path: Path) -> None:
+def test_live_driver_moves_expansion_settler_when_settle_scan_is_empty(tmp_path: Path) -> None:
     episode_id = "ep_expand_move"
     _root, store, gateway = _gateway(tmp_path, episode_id)
     gs = FakeGameState()
@@ -283,7 +298,86 @@ def test_live_t50_driver_moves_expansion_settler_when_settle_scan_is_empty(tmp_p
     assert actions[0]["verifier_status"] == "PASS"
 
 
-def test_live_t50_end_turn_timeout_marks_failed_not_executing(tmp_path: Path) -> None:
+def test_live_driver_moves_expansion_settler_when_exactly_three_tiles_from_city(tmp_path: Path) -> None:
+    episode_id = "ep_expand_distance_three"
+    _root, store, gateway = _gateway(tmp_path, episode_id)
+    gs = FakeGameState()
+    asyncio.run(gs.found_city(0))
+    gs.units.append(
+        {
+            "unit_id": 327683,
+            "unit_index": 3,
+            "unit_type": "UNIT_SETTLER",
+            "name": "Settler",
+            "x": 62,
+            "y": 38,
+            "moves_remaining": 2,
+        }
+    )
+    actions: list[dict] = []
+    context = asyncio.run(capture_context(gs, episode_id=episode_id, plan_store=None))
+
+    seq, founded = asyncio.run(
+        maybe_expand_with_settler(
+            gs=gs,
+            gateway=gateway,
+            plan_store=store,
+            episode_id=episode_id,
+            seq=1,
+            context=context,
+            actions=actions,
+            min_cities=2,
+        )
+    )
+
+    assert seq == 2
+    assert founded is False
+    assert actions[0]["tool"] == "unit_action"
+    assert actions[0]["args"]["action"] == "move"
+    assert actions[0]["verifier_status"] == "PASS"
+
+
+def test_live_driver_skips_unreachable_settle_scan_candidate(tmp_path: Path) -> None:
+    episode_id = "ep_expand_skip_unreachable"
+    _root, store, gateway = _gateway(tmp_path, episode_id)
+    gs = ScoredSettleScanGameState()
+    asyncio.run(gs.found_city(0))
+    gs.units.append(
+        {
+            "unit_id": 327683,
+            "unit_index": 3,
+            "unit_type": "UNIT_SETTLER",
+            "name": "Settler",
+            "x": 62,
+            "y": 41,
+            "moves_remaining": 2,
+        }
+    )
+    actions: list[dict] = []
+    context = asyncio.run(capture_context(gs, episode_id=episode_id, plan_store=None))
+
+    seq, founded = asyncio.run(
+        maybe_expand_with_settler(
+            gs=gs,
+            gateway=gateway,
+            plan_store=store,
+            episode_id=episode_id,
+            seq=1,
+            context=context,
+            actions=actions,
+            min_cities=2,
+        )
+    )
+
+    assert seq == 2
+    assert founded is False
+    assert actions[0]["args"]["action"] == "move"
+    assert actions[0]["args"]["target_x"] == 62
+    assert actions[0]["args"]["target_y"] == 37
+    assert actions[0]["verifier_status"] == "PASS"
+
+
+def test_live_driver_end_turn_timeout_marks_failed_not_executing(tmp_path: Path) -> None:
     episode_id = "ep_timeout"
     _root, store, gateway = _gateway(tmp_path, episode_id)
     gs = SlowEndTurnGameState()
@@ -310,7 +404,7 @@ def test_live_t50_end_turn_timeout_marks_failed_not_executing(tmp_path: Path) ->
     assert counts["EXECUTING"] == 0
 
 
-def test_live_t50_recovery_plan_records_metadata_and_lineage(tmp_path: Path) -> None:
+def test_live_driver_recovery_plan_records_metadata_and_lineage(tmp_path: Path) -> None:
     episode_id = "ep_recovery"
     root, store, gateway = _gateway(tmp_path, episode_id)
     gs = FakeGameState()

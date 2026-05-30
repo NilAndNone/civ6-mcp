@@ -11,8 +11,6 @@ from codex_hl.live.plan_store import LivePlanStore
 
 
 GATEWAY_MODE_ENV = "CODEX_HL_CIV6_LIVE_GATEWAY_MODE"
-LEGACY_GATEWAY_MODE_ENV = "CODEX_HL_CIV6_GATEWAY_MODE"
-LEGACY_RUNNER_GATEWAY_MODE_ENV = "CODEX_HL_CIV6_LEGACY_RUNNER_GATEWAY_MODE"
 LEDGER_ROOT_ENV = "CODEX_HL_CIV6_LIVE_LEDGER_ROOT"
 LIVE_EPISODE_ID_ENV = "CODEX_HL_CIV6_LIVE_EPISODE_ID"
 LIVE_PLAN_ID_ENV = "CODEX_HL_CIV6_LIVE_PLAN_ID"
@@ -32,9 +30,9 @@ class LiveActionContext:
 
 
 def gateway_mode_from_env(
-    default: GatewayMode = GatewayMode.LEGACY_COMPAT,
+    default: GatewayMode = GatewayMode.LIVE_STRICT,
 ) -> GatewayMode:
-    raw = os.environ.get(GATEWAY_MODE_ENV) or os.environ.get(LEGACY_GATEWAY_MODE_ENV)
+    raw = os.environ.get(GATEWAY_MODE_ENV)
     return _coerce_gateway_mode(raw, default)
 
 
@@ -45,21 +43,6 @@ def _coerce_gateway_mode(raw: str | None, default: GatewayMode) -> GatewayMode:
         return GatewayMode(raw.strip().lower())
     except ValueError:
         return default
-
-
-def legacy_runner_gateway_mode_from_env(
-    default: GatewayMode = GatewayMode.SHADOW,
-) -> GatewayMode:
-    """Return the observation-runner gateway mode.
-
-    The legacy observation runner cannot provide Phase 2 plan/step bindings, so
-    it must not inherit the MCP/global live strict switch by accident.
-    """
-
-    mode = _coerce_gateway_mode(os.environ.get(LEGACY_RUNNER_GATEWAY_MODE_ENV), default)
-    if mode is GatewayMode.LIVE_STRICT:
-        return default
-    return mode
 
 
 def live_context_from_env(*, turn: int | None = None) -> LiveActionContext:
@@ -88,7 +71,7 @@ def action_gateway_for_episode(
         branch_id=branch_id,
     )
     return ActionGateway(
-        mode=mode or legacy_runner_gateway_mode_from_env(),
+        mode=mode or gateway_mode_from_env(),
         ledger=ledger,
     )
 
@@ -97,7 +80,7 @@ def default_mcp_episode_root() -> Path:
     configured = os.environ.get(LEDGER_ROOT_ENV)
     if configured:
         return Path(configured)
-    return workspace_root() / "episodes" / "_live_shadow_mcp"
+    return workspace_root() / "episodes" / "_live_mcp"
 
 
 def workspace_root() -> Path:
@@ -122,7 +105,7 @@ def action_gateway_for_mcp(
     episode_id: str | None = None,
     mode: GatewayMode | None = None,
 ) -> ActionGateway:
-    ledger_episode_id = episode_id or "_live_shadow_mcp"
+    ledger_episode_id = episode_id or "_live_mcp"
     episode_root = (
         live_episode_root(ledger_episode_id)
         if episode_id

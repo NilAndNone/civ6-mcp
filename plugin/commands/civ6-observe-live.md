@@ -1,40 +1,35 @@
 # /civ6-observe-live
 
-## 用途
+## Purpose
 
-运行 Phase 2 live 主线：JSON plan + armed step gate。所有 L2+ mutating
-MCP action 必须绑定 `episode_id`、`plan_id`、`step_id` 和 `context_hash`。
+Use the interactive MCP-driven live strict workflow. This is the manual/agent
+operation path: every mutating L2+ action must be tied to an active
+`episode_id`, submitted JSON plan, armed step, and captured `context_hash`.
 
-## 流程
+## Flow
 
-1. 调用 `start_live_episode`。
-2. 每回合调用 `get_live_turn_context`，取得 `context_hash`。
-3. 调用 `submit_turn_plan` 提交 JSON plan。
-4. 每个 mutating step 执行前调用 `arm_live_step`。
-5. 调用对应 MCP action，并传入 live 参数。
-6. 回合结束后重复 context/plan/arm/action。
-7. 调用 `finish_live_episode`；如果需要中止，调用 `abort_live_episode`。
+1. Call `start_live_episode`.
+2. For each turn, call `get_live_turn_context` and keep the returned
+   `context_hash`.
+3. Submit a JSON plan with `submit_turn_plan`.
+4. Arm each mutating step with `arm_live_step`.
+5. Execute the matching MCP action with the live parameters from the armed step.
+6. Repeat context/plan/arm/action until the objective is complete.
+7. Call `finish_live_episode`; use `abort_live_episode` for explicit stop.
 
-## 边界
+## Boundaries
 
-- 默认使用 live strict。
-- 不启用 Python fragment。
-- 不使用 `register_live_fragment` 或 `execute_live_fragment`。
-- verifier 只接受可观测 post-state，不把 Codex 自评当 outcome。
-- `episodes/` 是本地产物，默认不提交。
+- Default mode is live strict.
+- Python fragments stay disabled unless explicitly enabled by environment.
+- Verifier decisions must come from observable post-state, not Codex self-rating.
+- `episodes/` contains local runtime artifacts and should not be committed by
+  default.
 
-## 示例
+## Example
 
 ```text
 /civ6-observe-live --save-name "test 1" --turns 3 --strict-live
 ```
 
-真实 T3 验收需要 Windows Civ6/FireTuner 运行时和安装后的 MCP tools。
-
-## Phase 4 optional fragments
-
-- `register_live_fragment` / `execute_live_fragment` are disabled unless `CODEX_HL_CIV6_ENABLE_LIVE_FRAGMENTS=1`.
-- A plan step must opt in with `fragment_allowed: true`; the fragment must bind to that exact `episode_id` / `plan_id` / `step_id` / `context_hash`.
-- Fragment execution is one armed step only. The sandbox rejects imports, loops, `open`, subprocess/shell/network surfaces, raw `GameState`, and multiple mutating `live.*` calls.
-- The extracted mutating call must match the planned tool and args exactly, and the actual game mutation still runs through `ActionGateway` with `source="fragment"`.
-- Fragment lifecycle events are written to the live ledger; `raw/live_fragments.jsonl` is only a compatibility export. `read_context` and precondition helpers are interpreted before mutation, while postconditions stay verifier-owned.
+For automated T3/T20/T50 runs, use `/civ6-live-driver` or
+`/civ6-runs --runner live`.

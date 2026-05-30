@@ -1,7 +1,7 @@
 {
   "name": "codex-hl-civ6",
-  "version": "0.0.2",
-  "description": "用于观测优先 Civ6 游玩、离线失败标注、资产登记、候选改进、scenario pool、受控资产治理和多局 T20/T50 编排的 Codex HL 插件。",
+  "version": "0.1.0",
+  "description": "Codex HL Civ6 plugin for live strict Civ6 runs, offline review, strategy assets, validation scenarios, governed strategy changes, and multi-run orchestration.",
   "author": {
     "name": "Xiaohan Lu"
   },
@@ -11,21 +11,20 @@
     "codex",
     "civ6",
     "civilization",
-    "observation",
+    "live-strict",
     "review",
     "strategy",
     "strategy_candidate",
     "validation_scenario",
     "governance",
     "assets",
-    "observation",
     "evolution"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Codex HL Civ6",
-    "shortDescription": "运行观测优先的 Codex HL Civ6 episode",
-    "longDescription": "Codex HL Civ6 提供一个自包含的 Civilization VI 插件。它会在任何长跑继续前记录真实 Civ6 回合、决策记录、状态快照、存档和中文人工验收报告；用户明确开启后，还支持 Review 离线标注、Strategy 资产 catalog 校验、strategy candidate 候选改进包、Validation scenario pool、L4/L5 受控资产治理和多局 T20/T50 自进化编排。",
+    "shortDescription": "Run live strict Codex HL Civ6 episodes.",
+    "longDescription": "Codex HL Civ6 provides interactive MCP-driven live strict operation, an automated live driver for T3/T20/T50 runs, offline review, versioned strategy assets, passive validation scenarios, governed strategy changes, and multi-run orchestration.",
     "developerName": "Xiaohan Lu",
     "category": "Engineering",
     "capabilities": [
@@ -33,7 +32,7 @@
       "Write"
     ],
     "defaultPrompt": [
-      "在 test 1 Civ6 存档上运行 3 回合 Observation 观测短跑"
+      "Run a 3-turn live strict Civ6 check on the test 1 save."
     ],
     "brandColor": "#2B5C8A",
     "screenshots": []

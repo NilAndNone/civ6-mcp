@@ -20,8 +20,8 @@ def test_plugin_is_self_contained_codex_package():
     assert (PLUGIN / "skills" / "civ6-observation" / "SKILL.md").exists()
 
     for command in [
-        "civ6-observe.md",
         "civ6-observe-live.md",
+        "civ6-live-driver.md",
         "civ6-load-test1.md",
         "civ6-review.md",
         "civ6-strategy-assets.md",
@@ -44,7 +44,10 @@ def test_plugin_runtime_modules_import_from_plugin_src():
     sys.path.insert(0, plugin_src)
     try:
         assert importlib.import_module("codex_hl.contracts")
-        assert importlib.import_module("codex_hl.evidence.observation")
+        assert importlib.import_module("codex_hl.evidence.store")
+        assert importlib.import_module("codex_hl.live.driver")
+        assert importlib.import_module("codex_hl.live.objective")
+        assert importlib.import_module("codex_hl.live.planner")
         assert importlib.import_module("codex_hl.review.failure_labeling")
         assert importlib.import_module("codex_hl.strategy.registry")
         assert importlib.import_module("codex_hl.strategy.candidates")
@@ -62,13 +65,14 @@ def test_project_metadata_includes_strategy_asset_surface():
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     project = pyproject["project"]
 
-    assert "asset governance" in project["description"]
-    assert {"strategy", "governance", "assets", "observation", "review", "validation", "evolution"}.issubset(set(project["keywords"]))
+    assert "live strict" in project["description"]
+    assert {"strategy", "governance", "assets", "live-strict", "review", "validation", "evolution"}.issubset(set(project["keywords"]))
     assert project["scripts"]["codex-hl-civ6-strategy-assets"] == "codex_hl.strategy.registry:main"
     assert project["scripts"]["codex-hl-civ6-strategy-candidates"] == "codex_hl.strategy.candidates:main"
     assert project["scripts"]["codex-hl-civ6-validation-scenarios"] == "codex_hl.validation.scenarios:main"
     assert project["scripts"]["codex-hl-civ6-governance"] == "codex_hl.governance.gates:main"
     assert project["scripts"]["codex-hl-civ6-live-eval"] == "codex_hl.live.evaluation:main"
+    assert project["scripts"]["codex-hl-civ6-live-driver"] == "codex_hl.live.driver:main"
     assert project["scripts"]["codex-hl-civ6-runs"] == "codex_hl.runs.orchestrator:main"
     assert project["scripts"]["codex-hl-civ6-acceptance"] == "codex_hl.reports.acceptance:main"
     assert project["scripts"]["codex-hl-civ6-load-test1"] == "codex_hl.diagnostics.load_test1:main"

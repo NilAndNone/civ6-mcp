@@ -105,14 +105,13 @@ def args_for(tmp_path: Path, *, runner_kind: str | None, turns: int = 20) -> arg
 def fake_runner(command: list[str], cwd: Path, env: dict[str, str] | None) -> orchestrator.CommandResult:
     module = command[2]
     started = orchestrator.now_iso()
-    if module in {"codex_hl.evidence.observation", "codex_hl.live.runner"}:
+    if module == "codex_hl.live.driver":
         episode_id = command[command.index("--episode-id") + 1]
-        runner_kind = "live" if module == "codex_hl.live.runner" else "legacy-baseline"
         stdout = json.dumps(
             {
                 "episode_id": episode_id,
-                "runner_kind": runner_kind,
-                "requires_mcp_runtime": runner_kind == "live",
+                "runner_kind": "live",
+                "requires_mcp_runtime": False,
             }
         )
     elif module == "codex_hl.review.failure_labeling":
@@ -133,24 +132,20 @@ def test_execute_t3_without_runner_reaches_runner_gate(tmp_path) -> None:
         orchestrator.run_evolution(args_for(tmp_path, runner_kind=None, turns=3), runner=fake_runner)
 
 
-def test_legacy_baseline_runner_uses_old_observation_and_marks_report(tmp_path) -> None:
+def test_removed_runner_hard_fails_before_launch(tmp_path) -> None:
     calls: list[list[str]] = []
 
     def runner(command: list[str], cwd: Path, env: dict[str, str] | None) -> orchestrator.CommandResult:
         calls.append(command)
         return fake_runner(command, cwd, env)
 
-    result = orchestrator.run_evolution(
-        args_for(tmp_path, runner_kind="legacy-baseline"),
-        runner=runner,
-    )
+    with pytest.raises(orchestrator.EvolutionError, match='runner "legacy-baseline".*removed.*--runner live'):
+        orchestrator.run_evolution(
+            args_for(tmp_path, runner_kind="legacy-baseline"),
+            runner=runner,
+        )
 
-    manifest = json.loads((tmp_path / "evolution_run" / "manifest.json").read_text(encoding="utf-8"))
-    assert result["status"] == "completed"
-    assert calls[0][2] == "codex_hl.evidence.observation"
-    assert manifest["runner_kind"] == "legacy-baseline"
-    assert manifest["runner_deprecation"]["deprecated"] is True
-    assert manifest["episodes"][0]["runner_kind"] == "legacy-baseline"
+    assert calls == []
 
 
 def test_live_runner_uses_live_episode_path_not_old_rules_runner(tmp_path) -> None:
@@ -163,8 +158,7 @@ def test_live_runner_uses_live_episode_path_not_old_rules_runner(tmp_path) -> No
     result = orchestrator.run_evolution(args_for(tmp_path, runner_kind="live", turns=3), runner=runner)
 
     assert result["status"] == "completed"
-    assert calls[0][2] == "codex_hl.live.runner"
-    assert "--turns" in calls[0]
-    assert calls[0][calls[0].index("--turns") + 1] == "3"
-    assert [command[2] for command in calls] == ["codex_hl.live.runner"]
-    assert all(command[2] != "codex_hl.evidence.observation" for command in calls)
+    assert calls[0][2] == "codex_hl.live.driver"
+    assert "--turn-budget" in calls[0]
+    assert calls[0][calls[0].index("--turn-budget") + 1] == "3"
+    assert "codex_hl.live.driver" in [command[2] for command in calls]

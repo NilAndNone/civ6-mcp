@@ -15,7 +15,7 @@ from codex_hl.live.state_machine import LiveStateError
 from codex_hl.live.verifier import StubVerifier
 
 
-ActionSource = Literal["mcp", "legacy_runner", "live_plan", "fragment", "recovery"]
+ActionSource = Literal["mcp", "live_plan", "fragment", "recovery"]
 ActionStatus = Literal["executed", "rejected", "failed", "verified", "inconclusive"]
 RECOVERY_ONLY_L4_TOOLS = {
     "load_save",
@@ -28,8 +28,6 @@ RECOVERY_ONLY_L4_TOOLS = {
 
 
 class GatewayMode(str, Enum):
-    LEGACY_COMPAT = "legacy_compat"
-    SHADOW = "shadow"
     LIVE_STRICT = "live_strict"
 
 
@@ -74,16 +72,15 @@ class StrictValidation:
 
 
 class ActionGateway:
-    """Unified mutation gateway for legacy shadow and live strict execution.
+    """Live strict mutation gateway.
 
-    LEGACY_COMPAT and SHADOW preserve legacy execution while recording
-    provenance. LIVE_STRICT requires a stored active plan and an armed step.
+    L2+ game mutations require a stored active plan and an armed step.
     """
 
     def __init__(
         self,
         *,
-        mode: GatewayMode | str = GatewayMode.LEGACY_COMPAT,
+        mode: GatewayMode | str = GatewayMode.LIVE_STRICT,
         ledger: EpisodeLedger | None = None,
         verifier: StubVerifier | None = None,
         plan_store: LivePlanStore | None = None,

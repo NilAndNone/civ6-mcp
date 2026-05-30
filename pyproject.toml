@@ -1,14 +1,14 @@
 [project]
 name = "codex-hl-civ6"
-version = "0.0.2"
-description = "Codex HL Civ6 plugin for observation-first Civ6 play, offline failure review, strategy asset governance, candidate strategy improvements, validation scenarios, guarded merges, and multi-T50 self-evolution orchestration"
+version = "0.1.0"
+description = "Codex HL Civ6 plugin for live strict Civ6 runs, offline failure review, strategy asset governance, candidate strategy improvements, validation scenarios, guarded merges, and multi-run self-evolution orchestration"
 readme = "README.md"
 license = "MIT"
 authors = [
     { name = "Xiaohan Lu" }
 ]
 requires-python = ">=3.12"
-keywords = ["codex", "civ6", "civilization", "strategy", "governance", "assets", "observation", "review", "validation", "evolution", "plugin"]
+keywords = ["codex", "civ6", "civilization", "strategy", "governance", "assets", "live-strict", "review", "validation", "evolution", "plugin"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: MIT License",
@@ -44,7 +44,6 @@ launcher-linux = [
 launcher = ["codex-hl-civ6[launcher-macos]"]
 
 [project.scripts]
-codex-hl-civ6-observe = "codex_hl.evidence.observation:main"
 codex-hl-civ6-review = "codex_hl.review.failure_labeling:main"
 codex-hl-civ6-strategy-assets = "codex_hl.strategy.registry:main"
 codex-hl-civ6-strategy-candidates = "codex_hl.strategy.candidates:main"
@@ -53,7 +52,7 @@ codex-hl-civ6-governance = "codex_hl.governance.gates:main"
 codex-hl-civ6-runs = "codex_hl.runs.orchestrator:main"
 codex-hl-civ6-acceptance = "codex_hl.reports.acceptance:main"
 codex-hl-civ6-live-eval = "codex_hl.live.evaluation:main"
-codex-hl-civ6-live-t50-driver = "codex_hl.live.t50_driver:main"
+codex-hl-civ6-live-driver = "codex_hl.live.driver:main"
 codex-hl-civ6-debug = "codex_hl.diagnostics.connector:main"
 codex-hl-civ6-load-test1 = "codex_hl.diagnostics.load_test1:main"
 codex-hl-civ6-human-demo-record = "codex_hl.demos.cli:main"

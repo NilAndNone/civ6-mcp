@@ -2,39 +2,33 @@
 
 ## Purpose
 
-This tool policy defines how observation runner results are accepted.
+This tool policy defines how live strict run evidence is accepted.
 
 ## Run Policy
 
-- Use `codex-hl-civ6-observe` for short runs and T50.
-- Use `--report-only <episode_id>` only to rebuild reports from existing
-  evidence. Report-only mode must not start Civ6 or modify current gameplay.
-- Keep `episodes/` as local run output unless the user explicitly names an
-  episode to include.
-- Do not start a separate `civ6-connector` service for the Observation flow.
-- Default preflight may stop stale repo-local connector processes and reset the
-  Civ6 frontend before loading `test 1`; use bypass flags only for explicit
-  troubleshooting.
+- Use `/civ6-observe-live` for interactive MCP-driven operation.
+- Use `codex-hl-civ6-live-driver` for automated T3/T20/T50 runs.
+- Use `/civ6-runs --runner live` for orchestration.
+- Keep `episodes/` and `outputs/` as local run output unless the user names
+  specific artifacts to preserve or submit.
+- Do not start a separate connector service for the live strict flow unless the
+  user is explicitly troubleshooting connector startup.
 
 ## Evidence Gate
 
-A short run or T50 run is reviewable only when these evidence classes exist:
+A live strict run is reviewable only when these evidence classes exist:
 
+- episode header with objective and turn-budget semantics;
 - tool and connector calls with timing, parameters, raw result or raw error;
-- per-turn state snapshots covering empire, cities, units, notifications,
-  threats, tech/civic, and production, or explicit gaps;
-- decision atoms with context, available actions, choice, rationale, rejected
-  alternatives, execution, outcome, and evidence ids;
-- save links connecting checkpoints to episode, turn, decision, or event;
-- Chinese human HTML report;
-- agent handoff report and full audit report.
+- per-turn context snapshots or explicit representation gaps;
+- JSON plan submission and armed-step records;
+- gateway mutation events and verifier results;
+- save or load lineage when recovery is used;
+- summary artifact with final turn, city count, action count, and failure
+  taxonomy if the run did not complete.
 
-## Human HTML Contract
+## Boundary
 
-- `observation_report.html` is the human review entry.
-- It must present natural-language Chinese review prose rather than raw JSON.
-- Keep the accepted section order: title, verdict, observed game-state changes,
-  turn narrative, decision flow, evidence boundary, save/decision links, gaps,
-  and agent handoff.
-- Do not put raw JSON blocks, `<details>`, `<pre>`, or encoded state dumps in
-  the human report. Raw evidence belongs in audit artifacts and `raw/`.
+Evidence capture records what happened. It does not mark strategy changes as
+accepted, does not merge assets, and does not let archived historical lessons
+override active runtime policy.

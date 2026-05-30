@@ -35,7 +35,8 @@ DEFAULT_OBSERVATION_TURNS = T50_TURNS
 SUPPORTED_OBSERVATION_TURNS = {T3_TURNS, T20_TURNS, T50_TURNS}
 RUNNER_LIVE = "live"
 RUNNER_LEGACY_BASELINE = "legacy-baseline"
-SUPPORTED_RUNNERS = {RUNNER_LIVE, RUNNER_LEGACY_BASELINE}
+REMOVED_RUNNERS = {RUNNER_LEGACY_BASELINE}
+SUPPORTED_RUNNERS = {RUNNER_LIVE}
 DEFAULT_STRATEGY_PROFILE = "baseline_static"
 EXPLORE_SCOUT_FIRST_STRATEGY_PROFILE = "explore_scout_first"
 SCIENCE_CULTURE_T50_STRATEGY_PROFILE = "science_culture_t50"
@@ -356,51 +357,6 @@ def run_connector_preflight(
     return build_connector_preflight(debug_payload, save_name=save_name, command=command)
 
 
-def run_observation(
-    *,
-    runner: CommandRunner,
-    workspace: Path,
-    command_log: Path,
-    save_name: str,
-    episode_id: str,
-    turns: int,
-    strategy_profile: str,
-    asset_root: Path | None,
-    candidate_package: Path | None = None,
-) -> dict[str, Any]:
-    env = {"CODEX_HL_CIV6_WORKSPACE": str(workspace)}
-    if asset_root is not None:
-        env["CODEX_HL_CIV6_STRATEGY_ASSET_ROOT"] = str(asset_root)
-    command = python_module_command(
-        "codex_hl.evidence.observation",
-        "--save-name",
-        save_name,
-        "--turns",
-        str(turns),
-        "--episode-id",
-        episode_id,
-        "--strategy-profile",
-        strategy_profile,
-    )
-    if candidate_package is not None:
-        command.extend(["--candidate-package", str(candidate_package.resolve())])
-    env["CODEX_HL_CIV6_RUNNER_KIND"] = RUNNER_LEGACY_BASELINE
-    result = runner(command, workspace, env)
-    require_success(
-        result,
-        step=f"legacy_baseline_observation_t{turns}:{episode_id}",
-        command_log=command_log,
-    )
-    payload = parse_stdout_json(result.stdout, step=f"observation_t{turns}")
-    payload.setdefault("episode_id", episode_id)
-    payload["runner_kind"] = RUNNER_LEGACY_BASELINE
-    payload["runner_deprecation"] = {
-        "deprecated": True,
-        "message": "legacy-baseline is retained only for baseline comparison and report rebuild compatibility.",
-    }
-    return payload
-
-
 def run_live_observation(
     *,
     runner: CommandRunner,
@@ -421,10 +377,12 @@ def run_live_observation(
     if asset_root is not None:
         env["CODEX_HL_CIV6_STRATEGY_ASSET_ROOT"] = str(asset_root)
     command = python_module_command(
-        "codex_hl.live.runner",
+        "codex_hl.live.driver",
+        "--workspace",
+        str(workspace),
         "--save-name",
         save_name,
-        "--turns",
+        "--turn-budget",
         str(turns),
         "--episode-id",
         episode_id,
@@ -779,11 +737,15 @@ def extract_t50_best_run_metrics(workspace: Path, episode_id: str) -> dict[str, 
     base = strategy_registry.extract_t50_metrics(episode_id, workspace=workspace)
     state_path, state = strategy_registry._load_episode_final_state(episode_id, workspace=workspace)
     overview = state.get("overview") if isinstance(state.get("overview"), dict) else {}
-    audit = state.get("t50_strategy_audit") if isinstance(state.get("t50_strategy_audit"), dict) else {}
+    fact_summary = (
+        state.get("historical_t50_fact_summary")
+        if isinstance(state.get("historical_t50_fact_summary"), dict)
+        else {}
+    )
     agent = final_state_agent_row(state)
     metrics = dict(base["metrics"])
-    era_score = overview.get("era_score", audit.get("era_score"))
-    golden_threshold = overview.get("era_golden_threshold", audit.get("golden_threshold"))
+    era_score = overview.get("era_score", fact_summary.get("era_score"))
+    golden_threshold = overview.get("era_golden_threshold", fact_summary.get("golden_threshold"))
     if isinstance(era_score, (int, float)):
         metrics["era_score"] = era_score
     if isinstance(golden_threshold, (int, float)):
@@ -793,10 +755,10 @@ def extract_t50_best_run_metrics(workspace: Path, episode_id: str) -> dict[str, 
         metrics["gold"] = overview["gold"]
     if isinstance(overview.get("score"), (int, float)):
         metrics["score"] = overview["score"]
-    current_age = audit.get("current_age") or agent.get("age")
+    current_age = fact_summary.get("current_age") or agent.get("age")
     if current_age:
         metrics["current_age"] = str(current_age).upper()
-    current_era = audit.get("current_era") or agent.get("era")
+    current_era = fact_summary.get("current_era") or agent.get("era")
     if current_era:
         metrics["current_era"] = str(current_era).upper()
     return {
@@ -1587,23 +1549,23 @@ def build_t50_checkpoint_alerts(report: dict[str, Any]) -> dict[str, Any]:
 
 
 def audit_curve_row_from_state(state: dict[str, Any]) -> dict[str, Any] | None:
-    audit = state.get("t50_strategy_audit")
-    if isinstance(audit, dict):
+    fact_summary = state.get("historical_t50_fact_summary")
+    if isinstance(fact_summary, dict):
         return {
-            "source": "t50_strategy_audit",
-            "turn": audit.get("turn", state.get("turn")),
-            "era_score": audit.get("era_score"),
-            "golden_threshold": audit.get("golden_threshold"),
-            "era_score_gap": audit.get("era_score_gap"),
-            "gold": audit.get("gold"),
-            "governors": audit.get("governors", []),
-            "strategic_resources": audit.get("strategic_resources", []),
-            "unimproved_strategic_resources": audit.get("unimproved_strategic_resources", []),
-            "tradable_players": audit.get("tradable_players", []),
-            "war_targets": audit.get("war_targets", []),
-            "opportunities": audit.get("opportunities", []),
-            "golden_age_target_events": audit.get("golden_age_target_events", []),
-            "active_golden_age_target_events": audit.get("active_golden_age_target_events", []),
+            "source": "historical_t50_fact_summary",
+            "turn": fact_summary.get("turn", state.get("turn")),
+            "era_score": fact_summary.get("era_score"),
+            "golden_threshold": fact_summary.get("golden_threshold"),
+            "era_score_gap": fact_summary.get("era_score_gap"),
+            "gold": fact_summary.get("gold"),
+            "governors": fact_summary.get("governors", []),
+            "strategic_resources": fact_summary.get("strategic_resources", []),
+            "unimproved_strategic_resources": fact_summary.get("unimproved_strategic_resources", []),
+            "tradable_players": fact_summary.get("tradable_players", []),
+            "war_targets": fact_summary.get("war_targets", []),
+            "opportunities": fact_summary.get("opportunities", []),
+            "golden_age_target_events": fact_summary.get("golden_age_target_events", []),
+            "active_golden_age_target_events": fact_summary.get("active_golden_age_target_events", []),
         }
 
     overview = state.get("overview") if isinstance(state.get("overview"), dict) else {}
@@ -1905,11 +1867,16 @@ def copy_asset_root(source: Path, destination: Path) -> Path:
 
 def validate_args(args: argparse.Namespace) -> None:
     runner_kind = getattr(args, "runner", None)
+    if runner_kind in REMOVED_RUNNERS:
+        raise EvolutionError(
+            'runner "legacy-baseline" has been removed. '
+            'Use "--runner live" with codex-hl-civ6-live-driver.'
+        )
     if runner_kind is not None and runner_kind not in SUPPORTED_RUNNERS:
         allowed = ", ".join(sorted(SUPPORTED_RUNNERS))
         raise EvolutionError(f"--runner must be one of: {allowed}")
     if args.execute and not runner_kind:
-        raise EvolutionError("--execute requires --runner live or --runner legacy-baseline")
+        raise EvolutionError("--execute requires --runner live")
     if args.cycles < 1:
         raise EvolutionError("--cycles must be >= 1")
     if args.episodes_per_cycle is None:
@@ -1995,17 +1962,7 @@ def run_evolution(args: argparse.Namespace, *, runner: CommandRunner = run_subpr
         "initial_strategy_profile": args.strategy_profile,
         "strategy_profile": args.strategy_profile,
         "runner_kind": runner_kind,
-        "runner_deprecation": (
-            {
-                "deprecated": True,
-                "message": (
-                    "legacy-baseline is retained only for baseline comparison "
-                    "and report rebuild compatibility."
-                ),
-            }
-            if runner_kind == RUNNER_LEGACY_BASELINE
-            else None
-        ),
+        "runner_deprecation": None,
         "auto_iterate_strategy": args.auto_iterate_strategy,
         "target_completed_episodes": target_completed,
         "episode_retries": args.episode_retries,
@@ -2252,12 +2209,7 @@ def run_evolution(args: argparse.Namespace, *, runner: CommandRunner = run_subpr
                 else f"{base_episode_id}_retry{attempt:02d}"
             )
             try:
-                observation_runner = (
-                    run_live_observation
-                    if runner_kind == RUNNER_LIVE
-                    else run_observation
-                )
-                observation = observation_runner(
+                observation = run_live_observation(
                     runner=runner,
                     workspace=workspace,
                     command_log=command_log,
@@ -2333,7 +2285,7 @@ def run_evolution(args: argparse.Namespace, *, runner: CommandRunner = run_subpr
 
         if runner_kind == RUNNER_LIVE and observation.get("requires_mcp_runtime"):
             observation["review_skipped"] = {
-                "reason": "live runner CLI creates a routing artifact only; real live actions must be driven through MCP runtime evidence.",
+                "reason": "live driver did not produce reviewable episode evidence.",
             }
             write_json(run_dir / "manifest.json", manifest)
             continue
@@ -2564,10 +2516,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--runner",
-        choices=sorted(SUPPORTED_RUNNERS),
         help=(
-            "Required with --execute. Use live for the JSON-plan live path, "
-            "or legacy-baseline for deprecated baseline comparison."
+            "Required with --execute. Use live for the JSON-plan live driver path."
         ),
     )
     parser.add_argument(

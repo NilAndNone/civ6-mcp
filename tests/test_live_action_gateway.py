@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 import json
@@ -68,50 +68,6 @@ def _planned_gateway(
         ledger=ledger,
         plan_store=store,
     )
-
-
-@pytest.mark.parametrize("mode", [GatewayMode.LEGACY_COMPAT, GatewayMode.SHADOW])
-def test_compat_and_shadow_allow_unplanned_l2_mutation_and_record_ledger(
-    tmp_path, mode
-) -> None:
-    ledger = EpisodeLedger.for_episode_root(tmp_path / "episode", "ep_shadow")
-    gateway = ActionGateway(mode=mode, ledger=ledger)
-    calls: list[str] = []
-
-    async def run_action() -> str:
-        calls.append("ran")
-        return "OK"
-
-    result = asyncio.run(
-        gateway.execute(
-            ActionRequest(
-                source="mcp",
-                tool_name="set_research",
-                args={"tech_or_civic": "TECH_POTTERY", "category": "tech"},
-                mutation_level=MutationLevel.L2_LOW_GAME_MUTATION,
-                episode_id="ep_shadow",
-                turn=1,
-            ),
-            run_action,
-        )
-    )
-
-    assert calls == ["ran"]
-    assert result.allowed is True
-    assert result.status == "executed"
-    assert result.result == "OK"
-
-    events = _read_events(tmp_path / "episode" / "raw" / "live_events.jsonl")
-    finished = events[-1]
-    assert finished["event_type"] == "ACTION_FINISHED"
-    assert finished["source"] == "mcp"
-    assert finished["tool"] == "set_research"
-    assert finished["level"] == "L2"
-    assert finished["args"] == {"tech_or_civic": "TECH_POTTERY", "category": "tech"}
-    assert finished["plan_id"] is None
-    assert finished["step_id"] is None
-    assert finished["unplanned_mutation"] is True
-    assert result.ledger_event_ids == [event["event_id"] for event in events]
 
 
 def test_live_strict_rejects_l2_without_plan_and_does_not_execute(tmp_path) -> None:
@@ -421,7 +377,7 @@ def test_episode_ledger_mirrors_live_events_to_episode_db(tmp_path) -> None:
     event_id = ledger.append_event(
         event_type="ACTION_FINISHED",
         request=request,
-        mode=GatewayMode.SHADOW.value,
+        mode=GatewayMode.LIVE_STRICT.value,
         allowed=True,
         status="executed",
         unplanned_mutation=True,
@@ -460,7 +416,7 @@ def test_episode_ledger_keeps_process_local_seq_across_instances(
     ledger_a.append_event(
         event_type="ACTION_STARTED",
         request=request,
-        mode=GatewayMode.SHADOW.value,
+        mode=GatewayMode.LIVE_STRICT.value,
         allowed=True,
         status="executing",
         unplanned_mutation=True,
@@ -468,7 +424,7 @@ def test_episode_ledger_keeps_process_local_seq_across_instances(
     ledger_b.append_event(
         event_type="ACTION_FINISHED",
         request=request,
-        mode=GatewayMode.SHADOW.value,
+        mode=GatewayMode.LIVE_STRICT.value,
         allowed=True,
         status="executed",
         unplanned_mutation=True,

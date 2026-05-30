@@ -1,6 +1,6 @@
 """SQLite storage for human-play Civ6 demonstrations.
 
-This module intentionally keeps human demonstrations separate from Observation
+This module intentionally keeps human demonstrations separate from live strict
 ``episodes/`` evidence.  The database is local reference evidence only; it does
 not produce candidate assets or mutate the strategy asset registry.
 """
@@ -15,7 +15,7 @@ import traceback
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
-from codex_hl.evidence.observation import (
+from codex_hl.demos.support import (
     ROOT,
     now_iso,
     now_stamp,
@@ -271,7 +271,7 @@ def is_read_only_recording_tool(name: str) -> bool:
 
 
 class SqliteDemoRecorder:
-    """Recorder adapter compatible with Observation ``capture_state``."""
+    """Recorder adapter compatible with human-demo ``capture_state``."""
 
     def __init__(self, *, demo_id: str, save_name: str, db_path: Path) -> None:
         self.demo_id = demo_id
@@ -339,7 +339,7 @@ class SqliteDemoRecorder:
         )
 
     def timeline(self, line: str) -> None:
-        # Kept for compatibility with Observation capture_state. Human-visible notes
+        # Kept for compatibility with human-demo capture_state. Human-visible notes
         # are recorded explicitly via record_manual_note().
         _ = line
 

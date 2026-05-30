@@ -25,7 +25,7 @@ WORKFLOW_NAME = "Live Phase 5 Evaluation"
 DEFAULT_MIN_CANDIDATE_EPISODES = 3
 RECOMMENDED_TREND_CANDIDATE_EPISODES = 10
 UNVERIFIED_STEP_STATUSES = {"SUBMITTED", "ARMED", "EXECUTING", "EXECUTED"}
-OBJECTIVE_PROVENANCE_SOURCES = {"live_plan_context", "legacy_state_snapshot"}
+OBJECTIVE_PROVENANCE_SOURCES = {"live_plan_context", "archived_state_snapshot"}
 
 FAILURE_TAXONOMY = {
     "state_representation_gap",
@@ -619,8 +619,8 @@ def extract_episode_metrics(
     target = target_turns or int(_number(header.get("requested_turns")) or 0)
     return {
         "episode_id": episode_id,
-        "runner_kind": header.get("runner_kind") or header.get("runner") or "legacy-baseline",
-        "evidence_kind": "legacy-baseline",
+        "runner_kind": header.get("runner_kind") or header.get("runner") or "archived_state_snapshot",
+        "evidence_kind": "archived_state_snapshot",
         "target_turns": target,
         "turn_reached": bool(target and (_number(objective.get("final_turn")) or 0) >= target),
         "objective_metrics": objective,
@@ -637,7 +637,7 @@ def extract_episode_metrics(
         "failure_count": len(evidence_issues),
         "failures": [dict(issue) for issue in evidence_issues],
         "provenance": {
-            "objective_metrics_source": "legacy_state_snapshot",
+            "objective_metrics_source": "archived_state_snapshot",
             "objective_metrics_path": state_path,
             "objective_metrics_authority": "episode_state_snapshot",
             "storage_backend": reader.backend,

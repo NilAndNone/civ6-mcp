@@ -1,9 +1,9 @@
-"""Live strict T50 driver for the standard Civ6 ``test 1`` save.
+"""Automated live strict driver for Civ6 T3/T20/T50 runs.
 
 The driver is intentionally small-strategy and evidence-heavy: every real game
 mutation is submitted as a JSON plan, armed, and executed through
 ``ActionGateway``. Runtime evidence remains in local ``episodes/`` and
-``outputs/`` artifacts; this module is the tracked public entrypoint.
+``outputs/`` artifacts; this module is the tracked public CLI entrypoint.
 """
 
 from __future__ import annotations
@@ -28,7 +28,17 @@ from codex_hl.evidence.store import EpisodeStore
 from codex_hl.live.actions import classify_action
 from codex_hl.live.gateway import ActionGateway, ActionRequest, GatewayMode
 from codex_hl.live.ledger import EpisodeLedger, now_iso
+from codex_hl.live.objective import LiveObjective, OBJECTIVE_TURN_BUDGETS, resolve_objective
 from codex_hl.live.plan_store import LivePlanStore
+from codex_hl.live.planner import (
+    choose_civic_option,
+    choose_dedication,
+    choose_pantheon_belief,
+    choose_policy_assignments,
+    choose_production_option as planner_choose_production_option,
+    choose_research_option,
+    city_count as planner_city_count,
+)
 from codex_hl.live.schemas import normalize_turn_plan
 from codex_hl.live.state_machine import LiveStateError
 from codex_hl.live.verifier import PostconditionVerifier
@@ -37,69 +47,6 @@ from codex_hl.live.verifier import PostconditionVerifier
 BRANCH_ID = "b000"
 WORKSPACE_ROOT = Path(os.environ.get("CODEX_HL_CIV6_WORKSPACE") or Path.cwd()).resolve()
 OUTPUT_ROOT = WORKSPACE_ROOT / "outputs"
-
-TECH_PRIORITY = [
-    "TECH_POTTERY",
-    "TECH_ANIMAL_HUSBANDRY",
-    "TECH_MINING",
-    "TECH_WRITING",
-    "TECH_ARCHERY",
-    "TECH_IRRIGATION",
-    "TECH_BRONZE_WORKING",
-    "TECH_MASONRY",
-    "TECH_THE_WHEEL",
-    "TECH_CURRENCY",
-    "TECH_HORSEBACK_RIDING",
-    "TECH_CONSTRUCTION",
-    "TECH_ENGINEERING",
-    "TECH_APPRENTICESHIP",
-]
-
-CIVIC_PRIORITY = [
-    "CIVIC_CODE_OF_LAWS",
-    "CIVIC_CRAFTSMANSHIP",
-    "CIVIC_FOREIGN_TRADE",
-    "CIVIC_EARLY_EMPIRE",
-    "CIVIC_STATE_WORKFORCE",
-    "CIVIC_POLITICAL_PHILOSOPHY",
-    "CIVIC_MILITARY_TRADITION",
-    "CIVIC_GAMES_RECREATION",
-    "CIVIC_DRAMA_POETRY",
-]
-
-POLICY_PRIORITY = [
-    "POLICY_URBAN_PLANNING",
-    "POLICY_DISCIPLINE",
-    "POLICY_GOD_KING",
-    "POLICY_AGOGE",
-    "POLICY_CARAVANSARIES",
-    "POLICY_COLONIZATION",
-]
-
-DEDICATION_PRIORITY = [
-    "COMMEMORATION_SCIENTIFIC",
-    "COMMEMORATION_FREE_INQUIRY",
-    "COMMEMORATION_MONUMENTALITY",
-    "COMMEMORATION_EXODUS",
-]
-
-PRODUCTION_PRIORITY_EXPAND = [
-    "UNIT_SETTLER",
-    "UNIT_BUILDER",
-    "UNIT_SLINGER",
-    "BUILDING_MONUMENT",
-    "UNIT_WARRIOR",
-    "BUILDING_GRANARY",
-]
-
-PRODUCTION_PRIORITY_STABILIZE = [
-    "UNIT_BUILDER",
-    "UNIT_SLINGER",
-    "BUILDING_MONUMENT",
-    "BUILDING_GRANARY",
-    "UNIT_SETTLER",
-    "UNIT_WARRIOR",
-]
 
 
 def jsonable(value: Any) -> Any:
@@ -322,48 +269,53 @@ async def verifier_state(gs: GameState, episode_id: str) -> dict[str, Any]:
 
 
 def default_episode_id() -> str:
-    return f"phase5_live_t50_driver_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    return f"live_driver_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
 
 def ensure_episode(
     *,
     workspace: Path,
     episode_id: str,
+    save_name: str,
     start_turn: int,
-    target_turn: int,
+    objective: LiveObjective,
+    strategy_profile: str,
+    candidate_package: Path | None,
 ) -> tuple[Path, LivePlanStore, EpisodeStore]:
     episode_root = workspace / "episodes" / episode_id
     store = EpisodeStore(episode_root, episode_id)
     if not store.has_artifact("header.json"):
+        objective_header = objective.as_header()
         store.put_episode_header(
             {
                 "episode_id": episode_id,
                 "workflow": "live-json-plan",
-                "save_name": "test 1",
-                "requested_turns": target_turn,
-                "target_turn": target_turn,
-                "runner": "codex-hl-civ6-live-t50-driver",
+                "save_name": save_name,
+                "requested_turns": objective.turn_budget,
+                **objective_header,
+                "runner": "codex-hl-civ6-live-driver",
                 "runner_kind": "live",
                 "mode": "live_strict",
-                "start_turn": start_turn,
+                "strategy_profile": strategy_profile,
+                "candidate_package": str(candidate_package) if candidate_package else None,
                 "created_at": now_iso(),
                 "note": (
-                    "Live strict T50 driver; all L2+ mutations are JSON-plan "
+                    "Live strict driver; all L2+ mutations are JSON-plan "
                     "armed steps through ActionGateway."
                 ),
             },
             workflow="live-json-plan",
-            save_name="test 1",
-            requested_turns=target_turn,
+            save_name=save_name,
+            requested_turns=objective.turn_budget,
             start_turn=start_turn,
         )
     plan_store = LivePlanStore.for_episode_root(episode_root, episode_id)
     try:
         plan_store.start_episode(
-            save_name="test 1",
-            target_turns=target_turn,
+            save_name=save_name,
+            target_turns=objective.target_turn,
             mode="live_strict",
-            runner="codex-hl-civ6-live-t50-driver",
+            runner="codex-hl-civ6-live-driver",
             branch_id=BRANCH_ID,
         )
     except LiveStateError as exc:
@@ -404,7 +356,7 @@ def plan_payload(
         "branch_id": BRANCH_ID,
         "context_hash": context_hash_value,
         "metadata": {
-            "driver": "codex_hl.live.t50_driver",
+            "driver": "codex_hl.live.driver",
             **(metadata or {}),
         },
         "steps": [
@@ -414,7 +366,7 @@ def plan_payload(
                 "args": args,
                 "allowed_mutation_level": spec.mutation_level.value,
                 "postconditions": postconditions or [],
-                "rationale": rationale or "live T50 driver JSON-plan step",
+                "rationale": rationale or "live driver JSON-plan step",
             }
         ],
     }
@@ -532,12 +484,7 @@ def select_by_priority(options: list[dict[str, Any]], key: str, priority: list[s
 
 
 def _city_count(context: dict[str, Any]) -> int:
-    cities = [row for row in context.get("cities", []) if isinstance(row, dict)]
-    overview = context.get("overview") if isinstance(context.get("overview"), dict) else {}
-    try:
-        return max(len(cities), int(overview.get("num_cities") or 0))
-    except (TypeError, ValueError):
-        return len(cities)
+    return planner_city_count(context)
 
 
 def _settler_units(context: dict[str, Any]) -> list[dict[str, Any]]:
@@ -583,7 +530,7 @@ def _far_enough_to_found(unit: dict[str, Any], cities: list[dict[str, Any]]) -> 
         return False
     city_positions = [_xy(city) for city in cities]
     city_positions = [pos for pos in city_positions if pos is not None]
-    return bool(city_positions) and all(_rough_city_distance(unit_xy, pos) >= 3 for pos in city_positions)
+    return bool(city_positions) and all(_rough_city_distance(unit_xy, pos) > 3 for pos in city_positions)
 
 
 def _candidate_score(candidate: dict[str, Any]) -> tuple[float, int, int]:
@@ -615,12 +562,48 @@ async def _settle_candidates(gs: GameState, cities: list[dict[str, Any]]) -> lis
         pos = _xy(row)
         if pos is None:
             continue
-        if city_positions and any(_rough_city_distance(pos, city_pos) < 3 for city_pos in city_positions):
+        if city_positions and any(_rough_city_distance(pos, city_pos) <= 3 for city_pos in city_positions):
             continue
         if float(row.get("loyalty_pressure") or 0) < -5:
             continue
         candidates.append(row)
     return sorted(candidates, key=_candidate_score, reverse=True)
+
+
+async def _pathing_reachable(gs: GameState, unit_index: int, target: tuple[int, int]) -> bool:
+    path_field = await safe_field(
+        f"pathing_{unit_index}_{target[0]}_{target[1]}",
+        lambda target=target, unit_index=unit_index: gs.get_pathing_estimate(
+            unit_index,
+            target[0],
+            target[1],
+        ),
+    )
+    if not path_field.get("ok"):
+        return False
+    estimate = jsonable(path_field.get("value"))
+    if not isinstance(estimate, dict):
+        return False
+    try:
+        turns = int(estimate.get("turns"))
+        total_tiles = int(estimate.get("total_tiles"))
+    except (TypeError, ValueError):
+        return False
+    return total_tiles > 0 or turns >= 0
+
+
+async def _first_reachable_settle_candidate(
+    gs: GameState,
+    unit_index: int,
+    candidates: list[dict[str, Any]],
+) -> tuple[int, int] | None:
+    for candidate in candidates:
+        target = _xy(candidate)
+        if target is None:
+            continue
+        if await _pathing_reachable(gs, unit_index, target):
+            return target
+    return None
 
 
 async def _fallback_settle_target(
@@ -652,7 +635,7 @@ async def _fallback_settle_target(
     candidates = []
     for dx, dy in offsets:
         target = (settler_xy[0] + dx, settler_xy[1] + dy)
-        if city_positions and any(_rough_city_distance(target, city_pos) < 3 for city_pos in city_positions):
+        if city_positions and any(_rough_city_distance(target, city_pos) <= 3 for city_pos in city_positions):
             continue
         threat_distance = min((_rough_city_distance(target, threat) for threat in threats), default=6)
         city_distance = min((_rough_city_distance(target, city_pos) for city_pos in city_positions), default=4)
@@ -661,22 +644,9 @@ async def _fallback_settle_target(
     candidates.sort(reverse=True)
     unit_index = _unit_index(settler)
     for _score, target in candidates:
-        path_field = await safe_field(
-            f"pathing_{unit_index}_{target[0]}_{target[1]}",
-            lambda target=target, unit_index=unit_index: gs.get_pathing_estimate(
-                unit_index,
-                target[0],
-                target[1],
-            ),
-        )
-        if not path_field.get("ok"):
-            continue
-        estimate = jsonable(path_field.get("value"))
-        if not isinstance(estimate, dict):
-            continue
-        if int(estimate.get("total_tiles") or 0) > 0 or int(estimate.get("turns") or 0) >= 0:
+        if await _pathing_reachable(gs, unit_index, target):
             return target
-    return candidates[0][1] if candidates else None
+    return None
 
 
 async def found_settler(
@@ -793,7 +763,8 @@ async def maybe_expand_with_settler(
     if float(settler.get("moves_remaining") or 0) <= 0:
         return seq, False
     candidates = await _settle_candidates(gs, cities)
-    target_xy = _xy(candidates[0]) if candidates else None
+    unit_index = _unit_index(settler)
+    target_xy = await _first_reachable_settle_candidate(gs, unit_index, candidates)
     if target_xy is None:
         target_xy = await _fallback_settle_target(
             gs=gs,
@@ -812,7 +783,6 @@ async def maybe_expand_with_settler(
             }
         )
         return seq, False
-    unit_index = _unit_index(settler)
     args = {
         "unit_id": _unit_id(settler),
         "unit_index": unit_index,
@@ -836,7 +806,7 @@ async def maybe_expand_with_settler(
             ),
             postconditions=[
                 {
-                    "type": "unit_position_changed_or_blocked",
+                    "type": "unit_position_changed",
                     "unit_id": _unit_id(settler),
                     "target": {"x": target_xy[0], "y": target_xy[1]},
                 }
@@ -920,13 +890,8 @@ async def maybe_choose_research_or_civic(
     rc = context.get("research_civic") if isinstance(context.get("research_civic"), dict) else {}
     current_research = rc.get("current_research") or context.get("overview", {}).get("current_research")
     if current_value_empty(current_research):
-        option = select_by_priority(
-            [row for row in rc.get("available_techs", []) if isinstance(row, dict)],
-            "tech_type",
-            TECH_PRIORITY,
-        )
-        if option:
-            tech = str(option["tech_type"])
+        tech = choose_research_option(rc)
+        if tech:
             args = {"category": "tech", "tech_or_civic": tech}
             actions.append(
                 await execute_step(
@@ -946,13 +911,8 @@ async def maybe_choose_research_or_civic(
             seq += 1
     current_civic = rc.get("current_civic") or context.get("overview", {}).get("current_civic")
     if current_value_empty(current_civic):
-        option = select_by_priority(
-            [row for row in rc.get("available_civics", []) if isinstance(row, dict)],
-            "civic_type",
-            CIVIC_PRIORITY,
-        )
-        if option:
-            civic = str(option["civic_type"])
+        civic = choose_civic_option(rc)
+        if civic:
             args = {"category": "civic", "tech_or_civic": civic}
             actions.append(
                 await execute_step(
@@ -986,16 +946,7 @@ async def maybe_choose_pantheon(
     status = jsonable(_value(status_field, {}))
     if not isinstance(status, dict) or status.get("has_pantheon") is True:
         return seq
-    beliefs = [row for row in status.get("available_beliefs", []) if isinstance(row, dict)]
-    if not beliefs:
-        return seq
-    by_type = {str(row.get("belief_type") or "").upper(): row for row in beliefs}
-    belief = None
-    for wanted in ("BELIEF_FERTILITY_RITES", "BELIEF_RELIGIOUS_SETTLEMENTS"):
-        if wanted in by_type:
-            belief = wanted
-            break
-    belief = belief or str(beliefs[0].get("belief_type") or "")
+    belief = choose_pantheon_belief(status)
     if not belief:
         return seq
     actions.append(
@@ -1014,22 +965,6 @@ async def maybe_choose_pantheon(
     return seq + 1
 
 
-def _policy_choice(slot_type: str, available: list[dict[str, Any]], used: set[str]) -> str | None:
-    compatible = []
-    for policy in available:
-        policy_type = str(policy.get("policy_type") or "")
-        if not policy_type or policy_type in used:
-            continue
-        policy_slot = str(policy.get("slot_type") or policy.get("policy_slot") or "").upper()
-        if policy_slot and slot_type and policy_slot != slot_type:
-            continue
-        compatible.append(policy_type)
-    for wanted in POLICY_PRIORITY:
-        if wanted in compatible:
-            return wanted
-    return compatible[0] if compatible else None
-
-
 async def maybe_set_policies(
     *,
     gs: GameState,
@@ -1043,24 +978,7 @@ async def maybe_set_policies(
     status = jsonable(_value(status_field, {}))
     if not isinstance(status, dict):
         return seq
-    slots = [row for row in status.get("slots", []) if isinstance(row, dict)]
-    available = [row for row in status.get("available_policies", []) if isinstance(row, dict)]
-    if not slots or not available:
-        return seq
-    assignments: dict[int, str] = {}
-    used: set[str] = set()
-    for slot in slots:
-        slot_index = slot.get("slot_index")
-        if slot_index is None:
-            continue
-        current = slot.get("current_policy") or slot.get("policy_type")
-        if not current_value_empty(current):
-            continue
-        choice = _policy_choice(str(slot.get("slot_type") or "").upper(), available, used)
-        if choice is None:
-            continue
-        assignments[int(slot_index)] = choice
-        used.add(choice)
+    assignments = choose_policy_assignments(status)
     if not assignments:
         return seq
     actions.append(
@@ -1092,19 +1010,7 @@ async def maybe_choose_dedication(
     status = jsonable(_value(status_field, {}))
     if not isinstance(status, dict):
         return seq
-    choices = [row for row in status.get("choices", []) if isinstance(row, dict)]
-    active = status.get("active") if isinstance(status.get("active"), list) else []
-    allowed = int(status.get("selections_allowed") or 0)
-    if not choices or allowed <= len(active):
-        return seq
-    by_name = {str(row.get("name") or "").upper(): row for row in choices}
-    choice = None
-    for wanted in DEDICATION_PRIORITY:
-        if wanted in by_name:
-            choice = by_name[wanted]
-            break
-    choice = choice or choices[0]
-    dedication_index = choice.get("index")
+    dedication_index = choose_dedication(status)
     if dedication_index is None:
         return seq
     actions.append(
@@ -1160,26 +1066,7 @@ def _threat_pressure(context: dict[str, Any]) -> int:
 
 
 def choose_production_option(options: list[dict[str, Any]], context: dict[str, Any]) -> tuple[str, str] | None:
-    if not options:
-        return None
-    city_count = _city_count(context)
-    priority = PRODUCTION_PRIORITY_EXPAND if city_count < 2 else PRODUCTION_PRIORITY_STABILIZE
-    if city_count >= 2 and _threat_pressure(context) > 0:
-        priority = ["UNIT_SLINGER", "UNIT_WARRIOR", *priority]
-    by_name = {option_identity(option): option for option in options}
-    for wanted in priority:
-        option = by_name.get(wanted)
-        if option is not None:
-            return option_category(option, wanted), wanted
-    for option in options:
-        item = option_identity(option)
-        if not item or item.startswith("DISTRICT_"):
-            continue
-        return option_category(option, item), item
-    item = option_identity(options[0])
-    if item:
-        return option_category(options[0], item), item
-    return None
+    return planner_choose_production_option(options, context)
 
 
 async def maybe_set_city_production(
@@ -1278,7 +1165,7 @@ async def end_turn(
         episode_id=episode_id,
         seq=seq,
         tool="end_turn",
-        args={"phase5_live_t50_driver": True},
+        args={"live_driver": True},
         fn=gs.end_turn,
         postconditions=[{"type": "turn_advanced_exactly_one"}],
         metadata={"plan_kind": "normal_turn_boundary", "timeout_seconds": timeout_seconds},
@@ -1372,11 +1259,20 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         gs = GameState(conn)
         initial = await capture_context(gs, episode_id=episode_id, plan_store=None)
         start_turn = int(initial.get("turn") or 0)
+        objective = resolve_objective(
+            start_turn=start_turn,
+            turn_budget=args.turn_budget,
+            objective=args.objective,
+            target_turn=args.target_turn,
+        )
         episode_root, plan_store, store = ensure_episode(
             workspace=workspace,
             episode_id=episode_id,
+            save_name=args.save_name,
             start_turn=start_turn,
-            target_turn=args.target_turn,
+            objective=objective,
+            strategy_profile=args.strategy_profile,
+            candidate_package=args.candidate_package,
         )
         ledger = EpisodeLedger.for_episode_root(episode_root, episode_id, store=store, branch_id=BRANCH_ID)
         gateway = ActionGateway(
@@ -1417,7 +1313,9 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
                     "episode_root": str(episode_root),
                     "start_turn": start_turn,
                     "final_turn": final_turn,
-                    "target_turn": args.target_turn,
+                    "objective": objective.name,
+                    "turn_budget": objective.turn_budget,
+                    "target_turn": objective.target_turn,
                     "num_cities": final_cities,
                     "min_cities": args.min_cities,
                     "turn_advances": 0,
@@ -1427,7 +1325,7 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
                     "recovery_needed": True,
                     "last_actions": actions[-10:],
                 }
-                summary_path = OUTPUT_ROOT / "phase5" / f"{episode_id}_driver_summary.json"
+                summary_path = OUTPUT_ROOT / "live_driver" / f"{episode_id}_driver_summary.json"
                 summary_path.parent.mkdir(parents=True, exist_ok=True)
                 summary_path.write_text(response(summary) + "\n", encoding="utf-8")
                 summary["summary_path"] = str(summary_path)
@@ -1438,7 +1336,7 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         turn_advances = 0
         consecutive_no_advance = 0
         current = await capture_context(gs, episode_id=episode_id, plan_store=plan_store)
-        while int(current.get("turn") or 0) < args.target_turn:
+        while int(current.get("turn") or 0) < objective.target_turn:
             if len(actions) >= args.max_actions:
                 break
             seq = await handle_diplomacy_and_deals(
@@ -1583,29 +1481,32 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         final_context = await capture_context(gs, episode_id=episode_id, plan_store=plan_store)
         final_turn = int(final_context.get("turn") or 0)
         final_cities = _city_count(final_context)
+        observed_turn_advances = max(0, final_turn - objective.start_turn)
         store.update_episode_run(final_turn=final_turn)
         finish_error = None
-        if final_turn >= args.target_turn:
+        if final_turn >= objective.target_turn:
             try:
                 plan_store.finish_episode()
             except LiveStateError as exc:
                 finish_error = str(exc)
                 actions.append({"tool": "finish_episode", "error": finish_error})
         summary = {
-            "ok": final_turn >= args.target_turn and final_cities >= args.min_cities and finish_error is None,
+            "ok": final_turn >= objective.target_turn and final_cities >= args.min_cities and finish_error is None,
             "episode_id": episode_id,
             "episode_root": str(episode_root),
             "start_turn": start_turn,
             "final_turn": final_turn,
-            "target_turn": args.target_turn,
+            "objective": objective.name,
+            "turn_budget": objective.turn_budget,
+            "target_turn": objective.target_turn,
             "num_cities": final_cities,
             "min_cities": args.min_cities,
-            "turn_advances": turn_advances,
+            "turn_advances": observed_turn_advances,
             "actions": len(actions),
             "finish_error": finish_error,
             "last_actions": actions[-10:],
         }
-        summary_path = OUTPUT_ROOT / "phase5" / f"{episode_id}_driver_summary.json"
+        summary_path = OUTPUT_ROOT / "live_driver" / f"{episode_id}_driver_summary.json"
         summary_path.parent.mkdir(parents=True, exist_ok=True)
         summary_path.write_text(response(summary) + "\n", encoding="utf-8")
         summary["summary_path"] = str(summary_path)
@@ -1621,7 +1522,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--workspace", type=Path, default=WORKSPACE_ROOT)
     parser.add_argument("--episode-id")
     parser.add_argument("--save-name", default="test 1")
-    parser.add_argument("--target-turn", type=int, default=51)
+    turn_group = parser.add_mutually_exclusive_group()
+    turn_group.add_argument(
+        "--turn-budget",
+        type=int,
+        choices=sorted(set(OBJECTIVE_TURN_BUDGETS.values())),
+        default=None,
+        help="Number of turns to advance from the captured start turn.",
+    )
+    turn_group.add_argument(
+        "--target-turn",
+        type=int,
+        help="Advanced recovery/debug absolute target turn; mutually exclusive with --turn-budget.",
+    )
+    parser.add_argument("--objective", choices=sorted(OBJECTIVE_TURN_BUDGETS), default=None)
+    parser.add_argument("--strategy-profile", default="baseline_static")
+    parser.add_argument("--candidate-package", type=Path)
     parser.add_argument("--min-cities", type=int, default=2)
     parser.add_argument("--max-actions", type=int, default=500)
     parser.add_argument("--max-no-advance", type=int, default=8)
@@ -1631,7 +1547,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--force-restart", action="store_true")
     parser.add_argument("--recovery-save-name")
     parser.add_argument("--recovery-force-restart", action="store_true")
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.turn_budget is None and args.target_turn is None:
+        args.turn_budget = OBJECTIVE_TURN_BUDGETS[args.objective or "t50"]
+    return args
 
 
 def main(argv: list[str] | None = None) -> None:

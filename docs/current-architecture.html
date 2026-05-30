@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Codex HL Civ6 Current Architecture</title>
+  <style>
+    body { font-family: system-ui, sans-serif; line-height: 1.5; margin: 2rem auto; max-width: 980px; padding: 0 1rem; }
+    code { background: #f1f3f5; padding: 0.1rem 0.25rem; border-radius: 4px; }
+    pre { background: #f6f8fa; padding: 1rem; overflow: auto; }
+  </style>
+</head>
+<body>
+  <p><strong>Generated from:</strong> <code>docs/current-architecture.md</code></p>
+  <p><strong>Markdown SHA256:</strong> <code>641cde87c0a990a6f47069a18c88e34e7a4db7713377b5ba07c1e3498d67865f</code></p>
+
+  <h1>Codex HL Civ6 Current Architecture</h1>
+  <p>Status: current development mainline for <code>0.1.0</code>.</p>
+
+  <h2>Source Of Truth</h2>
+  <ol>
+    <li><code>docs/current-architecture.md</code></li>
+    <li><code>plugin/AGENTS.md</code></li>
+    <li><code>plugin/commands/*.md</code></li>
+    <li>Active strategy assets in <code>plugin/assets/codex_hl/strategy/catalog.json</code></li>
+    <li>Tests as executable contracts</li>
+  </ol>
+  <p>HTML files are derived human-readable views and are never authoritative.</p>
+
+  <h2>Runtime Mainline</h2>
+  <ul>
+    <li><code>/civ6-observe-live</code>: interactive MCP-driven JSON-plan operation.</li>
+    <li><code>/civ6-live-driver</code>: automated T3/T20/T50 live strict driver.</li>
+    <li><code>/civ6-runs --runner live</code>: orchestration wrapper around <code>codex_hl.live.driver</code>.</li>
+  </ul>
+
+  <h2>Live Module Boundaries</h2>
+  <p>The driver owns execution lifecycle and evidence; objective, planner,
+  profile, gateway, ledger, plan-store, and evaluation modules own their
+  separate responsibilities.</p>
+
+  <h2>Turn Semantics</h2>
+  <pre><code>{
+  "start_turn": 1,
+  "turn_budget": 50,
+  "target_turn": 51,
+  "objective": "t50"
+}</code></pre>
+
+  <h2>Validation Status</h2>
+  <p><code>0.1.0</code> removes the legacy executable path and makes live strict
+  the only supported execution path. Full Windows Civ6 <code>test 1</code> live
+  strict validation must be run separately before claiming complete replacement
+  proof.</p>
+</body>
+</html>

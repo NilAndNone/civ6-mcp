@@ -1,79 +1,53 @@
 # /civ6-runs
 
-## 用途
+## Purpose
 
-编排多局 T3/T20/T50、Review 候选、可选自动确认、Strategy Candidate/5 产物和 governance
-审计。
+Orchestrate multi-run T3/T20/T50 live strict episodes, offline Review
+candidates, optional auto-confirmation, Strategy Candidate artifacts, validation
+reports, and guarded governance.
 
-`/civ6-runs` 可以编排 live JSON-plan runs 或 legacy-baseline T50，也可以把 strategy candidate package
-作为只读运行时输入传给 observation runner，用于 `v0.0.2` 策略改进验收。
-
-## 输入
-
-常用参数：
+## Inputs
 
 - `--turns 3|20|50`
 - `--cycles <n>`
 - `--episodes-per-cycle <n>`
 - `--save-name "test 1"`
-- `--execute`：真实启动 Civ6 运行。
-- `--runner live|legacy-baseline`：`--execute` 时必填。
-- `--allow-auto-confirmation`：允许自动确认候选。
-- `--auto-iterate-strategy`：允许自动切换运行策略。
-- `--allow-merge`：允许进入治理合并路径。
-- `--candidate-package <candidate.json>`：把候选 playbook 包传入验证流程。
-- `--candidate-runtime-applied`：声明 validation report 来自候选运行时。
+- `--execute`: launch real Civ6 runs.
+- `--runner live`: required with `--execute`.
+- `--allow-auto-confirmation`: enable restricted auto-confirmation.
+- `--auto-iterate-strategy`: allow runtime strategy profile changes between
+  episodes.
+- `--candidate-package <candidate.json>`: pass a read-only candidate package
+  into the runtime.
+- `--candidate-runtime-applied`: assert that the validation report came from
+  candidate runtime episodes.
+- `--allow-merge`: enter governance merge only after gates pass.
 
-## 输出
+## Runtime Routing
 
-- plan manifest。
-- command log。
-- episode 列表。
-- Review/4/5 产物。
-- validation report。
-- governance 审计。
+- Without `--execute`, `/civ6-runs` writes a plan manifest only.
+- With `--execute`, `/civ6-runs --runner live` shells into
+  `codex_hl.live.driver`.
+- Removed runner values fail explicitly and do not launch any game mutation.
+- Candidate packages are read-only runtime inputs; they do not directly mutate
+  strategy assets.
+- Governance merge remains gated and requires explicit `--allow-merge`.
 
-## 边界
+## Examples
 
-- 默认 plan-only，不启动 Civ6。
-- 没有 `--execute` 不跑真实游戏。
-- `--execute` 没有 `--runner` 会拒绝。
-- `--runner live` 走 JSON plan live path，不调用旧 rules runner。
-- `--runner legacy-baseline` 只用于 deprecated baseline 对照，报告标记
-  `runner_kind=legacy-baseline`。
-- 自动确认必须显式开启。
-- 自动策略迭代必须显式开启。
-- 自动合并必须显式开启。
-- `--allow-merge` 还必须配合候选运行时证据。
-- 候选包运行时只读，不直接修改 strategy assets。
-
-## 示例
-
-只写计划：
+Plan only:
 
 ```powershell
 $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-runs --turns 20 --cycles 1 --episodes-per-cycle 3
 ```
 
-真实执行 T20：
+Execute T3 live strict:
 
-```powershell
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-runs --execute --runner live --turns 20 --save-name "test 1" --cycles 1 --episodes-per-cycle 3
-```
-
-Phase 3 Gate T3 live route artifact:
 ```powershell
 $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-runs --execute --runner live --turns 3 --save-name "test 1" --cycles 1 --episodes-per-cycle 1
 ```
 
-真实执行 T50：
-
-Legacy-baseline T50:
-```powershell
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-runs --execute --runner legacy-baseline --turns 50 --save-name "test 1" --cycles 1 --episodes-per-cycle 3
-```
-
-候选运行时 T50：
+Execute T50 live strict with a candidate runtime package:
 
 ```powershell
 $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-runs --execute --runner live --turns 50 --save-name "test 1" --cycles 1 --episodes-per-cycle 5 --candidate-package <candidate.json> --candidate-runtime-applied

@@ -1,11 +1,11 @@
 ---
 name: civ6-observation
-description: 在已安装的 codex-hl-civ6 插件中运行 Civilization VI Observation 观测、短跑、T50、报告重建或审计报告时使用。
+description: Use the installed codex-hl-civ6 plugin for live strict Civ6 evidence runs, T3/T20/T50 execution, and read-only evidence handoff.
 ---
 
-# Civ6 Observation 观测
+# Civ6 Live Strict Evidence
 
-执行前先读取：
+Read first:
 
 - `../../assets/codex_hl/strategy/catalog.json`
 - `strategy.prompt.default_boundary`
@@ -13,44 +13,38 @@ description: 在已安装的 codex-hl-civ6 插件中运行 Civilization VI Obser
 - `strategy.playbook.observation`
 - `strategy.tool_policy.observation_evidence`
 
-## 用途
+## Purpose
 
-Observation 只记录真实 Civ6 发生了什么，并生成可审阅报告。它不判断策略好坏，
-不生成候选改进，不进入自动学习。
+Use live strict to record what happens in real Civ6 runs. Evidence capture does
+not auto-merge strategy assets and does not bypass Review, Validation, or
+Governance gates.
 
-## 命令
+## Commands
 
-短跑：
+Interactive MCP-driven operation:
 
-```powershell
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-observe --save-name "test 1" --turns 3
+```text
+/civ6-observe-live --save-name "test 1" --turns 3 --strict-live
 ```
 
-T50：
+Automated short run:
 
 ```powershell
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-observe --save-name "test 1" --turns 50
+$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run --extra launcher-windows codex-hl-civ6-live-driver --load-test1 --objective t3 --turn-budget 3
 ```
 
-重建已有报告：
+Automated T50:
 
 ```powershell
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-observe --report-only <episode_id>
+$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run --extra launcher-windows codex-hl-civ6-live-driver --load-test1 --objective t50 --turn-budget 50 --min-cities 2
 ```
 
-## 汇报内容
+## Evidence
 
-返回：
+- `episodes/<episode_id>/episode.db`
+- `raw/live_plan_events.jsonl`
+- `raw/live_events.jsonl`
+- `outputs/live_driver/<episode_id>_driver_summary.json`
 
-- episode id
-- 中文人工报告路径
-- Agent 接手报告路径
-- Agent 审计报告路径
-- 四类证据 PASS/FAIL
-- 实际回合数
-- 起点/终点回合
-- 阻塞项或证据缺口
-
-## 提交边界
-
-`episodes/` 默认是本地运行产物。除非用户明确点名某个 episode，否则不要提交。
+`episodes/` and `outputs/` are local artifacts unless the user explicitly asks
+to preserve or submit a specific artifact.

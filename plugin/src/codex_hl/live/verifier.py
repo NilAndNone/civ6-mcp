@@ -77,6 +77,16 @@ class PostconditionVerifier:
                         unit_id=condition.get("unit_id") or getattr(request, "args", {}).get("unit_id"),
                     )
                 )
+            elif condition_type == "unit_position_changed":
+                results.append(
+                    self._verify_unit_position_changed(
+                        request=request,
+                        result=result,
+                        pre_state=pre_state,
+                        post_state=post_state,
+                        unit_id=condition.get("unit_id") or getattr(request, "args", {}).get("unit_id"),
+                    )
+                )
             elif condition_type == "city_production_set":
                 results.append(
                     self._verify_city_production(
@@ -260,6 +270,30 @@ class PostconditionVerifier:
             status=VerifierStatus.FAIL,
             objective_delta={"from": pre_pos, "to": post_pos},
             reason="unit position did not change and action was not blocked",
+        )
+
+    def _verify_unit_position_changed(
+        self,
+        *,
+        request: Any,
+        result: Any,
+        pre_state: dict[str, Any],
+        post_state: dict[str, Any],
+        unit_id: Any,
+    ) -> VerificationResult:
+        check = self._verify_unit_position(
+            request=request,
+            result=result,
+            pre_state=pre_state,
+            post_state=post_state,
+            unit_id=unit_id,
+        )
+        if check.status is VerifierStatus.PASS and not check.objective_delta.get("blocked"):
+            return check
+        return VerificationResult(
+            status=VerifierStatus.FAIL,
+            objective_delta=check.objective_delta,
+            reason="unit position did not change",
         )
 
     def _verify_city_production(

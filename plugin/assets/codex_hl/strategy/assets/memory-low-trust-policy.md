@@ -14,8 +14,9 @@ This memory asset defines how Codex HL Civ6 may use memory and prior run notes.
   save hashes, or explicit human confirmation.
 - If memory conflicts with current repo files, current repo files win unless the
   user states otherwise.
-- If memory conflicts with `docs/codex-hl-evolution-roadmap.md`, the roadmap
-  Markdown wins.
+- If memory conflicts with current architecture or active runtime commands,
+  `docs/current-architecture.md`, `plugin/AGENTS.md`, `plugin/commands/*.md`,
+  and active strategy assets win.
 - Any memory-derived review or strategy claim must remain auditable through
   source files, episode evidence, or human confirmation.
 

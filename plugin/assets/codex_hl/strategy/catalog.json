@@ -1,7 +1,7 @@
-{
+﻿{
     "schema_version":  1,
     "catalog_id":  "codex-hl-civ6-strategy-assets",
-    "generated_at":  "2026-05-21T00:00:00+08:00",
+    "generated_at":  "2026-05-30T00:00:00+08:00",
     "assets":  [
                    {
                        "asset_id":  "strategy.prompt.default_boundary",
@@ -10,9 +10,9 @@
                        "content_path":  "assets/prompt-default-boundary.md",
                        "content_sha256":  "44fa80834c4f3b8e5654d573bb50fc05121b61b8e427bbbc215514a5fe1eaafe",
                        "source_refs":  [
-                                           "docs/codex-hl-evolution-roadmap.md",
+                                           "docs/current-architecture.md",
                                            "plugin/AGENTS.md",
-                                           "human plan: strategy asset 首批资产迁移计划"
+                                           "human request: live mainline convergence cleanup"
                                        ],
                        "applicability":  [
                                              "installed plugin default behavior",
@@ -32,16 +32,18 @@
                        "asset_type":  "playbook",
                        "version":  "1.0.0",
                        "content_path":  "assets/playbook-observation.md",
-                       "content_sha256":  "58342d6c961cbd094b871382dad02c47bd2c96e95b01db5686a092e5c23bfc1c",
+                       "content_sha256":  "e7b980e806a2afa9c1cfa071c75cc77ab5a053d5416460b8c740ae60302d3cb0",
                        "source_refs":  [
+                                           "docs/current-architecture.md",
                                            "docs/codex-hl-observation.md",
-                                           "plugin/commands/civ6-observe.md",
+                                           "plugin/commands/civ6-observe-live.md",
+                                           "plugin/commands/civ6-live-driver.md",
                                            "plugin/skills/civ6-observation/SKILL.md",
-                                           "human plan: strategy asset 首批资产迁移计划"
+                                           "human request: live mainline convergence cleanup"
                                        ],
                        "applicability":  [
-                                             "Observation short validation",
-                                             "Observation T50 observation"
+                                             "live strict T3/T20/T50 runs",
+                                             "live strict evidence acceptance"
                                          ],
                        "risk_level":  "high",
                        "rollback_path":  "assets/playbook-observation.md",
@@ -82,15 +84,18 @@
                        "asset_type":  "tool_policy",
                        "version":  "1.0.0",
                        "content_path":  "assets/tool-policy-observation-run-and-evidence.md",
-                       "content_sha256":  "bf44f871449446a9f3e74dc368cb9164f148b0930927b2393b97f7cc8177f32b",
+                       "content_sha256":  "9d69ba3989e74ce20c65a180fa1060f027738ef0d56b858aa7082a838a891378",
                        "source_refs":  [
+                                           "docs/current-architecture.md",
                                            "docs/codex-hl-observation.md",
+                                           "plugin/commands/civ6-live-driver.md",
+                                           "plugin/commands/civ6-runs.md",
                                            "plugin/skills/civ6-observation/SKILL.md",
-                                           "human plan: strategy asset 首批资产迁移计划"
+                                           "human request: live mainline convergence cleanup"
                                        ],
                        "applicability":  [
-                                             "observation runner invocation",
-                                             "Observation evidence acceptance"
+                                             "live strict driver invocation",
+                                             "live strict evidence acceptance"
                                          ],
                        "risk_level":  "high",
                        "rollback_path":  "assets/tool-policy-observation-run-and-evidence.md",
@@ -131,11 +136,11 @@
                        "asset_type":  "memory",
                        "version":  "1.0.0",
                        "content_path":  "assets/memory-low-trust-policy.md",
-                       "content_sha256":  "fdf17ffe70821daf7b7211414215420a11fe5b7d94d36bb35d5f43999a516992",
+                       "content_sha256":  "482f77e94d7f6a9eeea797bfa13927b86cc64e80f56e3d3b16c0ec0d0f8cdb64",
                        "source_refs":  [
-                                           "docs/codex-hl-evolution-roadmap.md",
+                                           "docs/current-architecture.md",
                                            "plugin/AGENTS.md",
-                                           "human plan: strategy asset 首批资产迁移计划"
+                                           "human request: live mainline convergence cleanup"
                                        ],
                        "applicability":  [
                                              "memory use",
@@ -157,8 +162,8 @@
                        "content_path":  "assets/tool-policy-t50-metrics-review.md",
                        "content_sha256":  "a76b28f8705b2b03b45292725a48900f703d9c658a7a762db847d48c25ee7ec8",
                        "source_refs":  [
-                                           "docs/codex-hl-evolution-roadmap.md",
-                                           "human plan: strategy asset 首批资产迁移计划"
+                                           "docs/current-architecture.md",
+                                           "human request: live mainline convergence cleanup"
                                        ],
                        "applicability":  [
                                              "strategy T50 metric comparison",
@@ -267,6 +272,28 @@
                                                      "recovery"
                                                  ],
                        "status":  "active"
+                   },
+                   {
+                       "asset_id":  "strategy.playbook.historical_t50_lessons",
+                       "asset_type":  "playbook",
+                       "version":  "1.0.0",
+                       "content_path":  "assets/playbook-historical-t50-lessons.md",
+                       "content_sha256":  "006aa04bad7cab39d8490cd6541b44342e61e819be82c76de0b40d88af2b4d94",
+                       "source_refs":  [
+                                           "docs/current-architecture.md",
+                                           "human request: archived legacy T50 lessons only"
+                                       ],
+                       "applicability":  [
+                                             "historical reference",
+                                             "non-runtime lesson review"
+                                         ],
+                       "risk_level":  "low",
+                       "rollback_path":  "assets/playbook-historical-t50-lessons.md",
+                       "capability_dimensions":  [
+                                                     "planning",
+                                                     "verification"
+                                                 ],
+                       "status":  "archived"
                    }
                ]
 }
