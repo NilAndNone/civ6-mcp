@@ -740,6 +740,13 @@ def evaluate_strategy_candidate_gate(
     gates = {
         "baseline_present": bool(baseline_rows),
         "multi_episode_reproduced": len(candidate_rows) >= min_candidate_episodes,
+        "target_turn_reached": all(
+            bool(row.get("turn_reached")) for row in candidate_rows
+        ),
+        "candidate_min_two_cities": all(
+            (_safe_dict(row.get("objective_metrics")).get("num_cities") or 0) >= 2
+            for row in candidate_rows
+        ),
         "live_strict_unplanned_mutation_zero": all(
             int(row.get("unplanned_mutation_count") or 0) == 0
             for row in candidate_rows

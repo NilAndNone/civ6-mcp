@@ -378,6 +378,55 @@ def test_phase5_gate_rejects_codex_self_eval_provenance() -> None:
     assert gate["gates"]["not_codex_self_eval"] is False
 
 
+def test_phase5_gate_requires_target_two_cities_and_clean_live_strict_steps() -> None:
+    baseline = {
+        "evidence_kind": "legacy-baseline",
+        "turn_reached": True,
+        "objective_metrics_complete": True,
+        "objective_metrics": {"num_cities": 2},
+        "failures": [],
+        "provenance": {
+            "objective_metrics_source": "legacy_state_snapshot",
+            "codex_self_eval_used": False,
+        },
+    }
+    clean_candidate = {
+        "evidence_kind": "live",
+        "turn_reached": True,
+        "objective_metrics_complete": True,
+        "objective_metrics": {"num_cities": 2},
+        "unplanned_mutation_count": 0,
+        "unverified_step_count": 0,
+        "verifier": {"total": 1, "inconclusive": 0},
+        "evidence": {"live_plan_events_rows": 1},
+        "failures": [],
+        "provenance": {
+            "objective_metrics_source": "live_plan_context",
+            "objective_metrics_path": "raw/live_plan_events.jsonl",
+            "codex_self_eval_used": False,
+        },
+    }
+    dirty_candidate = {
+        **clean_candidate,
+        "turn_reached": False,
+        "objective_metrics": {"num_cities": 1},
+        "unplanned_mutation_count": 1,
+        "unverified_step_count": 1,
+    }
+
+    gate = evaluation.evaluate_strategy_candidate_gate(
+        baseline_rows=[baseline],
+        candidate_rows=[clean_candidate, dirty_candidate, clean_candidate],
+        comparison_delta={"num_cities": 1},
+    )
+
+    assert gate["allowed"] is False
+    assert gate["gates"]["target_turn_reached"] is False
+    assert gate["gates"]["candidate_min_two_cities"] is False
+    assert gate["gates"]["live_strict_unplanned_mutation_zero"] is False
+    assert gate["gates"]["live_strict_no_unverified_steps"] is False
+
+
 def test_phase5_objective_metrics_capture_loyalty_and_threat_pressure(tmp_path: Path) -> None:
     make_live_episode(
         tmp_path,
