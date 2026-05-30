@@ -40,6 +40,7 @@
 - `/civ6-strategy-candidates`
 - `/civ6-validation-scenarios`
 - `/civ6-governance`
+- `/civ6-live-eval`
 
 自动化编排待验入口：
 

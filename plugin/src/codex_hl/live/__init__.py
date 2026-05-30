@@ -13,6 +13,7 @@ from codex_hl.live.actions import (
     is_registered_action_tool,
 )
 from codex_hl.live.gateway import ActionGateway, ActionRequest, ActionResult, GatewayMode
+from codex_hl.live.evaluation import build_phase5_report, extract_episode_metrics
 from codex_hl.live.fragment_sandbox import FragmentSandboxError
 from codex_hl.live.mutation_levels import ActionKind, MutationLevel
 from codex_hl.live.plan_store import LivePlanStore
@@ -35,6 +36,8 @@ __all__ = [
     "ActionSpec",
     "GatewayMode",
     "FragmentSandboxError",
+    "build_phase5_report",
+    "extract_episode_metrics",
     "LivePlanStep",
     "LivePlanStore",
     "LivePlanValidationError",

@@ -28,6 +28,7 @@ def test_plugin_is_self_contained_codex_package():
         "civ6-strategy-candidates.md",
         "civ6-validation-scenarios.md",
         "civ6-governance.md",
+        "civ6-live-eval.md",
         "civ6-runs.md",
         "civ6-acceptance.md",
         "civ6-debug.md",
@@ -49,6 +50,7 @@ def test_plugin_runtime_modules_import_from_plugin_src():
         assert importlib.import_module("codex_hl.strategy.candidates")
         assert importlib.import_module("codex_hl.validation.scenarios")
         assert importlib.import_module("codex_hl.governance.gates")
+        assert importlib.import_module("codex_hl.live.evaluation")
         assert importlib.import_module("codex_hl.runs.orchestrator")
         assert importlib.import_module("codex_hl.reports.acceptance")
         assert importlib.import_module("civ6_connector.game_state")
@@ -66,6 +68,7 @@ def test_project_metadata_includes_strategy_asset_surface():
     assert project["scripts"]["codex-hl-civ6-strategy-candidates"] == "codex_hl.strategy.candidates:main"
     assert project["scripts"]["codex-hl-civ6-validation-scenarios"] == "codex_hl.validation.scenarios:main"
     assert project["scripts"]["codex-hl-civ6-governance"] == "codex_hl.governance.gates:main"
+    assert project["scripts"]["codex-hl-civ6-live-eval"] == "codex_hl.live.evaluation:main"
     assert project["scripts"]["codex-hl-civ6-runs"] == "codex_hl.runs.orchestrator:main"
     assert project["scripts"]["codex-hl-civ6-acceptance"] == "codex_hl.reports.acceptance:main"
     assert project["scripts"]["codex-hl-civ6-load-test1"] == "codex_hl.diagnostics.load_test1:main"

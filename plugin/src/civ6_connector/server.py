@@ -816,6 +816,9 @@ async def get_live_turn_context(
         notifications = to_jsonable(
             await _safe_live_context_field("notifications", gs.get_notifications)
         )
+        research_civic = to_jsonable(
+            await _safe_live_context_field("research_civic", gs.get_tech_civics)
+        )
         turn = _turn_from_overview(overview)
         payload = {
             "episode_id": live_episode_id,
@@ -825,6 +828,7 @@ async def get_live_turn_context(
             "cities": cities if isinstance(cities, list) else [],
             "units": units if isinstance(units, list) else [],
             "notifications": notifications if isinstance(notifications, list) else [],
+            "research_civic": research_civic if isinstance(research_civic, dict) else {},
             "available_action_summary": {
                 "city_count": len(cities) if isinstance(cities, list) else 0,
                 "unit_count": len(units) if isinstance(units, list) else 0,
