@@ -1,0 +1,126 @@
+{
+  "id": "sci-test-1",
+  "name": "sci test 1",
+  "purpose": "science_victory_space_race_benchmark",
+  "created_at_local": "2026-06-03T07:58:24+08:00",
+  "civ6_version": "1.0.12.68 (1023995)",
+  "artifacts": {
+    "baseline_save": {
+      "path": ".benchmarks/sci-test-1/sci-test-1-baseline.Civ6Save",
+      "original_save_name": "sci test 1.Civ6Save",
+      "size_bytes": 867501,
+      "sha256": "886B6992588B0548EBD84B0956F638140C4711AAEBEA3ABE9B744C28008CCA4A"
+    },
+    "source_seed_image": {
+      "path": ".benchmarks/sci-test-1/source-seeds.jpg",
+      "size_bytes": 61806,
+      "sha256": "E6104D321848C9E48046BC9D8F541D05475875AE87DDDA86BC9C732CD9D1EE1E"
+    }
+  },
+  "setup": {
+    "ruleset": "RULESET_EXPANSION_2",
+    "map_script": "Lakes.lua",
+    "map_name": "Thousand Lakes",
+    "map_size": "MAPSIZE_STANDARD",
+    "game_speed": "GAMESPEED_STANDARD",
+    "start_era": "ERA_ANCIENT",
+    "difficulty": "DIFFICULTY_DEITY",
+    "map_seed": 919971248,
+    "game_seed": 919971247,
+    "major_civilizations": 8,
+    "city_states": 12,
+    "turn": 1,
+    "human_player": {
+      "slot": 0,
+      "leader": "LEADER_YONGLE",
+      "civilization": "CIVILIZATION_CHINA",
+      "handicap": "DIFFICULTY_DEITY"
+    },
+    "ai_players_resolved": [
+      {
+        "slot": 1,
+        "leader": "LEADER_DIDO",
+        "civilization": "CIVILIZATION_PHOENICIA",
+        "handicap": "DIFFICULTY_DEITY"
+      },
+      {
+        "slot": 2,
+        "leader": "LEADER_HOJO",
+        "civilization": "CIVILIZATION_JAPAN",
+        "handicap": "DIFFICULTY_DEITY"
+      },
+      {
+        "slot": 3,
+        "leader": "LEADER_AMANITORE",
+        "civilization": "CIVILIZATION_NUBIA",
+        "handicap": "DIFFICULTY_DEITY"
+      },
+      {
+        "slot": 4,
+        "leader": "LEADER_LUDWIG",
+        "civilization": "CIVILIZATION_GERMANY",
+        "handicap": "DIFFICULTY_DEITY"
+      },
+      {
+        "slot": 5,
+        "leader": "LEADER_TRAJAN",
+        "civilization": "CIVILIZATION_ROME",
+        "handicap": "DIFFICULTY_DEITY"
+      },
+      {
+        "slot": 6,
+        "leader": "LEADER_SEONDEOK",
+        "civilization": "CIVILIZATION_KOREA",
+        "handicap": "DIFFICULTY_DEITY"
+      },
+      {
+        "slot": 7,
+        "leader": "LEADER_AMBIORIX",
+        "civilization": "CIVILIZATION_GAUL",
+        "handicap": "DIFFICULTY_DEITY"
+      }
+    ],
+    "ai_resolution_note": "AI slots are deterministic official Base/DLC random resolutions derived from game seed 919971247; Workshop-only PHANTA entries were excluded from the benchmark baseline.",
+    "advanced_options": {
+      "world_age": "standard",
+      "temperature": "standard",
+      "rainfall": "standard",
+      "sea_level": "standard",
+      "resources": "standard",
+      "start_position": "standard",
+      "goody_huts": true,
+      "barbarians": true,
+      "teams": false
+    },
+    "game_modes": {
+      "apocalypse": false,
+      "secret_societies": false,
+      "tech_and_civic_shuffle": false,
+      "dramatic_ages": false,
+      "heroes_and_legends": false,
+      "monopolies_and_corporations": false,
+      "barbarian_clans": false,
+      "zombies": false,
+      "random_mode": false
+    },
+    "victories": {
+      "score": true,
+      "science": true,
+      "culture": true,
+      "domination": true,
+      "religious": true,
+      "diplomatic": true
+    }
+  },
+  "runtime_readback": {
+    "turn": 1,
+    "local_player": 0,
+    "difficulty_type": "DIFFICULTY_DEITY",
+    "difficulty_raw": 1543611863,
+    "map_script": "Lakes.lua",
+    "map_seed": 919971248,
+    "game_seed": 919971247,
+    "participating_slots": 22,
+    "verification": "Read back through FireTuner after game creation, before any unit or city actions."
+  }
+}
