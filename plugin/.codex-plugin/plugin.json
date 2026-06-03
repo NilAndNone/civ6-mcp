@@ -24,7 +24,7 @@
   "interface": {
     "displayName": "Codex HL Civ6",
     "shortDescription": "Run live strict Codex HL Civ6 episodes.",
-    "longDescription": "Codex HL Civ6 provides interactive MCP-driven live strict operation, an automated live driver for T3/T20/T50 runs, offline review, versioned strategy assets, passive validation scenarios, governed strategy changes, and multi-run orchestration.",
+    "longDescription": "Codex HL Civ6 provides interactive MCP-driven live strict operation, Human Demo recording and contract scoring, offline review, versioned strategy assets, passive validation scenarios, governed strategy changes, and multi-run orchestration.",
     "developerName": "Xiaohan Lu",
     "category": "Engineering",
     "capabilities": [

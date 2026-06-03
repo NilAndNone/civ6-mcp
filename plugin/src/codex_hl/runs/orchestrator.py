@@ -35,8 +35,8 @@ DEFAULT_OBSERVATION_TURNS = T50_TURNS
 SUPPORTED_OBSERVATION_TURNS = {T3_TURNS, T20_TURNS, T50_TURNS}
 RUNNER_LIVE = "live"
 RUNNER_LEGACY_BASELINE = "legacy-baseline"
-REMOVED_RUNNERS = {RUNNER_LEGACY_BASELINE}
-SUPPORTED_RUNNERS = {RUNNER_LIVE}
+REMOVED_RUNNERS = {RUNNER_LIVE, RUNNER_LEGACY_BASELINE}
+SUPPORTED_RUNNERS: set[str] = set()
 DEFAULT_STRATEGY_PROFILE = "baseline_static"
 EXPLORE_SCOUT_FIRST_STRATEGY_PROFILE = "explore_scout_first"
 SCIENCE_CULTURE_T50_STRATEGY_PROFILE = "science_culture_t50"
@@ -355,48 +355,6 @@ def run_connector_preflight(
             "command": command,
         }
     return build_connector_preflight(debug_payload, save_name=save_name, command=command)
-
-
-def run_live_observation(
-    *,
-    runner: CommandRunner,
-    workspace: Path,
-    command_log: Path,
-    save_name: str,
-    episode_id: str,
-    turns: int,
-    strategy_profile: str,
-    asset_root: Path | None,
-    candidate_package: Path | None = None,
-) -> dict[str, Any]:
-    env = {
-        "CODEX_HL_CIV6_WORKSPACE": str(workspace),
-        "CODEX_HL_CIV6_LIVE_GATEWAY_MODE": "live_strict",
-        "CODEX_HL_CIV6_RUNNER_KIND": RUNNER_LIVE,
-    }
-    if asset_root is not None:
-        env["CODEX_HL_CIV6_STRATEGY_ASSET_ROOT"] = str(asset_root)
-    command = python_module_command(
-        "codex_hl.live.driver",
-        "--workspace",
-        str(workspace),
-        "--save-name",
-        save_name,
-        "--turn-budget",
-        str(turns),
-        "--episode-id",
-        episode_id,
-        "--strategy-profile",
-        strategy_profile,
-    )
-    if candidate_package is not None:
-        command.extend(["--candidate-package", str(candidate_package.resolve())])
-    result = runner(command, workspace, env)
-    require_success(result, step=f"live_observation_t{turns}:{episode_id}", command_log=command_log)
-    payload = parse_stdout_json(result.stdout, step=f"live_observation_t{turns}")
-    payload.setdefault("episode_id", episode_id)
-    payload["runner_kind"] = RUNNER_LIVE
-    return payload
 
 
 def run_review_candidates(
@@ -1867,16 +1825,23 @@ def copy_asset_root(source: Path, destination: Path) -> Path:
 
 def validate_args(args: argparse.Namespace) -> None:
     runner_kind = getattr(args, "runner", None)
-    if runner_kind in REMOVED_RUNNERS:
+    if runner_kind == RUNNER_LIVE:
+        raise EvolutionError(
+            'runner "live" has been removed because it launched the automated '
+            "live driver. Use /civ6-observe-live for model-authored live plans."
+        )
+    if runner_kind == RUNNER_LEGACY_BASELINE:
         raise EvolutionError(
             'runner "legacy-baseline" has been removed. '
-            'Use "--runner live" with codex-hl-civ6-live-driver.'
+            "Use /civ6-observe-live for live game mutation."
         )
     if runner_kind is not None and runner_kind not in SUPPORTED_RUNNERS:
-        allowed = ", ".join(sorted(SUPPORTED_RUNNERS))
-        raise EvolutionError(f"--runner must be one of: {allowed}")
-    if args.execute and not runner_kind:
-        raise EvolutionError("--execute requires --runner live")
+        raise EvolutionError("--runner is no longer supported; use /civ6-observe-live")
+    if args.execute:
+        raise EvolutionError(
+            "--execute has been removed from /civ6-runs. Use /civ6-observe-live "
+            "for model-authored live game mutation."
+        )
     if args.cycles < 1:
         raise EvolutionError("--cycles must be >= 1")
     if args.episodes_per_cycle is None:
@@ -1919,8 +1884,6 @@ def validate_args(args: argparse.Namespace) -> None:
         raise EvolutionError("--stop-on-checkpoint-alert is only supported for T50 runs")
     if args.firetuner_port < 1 or args.firetuner_port > 65535:
         raise EvolutionError("--firetuner-port must be between 1 and 65535")
-    if args.checkpoint_only and args.execute:
-        raise EvolutionError("--checkpoint-only cannot be combined with --execute")
     if args.checkpoint_only and not args.checkpoint_episodes and not args.checkpoint_manifest:
         raise EvolutionError("--checkpoint-only requires --checkpoint-episodes or --checkpoint-manifest")
     if args.checkpoint_manifest and not args.checkpoint_manifest.exists():
@@ -2209,22 +2172,10 @@ def run_evolution(args: argparse.Namespace, *, runner: CommandRunner = run_subpr
                 else f"{base_episode_id}_retry{attempt:02d}"
             )
             try:
-                observation = run_live_observation(
-                    runner=runner,
-                    workspace=workspace,
-                    command_log=command_log,
-                    save_name=args.save_name,
-                    episode_id=episode_id,
-                    turns=args.turns,
-                    strategy_profile=current_strategy_profile,
-                    asset_root=asset_root,
-                    candidate_package=args.candidate_package if args.candidate_runtime_applied else None,
+                raise EvolutionError(
+                    "--execute has been removed from /civ6-runs. "
+                    "Use /civ6-observe-live for model-authored live game mutation."
                 )
-                observation["strategy_profile"] = current_strategy_profile
-                observation["slot"] = slot
-                observation["attempt"] = attempt
-                observation["runner_kind"] = runner_kind
-                break
             except EvolutionError as exc:
                 manifest["episode_failures"].append(
                     {
@@ -2282,13 +2233,6 @@ def run_evolution(args: argparse.Namespace, *, runner: CommandRunner = run_subpr
         manifest["episodes"].append(observation)
         manifest["completed_episode_count"] = len(episode_ids)
         write_json(run_dir / "manifest.json", manifest)
-
-        if runner_kind == RUNNER_LIVE and observation.get("requires_mcp_runtime"):
-            observation["review_skipped"] = {
-                "reason": "live driver did not produce reviewable episode evidence.",
-            }
-            write_json(run_dir / "manifest.json", manifest)
-            continue
 
         review = run_review_candidates(
             runner=runner,
@@ -2481,7 +2425,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--strategy-profile",
         default=DEFAULT_STRATEGY_PROFILE,
         choices=sorted(SUPPORTED_STRATEGY_PROFILES),
-        help="Runtime strategy profile to pass into Observation observations.",
+        help="Historical manifest label only; no runtime profile is executed by /civ6-runs.",
     )
     parser.add_argument("--cycles", type=int, default=1)
     parser.add_argument(
@@ -2512,13 +2456,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--execute",
         action="store_true",
-        help="Actually launch Civ6 observations. Without this, only a plan manifest is written.",
+        help="Removed. Real Civ6 mutation must use /civ6-observe-live.",
     )
     parser.add_argument(
         "--runner",
-        help=(
-            "Required with --execute. Use live for the JSON-plan live driver path."
-        ),
+        help="Removed. Runner-backed execution is no longer supported.",
     )
     parser.add_argument(
         "--allow-auto-confirmation",

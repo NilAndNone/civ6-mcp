@@ -11,7 +11,7 @@
 </head>
 <body>
   <p><strong>Generated from:</strong> <code>docs/current-architecture.md</code></p>
-  <p><strong>Markdown SHA256:</strong> <code>641cde87c0a990a6f47069a18c88e34e7a4db7713377b5ba07c1e3498d67865f</code></p>
+  <p><strong>Markdown SHA256:</strong> <code>462b1b85ca53de8a3d804910966e068d9e7542a869d6ca5b9d076a174bfce5d5</code></p>
 
   <h1>Codex HL Civ6 Current Architecture</h1>
   <p>Status: current development mainline for <code>0.1.0</code>.</p>
@@ -29,14 +29,14 @@
   <h2>Runtime Mainline</h2>
   <ul>
     <li><code>/civ6-observe-live</code>: interactive MCP-driven JSON-plan operation.</li>
-    <li><code>/civ6-live-driver</code>: automated T3/T20/T50 live strict driver.</li>
-    <li><code>/civ6-runs --runner live</code>: orchestration wrapper around <code>codex_hl.live.driver</code>.</li>
+    <li><code>/civ6-runs</code>: offline plan manifests and existing-evidence reports only.</li>
+    <li>Automated driver, auto-run, and live-execute wrappers are removed.</li>
   </ul>
 
   <h2>Live Module Boundaries</h2>
-  <p>The driver owns execution lifecycle and evidence; objective, planner,
-  profile, gateway, ledger, plan-store, and evaluation modules own their
-  separate responsibilities.</p>
+  <p>Gateway, ledger, plan-store, context, contract, and evaluation modules own
+  live strict state, evidence, and read-only scoring. Model-authored plans are
+  submitted through the MCP live workflow.</p>
 
   <h2>Turn Semantics</h2>
   <pre><code>{

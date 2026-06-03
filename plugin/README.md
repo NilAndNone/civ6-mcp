@@ -16,8 +16,6 @@ Current plugin version: `0.1.0`.
 Live strict:
 
 - `/civ6-observe-live`
-- `/civ6-live-driver`
-- `/civ6-runs --runner live`
 - `/civ6-live-eval`
 - `/civ6-load-test1`
 - `/civ6-debug`
@@ -39,3 +37,5 @@ Offline evidence and strategy:
 - Validation scenarios are passive by default.
 - Governance is audit-only unless explicitly allowed and all gates pass.
 - Runtime artifacts under `episodes/` and `outputs/` are local by default.
+- Do not add driver, auto-run, or live-execute commands that compete with
+  `/civ6-observe-live`.

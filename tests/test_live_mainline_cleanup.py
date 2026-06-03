@@ -16,6 +16,9 @@ FORBIDDEN_PATTERNS = {
     "legacy t50 command": re.compile(r"\bcodex-hl-civ6-live-t50-driver\b"),
     "legacy t50 module": re.compile(r"\bcodex_hl\.live\.t50_driver\b"),
     "legacy t50 slash command": re.compile(r"(?<![\w/-])/civ6-live-t50-driver(?![\w-])"),
+    "automated live driver slash command": re.compile(r"(?<![\w/-])/civ6-live-driver(?![\w-])"),
+    "automated live driver script": re.compile(r"\bcodex-hl-civ6-live-driver\b"),
+    "automated live driver module": re.compile(r"\bcodex_hl\.live\.driver\b"),
 }
 
 CURRENT_PATHS = [
@@ -46,16 +49,23 @@ def iter_text_files(path: Path):
     for child in path.rglob("*"):
         if "__pycache__" in child.parts:
             continue
+        if child.name == "change_ledger.jsonl":
+            continue
         if child.is_file() and child.suffix.lower() not in {".png", ".jpg", ".jpeg", ".gif", ".db", ".pyc"}:
             yield child
 
 
 def test_removed_public_entrypoint_files_are_gone() -> None:
     assert not (ROOT / "plugin" / "commands" / "civ6-observe.md").exists()
+    assert not (ROOT / "plugin" / "commands" / "civ6-live-driver.md").exists()
     assert not (ROOT / "plugin" / "commands" / "civ6-live-t50-driver.md").exists()
     assert not (ROOT / "plugin" / "src" / "codex_hl" / "evidence" / "observation.py").exists()
+    assert not (ROOT / "plugin" / "src" / "codex_hl" / "live" / "driver.py").exists()
+    assert not (ROOT / "plugin" / "src" / "codex_hl" / "live" / "planner.py").exists()
+    assert not (ROOT / "plugin" / "src" / "codex_hl" / "live" / "policy_profiles.py").exists()
     assert not (ROOT / "plugin" / "src" / "codex_hl" / "live" / "t50_driver.py").exists()
     assert not (ROOT / "tests" / "test_live_t50_driver.py").exists()
+    assert not (ROOT / "tests" / "test_live_driver.py").exists()
 
 
 def test_current_mainline_files_do_not_reference_removed_public_entrypoints() -> None:
@@ -70,9 +80,10 @@ def test_current_mainline_files_do_not_reference_removed_public_entrypoints() ->
     assert failures == []
 
 
-def test_pyproject_exposes_live_driver_only() -> None:
+def test_pyproject_does_not_expose_automated_live_driver() -> None:
     text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    assert 'codex-hl-civ6-live-driver = "codex_hl.live.driver:main"' in text
+    assert "codex-hl-civ6-live-driver" not in text
+    assert "codex_hl.live.driver:main" not in text
     assert "codex-hl-civ6-live-t50-driver" not in text
     assert "codex-hl-civ6-observe" not in text
 

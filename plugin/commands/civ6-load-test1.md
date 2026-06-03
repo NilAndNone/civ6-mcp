@@ -14,6 +14,14 @@ $env:UV_PROJECT_ENVIRONMENT=Join-Path $env:TEMP 'codex-hl-civ6-windows-venv'
 & 'O:\civ6\.tools\uv\uv.exe' run --extra launcher-windows codex-hl-civ6-load-test1
 ```
 
+For a fully background-only load, add both foreground/OCR guards:
+
+```powershell
+$env:PYTHONIOENCODING='utf-8'
+$env:UV_PROJECT_ENVIRONMENT=Join-Path $env:TEMP 'codex-hl-civ6-windows-venv'
+& 'O:\civ6\.tools\uv\uv.exe' run --extra launcher-windows codex-hl-civ6-load-test1 --no-launch --no-continue-screen --no-ocr-fallback
+```
+
 For another save:
 
 ```powershell
@@ -39,7 +47,8 @@ $env:UV_PROJECT_ENVIRONMENT=Join-Path $env:TEMP 'codex-hl-civ6-windows-venv'
 - After a Lua load, it attempts to dismiss the Civ6 leader "continue game"
   screen before polling FireTuner; pass `--no-continue-screen` to disable this.
 - It may use Lua load, menu OCR, or restart-and-load fallback depending on the
-  current Civ6 state.
+  current Civ6 state. Pass `--no-ocr-fallback` to fail instead of using
+  OCR/menu loading.
 - It retries initial FireTuner connect and one load attempt because save loading
   often resets the socket once.
 - It does not create an observation episode and does not count as T3/T20

@@ -175,6 +175,20 @@ def test_turn_advance_accepts_tool_result_when_post_state_is_stale() -> None:
     assert verification.objective_delta["state_snapshot_unstable"] is True
 
 
+def test_turn_advance_rejects_stale_tool_result_for_current_turn() -> None:
+    verification = PostconditionVerifier().verify(
+        request=request("end_turn", {}),
+        result="Turn 15 -> 16",
+        pre_state={"overview": {"turn": 16}},
+        post_state={"overview": {"turn": 16}},
+    )
+
+    assert verification.status == VerifierStatus.FAIL
+    assert verification.objective_delta["state_turn_delta"] == 0
+    assert verification.objective_delta["result_turn_delta"] == 1
+    assert verification.objective_delta["stale_tool_result"] is True
+
+
 def test_turn_advance_fails_when_turn_jumps() -> None:
     verification = PostconditionVerifier().verify(
         request=request("end_turn", {}),

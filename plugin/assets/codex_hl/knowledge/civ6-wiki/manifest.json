@@ -1,0 +1,51 @@
+{
+  "generated_at": "2026-06-01T10:49:58.513402+00:00",
+  "source": {
+    "name": "Civilization Wiki/Fandom",
+    "api_url": "https://civilization.fandom.com/api.php",
+    "entry_url": "https://civilization.fandom.com/wiki/Civilization_VI",
+    "mode": "fandom_api"
+  },
+  "scope": {
+    "included": [
+      "beliefs",
+      "buildings",
+      "city-states",
+      "civics",
+      "civilizations",
+      "core-mechanics",
+      "districts",
+      "game-modes",
+      "governments",
+      "leaders",
+      "policies",
+      "religion",
+      "resources",
+      "technologies",
+      "terrain",
+      "units",
+      "victory-types",
+      "wonders"
+    ],
+    "excluded": [
+      "scenarios",
+      "scenario-specific civilizations, units, technologies, civics, maps, and rules",
+      "strategy advice and subjective rankings",
+      "images and icons"
+    ],
+    "sample_only": false
+  },
+  "local_game_data": {
+    "root": "O:\\SteamLibrary\\steamapps\\common\\Sid Meier's Civilization VI",
+    "present": true,
+    "file_count": 1334,
+    "text_file_count": 375,
+    "data_file_count": 959
+  },
+  "counts": {
+    "source_candidates": 1394,
+    "pages": 1212,
+    "excluded_pages": 182,
+    "validation_findings": 15
+  }
+}

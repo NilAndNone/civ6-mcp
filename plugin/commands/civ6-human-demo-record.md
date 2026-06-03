@@ -5,6 +5,12 @@ database. This command captures facts and read-only snapshots. It does not run
 strategy policy, choose actions, advance turns, write `episodes/`, generate
 candidate playbooks, or modify strategy assets.
 
+Use this command to learn from Human Demo at small granularity: record each
+observed turn/action, infer and correct action facts, preserve milestone
+evidence, and later distill that evidence into governed strategy assets. Live
+reproduction then happens through `/civ6-observe-live`, not through an
+automated driver.
+
 ## Commands
 
 - `start`: create/resume a demo and capture the first before snapshot.
@@ -19,8 +25,8 @@ candidate playbooks, or modify strategy assets.
 - `watch`: read-only turn polling that records after the human advances.
 
 `self-play` action execution has been removed from the human-demo boundary. Use
-the live driver for automated gameplay and this command only for human-demo
-capture/storage.
+this command only for human-demo capture/storage and use `/civ6-observe-live`
+for model-in-loop live reproduction.
 
 ## Outputs
 

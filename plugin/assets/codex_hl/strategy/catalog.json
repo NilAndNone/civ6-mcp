@@ -30,19 +30,18 @@
                    {
                        "asset_id":  "strategy.playbook.observation",
                        "asset_type":  "playbook",
-                       "version":  "1.0.0",
+                       "version":  "1.0.1",
                        "content_path":  "assets/playbook-observation.md",
-                       "content_sha256":  "e7b980e806a2afa9c1cfa071c75cc77ab5a053d5416460b8c740ae60302d3cb0",
+                       "content_sha256":  "c406d29513ce22bbba9d144dd0f161f22b6bf0bf1def24a03617f74dfb99d87c",
                        "source_refs":  [
                                            "docs/current-architecture.md",
                                            "docs/codex-hl-observation.md",
                                            "plugin/commands/civ6-observe-live.md",
-                                           "plugin/commands/civ6-live-driver.md",
                                            "plugin/skills/civ6-observation/SKILL.md",
-                                           "human request: live mainline convergence cleanup"
+                                           "human request: hard-deprecate automated live driver"
                                        ],
                        "applicability":  [
-                                             "live strict T3/T20/T50 runs",
+                                             "model-in-loop live strict operation",
                                              "live strict evidence acceptance"
                                          ],
                        "risk_level":  "high",
@@ -82,19 +81,18 @@
                    {
                        "asset_id":  "strategy.tool_policy.observation_evidence",
                        "asset_type":  "tool_policy",
-                       "version":  "1.0.0",
+                       "version":  "1.0.1",
                        "content_path":  "assets/tool-policy-observation-run-and-evidence.md",
-                       "content_sha256":  "9d69ba3989e74ce20c65a180fa1060f027738ef0d56b858aa7082a838a891378",
+                       "content_sha256":  "25b803fc8271e58b77e1f4b751e82e32fae76bfc861e8ac1782026c4dafe007a",
                        "source_refs":  [
                                            "docs/current-architecture.md",
                                            "docs/codex-hl-observation.md",
-                                           "plugin/commands/civ6-live-driver.md",
                                            "plugin/commands/civ6-runs.md",
                                            "plugin/skills/civ6-observation/SKILL.md",
-                                           "human request: live mainline convergence cleanup"
+                                           "human request: hard-deprecate automated live driver"
                                        ],
                        "applicability":  [
-                                             "live strict driver invocation",
+                                             "model-in-loop live strict operation",
                                              "live strict evidence acceptance"
                                          ],
                        "risk_level":  "high",
@@ -269,6 +267,77 @@
                        "capability_dimensions":  [
                                                      "verification",
                                                      "execution",
+                                                     "recovery"
+                                                 ],
+                       "status":  "active"
+                   },
+                   {
+                       "asset_id":  "strategy.memory.failure_blacklist_human_demo_t50",
+                       "asset_type":  "memory",
+                       "version":  "1.0.8",
+                       "content_path":  "assets/failure-blacklist-human-demo-t50.md",
+                       "content_sha256":  "81c4b94a6977ff3bb2b7aa17f8f896bcc651ad26c9a3f149fb2921148247bcc2",
+                       "source_refs":  [
+                                           "outputs/live_driver/human_demo_repro_failure_review_R01_20260530.md",
+                                           "outputs/live_driver/human_demo_repro_failure_review_R02_20260530.md",
+                                           "human_demos/human_demo_20260527_074225/demo.sqlite",
+                                           "episodes/live_human_demo_t50_20260530_000002",
+                                           "episodes/live_human_demo_t50_20260530_000003",
+                                           "episodes/live_human_demo_t50_20260530_000004",
+                                           "human request: Human Demo T50 reproduction contract v2",
+                                           "outputs/live_driver/live_human_demo_t50_v2_attempt25_t25_horse_city_race_retro_20260601.md",
+                                           "episodes/live_human_demo_t50_v2_attempt25_fresh_bg_20260601_001",
+                                           "human request: horse resource city must be faster and not lose the site to AI",
+                                           "outputs/live_driver/live_human_demo_t50_v2_attempt26_t15_horse_priority_regression_retro_20260601.md",
+                                           "episodes/live_human_demo_t50_v2_attempt26_t13_rollback_horse_lock_20260601_001",
+                                           "human request: early milestones that meet or exceed the target may execute early",
+                                           "human request: hard-deprecate automated live driver"
+                                       ],
+                       "applicability":  [
+                                             "Human Demo T50 reproduction review",
+                                             "failed strategy blacklist"
+                                         ],
+                       "risk_level":  "high",
+                       "rollback_path":  "assets/failure-blacklist-human-demo-t50.md",
+                       "capability_dimensions":  [
+                                                     "planning",
+                                                     "memory/state",
+                                                     "recovery",
+                                                     "verification"
+                                                 ],
+                       "status":  "active"
+                   },
+                   {
+                       "asset_id":  "strategy.tool_policy.human_demo_repro_review_gate",
+                       "asset_type":  "tool_policy",
+                       "version":  "1.0.5",
+                       "content_path":  "assets/tool-policy-human-demo-repro-review-gate.md",
+                       "content_sha256":  "b47e713735172ac76683bb3bb089f6d15c7de884ec0b22cf66b224d970a683e9",
+                       "source_refs":  [
+                                           "outputs/live_driver/human_demo_repro_failure_review_R01_20260530.md",
+                                           "human_demos/human_demo_20260527_074225/demo.sqlite",
+                                           "episodes/live_human_demo_t50_20260530_000002",
+                                           "episodes/live_human_demo_t50_20260530_000003",
+                                           "episodes/live_human_demo_t50_20260530_000004",
+                                           "human request: three-to-five attempt review loop",
+                                           "outputs/live_driver/live_human_demo_t50_v2_attempt25_t25_horse_city_race_retro_20260601.md",
+                                           "episodes/live_human_demo_t50_v2_attempt25_fresh_bg_20260601_001",
+                                           "human request: horse resource city must be faster and not lose the site to AI",
+                                           "outputs/live_driver/live_human_demo_t50_v2_attempt26_t15_horse_priority_regression_retro_20260601.md",
+                                           "episodes/live_human_demo_t50_v2_attempt26_t13_rollback_horse_lock_20260601_001",
+                                           "human request: early milestones that meet or exceed the target may execute early",
+                                           "human request: hard-deprecate automated live driver"
+                                       ],
+                       "applicability":  [
+                                             "Human Demo T50 reproduction attempts",
+                                             "stop-and-review gating"
+                                         ],
+                       "risk_level":  "high",
+                       "rollback_path":  "assets/tool-policy-human-demo-repro-review-gate.md",
+                       "capability_dimensions":  [
+                                                     "planning",
+                                                     "execution",
+                                                     "verification",
                                                      "recovery"
                                                  ],
                        "status":  "active"

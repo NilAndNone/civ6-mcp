@@ -287,6 +287,7 @@ from civ6_connector.lua.units import (  # noqa: F401
     build_fortify_unit,
     build_heal_unit,
     build_build_route,
+    build_harvest_resource,
     build_improve_tile,
     build_pathing_estimate_query,
     build_post_move_visibility_query,

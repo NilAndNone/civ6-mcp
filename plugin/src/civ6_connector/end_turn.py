@@ -564,6 +564,7 @@ async def execute_end_turn(gs: GameState) -> str:
             n_res = len(wc_status.resolutions) if wc_status.resolutions else 0
             # Skip gate when WC fires with 0 resolutions — nothing to vote on
             if n_res == 0 and not wc_status.is_in_session:
+                await gs.conn.execute_write(lq.build_register_wc_voter(votes=[]))
                 log.info("WC fires this turn with 0 resolutions — auto-proceeding")
             else:
                 handler_lines = await gs.conn.execute_write(

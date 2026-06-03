@@ -7,8 +7,10 @@ This tool policy defines how live strict run evidence is accepted.
 ## Run Policy
 
 - Use `/civ6-observe-live` for interactive MCP-driven operation.
-- Use `codex-hl-civ6-live-driver` for automated T3/T20/T50 runs.
-- Use `/civ6-runs --runner live` for orchestration.
+- Do not use driver, auto-run, or live-execute wrappers for real game mutation.
+- `/civ6-runs` is offline-only; `--execute` and `--runner live` are removed.
+- Before each live plan, retrieve relevant active strategy assets and Civ6 wiki
+  chunks, but make the decision from the latest observed live context.
 - Keep `episodes/` and `outputs/` as local run output unless the user names
   specific artifacts to preserve or submit.
 - Do not start a separate connector service for the live strict flow unless the
@@ -30,5 +32,5 @@ A live strict run is reviewable only when these evidence classes exist:
 ## Boundary
 
 Evidence capture records what happened. It does not mark strategy changes as
-accepted, does not merge assets, and does not let archived historical lessons
-override active runtime policy.
+accepted, does not merge assets, and does not let archived historical lessons,
+strategy assets, or wiki facts override a fresh model-authored live plan.

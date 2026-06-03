@@ -239,6 +239,7 @@ def _classify_observation_path(call_path: str) -> tuple[str, MutationLevel] | No
 def discover_observation_direct_mutations(observation_path: Path) -> tuple[DirectMutationCall, ...]:
     module = _parse(observation_path)
     found: dict[tuple[int, str], DirectMutationCall] = {}
+    source_name = observation_path.name
 
     class Visitor(ast.NodeVisitor):
         def _record(self, node: ast.AST, call_path: str | None) -> None:
@@ -254,7 +255,7 @@ def discover_observation_direct_mutations(observation_path: Path) -> tuple[Direc
                 call_path=call_path,
                 line=line,
                 mutation_level=level,
-                source="observation.py",
+                source=source_name,
                 requires_future_gateway=level.is_game_mutation_or_higher(),
             )
 
@@ -317,7 +318,7 @@ def _boundary_paths(
                 name=name,
                 line=mcp_lines.get(name, direct_lines.get(name, 0)),
                 mutation_level=level,
-                source="server.py/observation.py/connection.py",
+                source="server.py/connection.py",
                 notes=BOUNDARY_PATH_NOTES[name],
             )
         )

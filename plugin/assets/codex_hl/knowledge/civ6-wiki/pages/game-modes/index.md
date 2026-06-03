@@ -1,0 +1,16 @@
+# game-modes
+
+- [Apocalypse](apocalypse.md)
+- [Barbarian Clans](barbarian-clans.md)
+- [Civilization VI August 2020 Update](civilization-vi-august-2020-update.md)
+- [Civilization VI February 2021 Update](civilization-vi-february-2021-update.md)
+- [Dark Age Policy Card](dark-age-policy-card.md)
+- [Dramatic Ages](dramatic-ages.md)
+- [Game mode](game-mode.md)
+- [Golden Age Policy Card](golden-age-policy-card.md)
+- [Heroes & Legends](heroes-legends.md)
+- [Industry](industry.md)
+- [Monopolies and Corporations](monopolies-and-corporations.md)
+- [Secret Societies](secret-societies.md)
+- [Tech and Civic Shuffle](tech-and-civic-shuffle.md)
+- [Zombie Defense](zombie-defense.md)

@@ -35,6 +35,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="do not try to dismiss the leader continue screen after loading",
     )
+    parser.add_argument(
+        "--no-ocr-fallback",
+        action="store_true",
+        help="fail if FireTuner Lua cannot load the save; do not use OCR/menu fallback",
+    )
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
     return parser
 
@@ -52,6 +57,7 @@ async def load_and_verify(
     load_timeout: float,
     force_restart: bool,
     continue_screen: bool,
+    allow_ocr_fallback: bool = True,
 ) -> dict[str, Any]:
     from civ6_connector.connection import GameConnection
     from civ6_connector import game_launcher
@@ -98,7 +104,7 @@ async def load_and_verify(
                 else:
                     payload["load_path"] = "game_lifecycle"
                     payload["load_result"] = await asyncio.wait_for(
-                        load_game_save(conn, save_name),
+                        load_game_save(conn, save_name, allow_ocr_fallback=allow_ocr_fallback),
                         timeout=load_timeout,
                     )
                 if str(payload["load_result"]).startswith("Error:"):
@@ -231,6 +237,7 @@ def main(argv: list[str] | None = None) -> None:
                 load_timeout=args.load_timeout,
                 force_restart=args.force_restart,
                 continue_screen=not args.no_continue_screen,
+                allow_ocr_fallback=not args.no_ocr_fallback,
             )
         )
     except Exception as exc:  # noqa: BLE001 - shell command should fail legibly.

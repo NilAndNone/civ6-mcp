@@ -567,6 +567,11 @@ class GameState:
         lines = await self.conn.execute_write(lua)
         return _action_result(lines)
 
+    async def harvest_resource(self, unit_index: int) -> str:
+        lua = lq.build_harvest_resource(unit_index)
+        lines = await self.conn.execute_write(lua)
+        return _action_result(lines)
+
     async def repair_improvement(self, unit_index: int) -> str:
         lua = lq.build_repair_improvement(unit_index)
         lines = await self.conn.execute_write(lua)
@@ -951,6 +956,28 @@ class GameState:
         lua = lq.build_policies_query()
         lines = await self.conn.execute_write(lua)
         return lq.parse_policies_response(lines)
+
+    async def get_available_governments(self) -> list[dict[str, object]]:
+        lua = lq.build_available_governments_query()
+        lines = await self.conn.execute_write(lua)
+        governments: list[dict[str, object]] = []
+        for line in lines:
+            if not line.startswith("GOV|"):
+                continue
+            parts = line.split("|")
+            if len(parts) < 6:
+                continue
+            governments.append(
+                {
+                    "government_type": parts[1],
+                    "index": int(parts[2]),
+                    "status": parts[3],
+                    "name": parts[4],
+                    "slots": [item for item in parts[5].split(",") if item],
+                    "bonus": parts[6] if len(parts) > 6 else "",
+                }
+            )
+        return governments
 
     async def set_policies(self, assignments: dict[int, str]) -> str:
         lua = lq.build_set_policies(assignments)
@@ -1436,7 +1463,7 @@ class GameState:
             ov_lines = await self.conn.execute_write(lq.build_overview_query())
             overview = lq.parse_overview_response(ov_lines)
 
-        unit_lines = await self.conn.execute_read(lq.build_units_query())
+        unit_lines = await self.conn.execute_write(lq.build_units_query())
         units = lq.parse_units_response(unit_lines)
 
         city_lines = await self.conn.execute_write(lq.build_cities_query())

@@ -28,11 +28,17 @@ Historical or reference docs cannot define runtime entrypoints.
 
 ## Current Mainline
 
-The current executable mainline is live strict:
+The current executable mainline is model-in-loop live strict:
 
-- `/civ6-observe-live` for interactive MCP-driven live strict operation.
-- `/civ6-live-driver` for automated T3/T20/T50 runs.
-- `/civ6-runs --runner live` for orchestration around the live driver.
+- `/civ6-observe-live` for interactive MCP-driven live strict operation where
+  each turn context is observed, the model authors the JSON plan, a step is
+  armed, and the matching MCP action is executed.
+- `/civ6-human-demo-record` for read-only Human Demo capture into SQLite.
+- `/civ6-human-demo-contract` for read-only scoring of reproduction evidence.
+
+The automated live driver and `/civ6-runs --runner live` path have been
+removed. Do not add a replacement driver, auto-run command, or live-execute
+wrapper that bypasses `/civ6-observe-live`.
 
 `codex_hl.evidence.store` remains the episode database layer. Legacy execution
 runners and old report-only/rebuild command compatibility are removed.
@@ -41,9 +47,9 @@ runners and old report-only/rebuild command compatibility are removed.
 
 - For architecture or entrypoint work, read `docs/current-architecture.md`,
   `plugin/AGENTS.md`, and `plugin/commands/`.
-- For live driver work, read `plugin/src/codex_hl/live/driver.py`,
-  `objective.py`, `planner.py`, `policy_profiles.py`, `gateway.py`,
-  `ledger.py`, `plan_store.py`, and their tests.
+- For model-in-loop live work, read `plugin/commands/civ6-observe-live.md`,
+  `plugin/src/civ6_connector/server.py`, `gateway.py`, `ledger.py`,
+  `plan_store.py`, and their tests.
 - For Review, Strategy, Validation, and Governance, read their corresponding
   docs and modules under `plugin/src/codex_hl/`.
 - For Civ6 connector work, keep low-level behavior inside
@@ -72,6 +78,7 @@ codex-hl-civ6-strategy-assets --check
 git diff --check
 ```
 
-Full replacement proof still requires a real Windows Civ6 `test 1` live strict
-run. Until that passes, claim only that the legacy executable path has been
-removed and live strict is the only supported execution path.
+Full Human Demo replacement proof requires a real Windows Civ6 `test 1`
+model-in-loop live strict run through `/civ6-observe-live`, with per-turn JSON
+plans authored from fresh context and scored by `/civ6-human-demo-contract`.
+Automated live-driver runs do not satisfy that proof.

@@ -13,7 +13,6 @@ from codex_hl.live.mutation_levels import MutationLevel
 
 ROOT = Path(__file__).resolve().parents[1]
 GAME_STATE_PATH = ROOT / "plugin" / "src" / "civ6_connector" / "game_state.py"
-DRIVER_PATH = ROOT / "plugin" / "src" / "codex_hl" / "live" / "driver.py"
 SERVER_PATH = ROOT / "plugin" / "src" / "civ6_connector" / "server.py"
 
 
@@ -21,7 +20,7 @@ def test_registered_l2_plus_actions_are_in_inventory() -> None:
     inventory = build_mutation_inventory(
         server_path=SERVER_PATH,
         game_state_path=GAME_STATE_PATH,
-        observation_path=DRIVER_PATH,
+        observation_path=SERVER_PATH,
     )
     inventory_tools = {entry.name for entry in inventory.mcp_tools}
 
@@ -46,8 +45,8 @@ def test_registered_l2_plus_game_state_methods_have_method_classification() -> N
             assert GAME_STATE_METHOD_LEVELS[method].is_game_mutation_or_higher()
 
 
-def test_driver_direct_mutations_are_flagged_for_gateway() -> None:
-    calls = discover_observation_direct_mutations(DRIVER_PATH)
+def test_observe_live_server_direct_mutations_are_flagged_for_gateway() -> None:
+    calls = discover_observation_direct_mutations(SERVER_PATH)
     observed = {(call.symbol, call.mutation_level) for call in calls}
 
     required = {
@@ -75,7 +74,7 @@ def test_inventory_covers_save_load_restart_and_raw_lua_paths() -> None:
     inventory = build_mutation_inventory(
         server_path=SERVER_PATH,
         game_state_path=GAME_STATE_PATH,
-        observation_path=DRIVER_PATH,
+        observation_path=SERVER_PATH,
     )
     boundary_names = {entry.name for entry in inventory.boundary_paths}
 

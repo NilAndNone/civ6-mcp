@@ -1,42 +1,37 @@
 # Live Strict Evidence Runs
 
 This document describes the current evidence/run surface. The executable
-mainline is live strict.
+mainline is model-in-loop live strict.
 
 ## Supported Paths
 
 - `/civ6-observe-live`: interactive MCP-driven operation.
-- `/civ6-live-driver`: automated T3/T20/T50 live strict driver.
-- `/civ6-runs --runner live`: orchestration wrapper around the live driver.
+- `/civ6-runs`: offline plan manifests and existing-evidence reports only.
+- `/civ6-live-eval`: read-only evaluation of completed live evidence.
 
-## Short Run
+## Live Operation
 
-```powershell
-$env:PYTHONIOENCODING='utf-8'
-& 'O:\civ6\.tools\uv\uv.exe' run --extra launcher-windows codex-hl-civ6-live-driver --load-test1 --objective t3 --turn-budget 3 --min-cities 1
-```
-
-## T50 Run
-
-```powershell
-$env:PYTHONIOENCODING='utf-8'
-& 'O:\civ6\.tools\uv\uv.exe' run --extra launcher-windows codex-hl-civ6-live-driver --load-test1 --objective t50 --turn-budget 50 --min-cities 2
-```
+For real Civ6 mutation, use `/civ6-observe-live`. Each plan must start from a
+fresh `get_live_turn_context` snapshot, retrieve relevant active strategy
+assets and Civ6 wiki chunks, submit a small JSON plan, arm one step, execute
+the matching MCP action, and verify observable post-state.
 
 ## Evidence
 
 - `episodes/<episode_id>/episode.db` is the durable episode database layer.
 - `raw/live_plan_events.jsonl` records plan lifecycle.
 - `raw/live_events.jsonl` records gateway and verifier events.
-- `outputs/live_driver/<episode_id>_driver_summary.json` is a local run
-  summary.
+- completion or abort status is recorded through the live plan store.
 
 ## Boundaries
 
 - Every L2+ mutation must pass through a JSON plan, armed step, live gateway,
   and verifier-owned postcondition.
+- Knowledge base and strategy assets constrain model planning but do not
+  replace a fresh model-authored plan.
 - Strategy assets and candidate packages are read-only runtime inputs unless
   governance explicitly merges them.
+- Driver, auto-run, and live-execute wrappers are not supported entrypoints.
 - Local run artifacts are not committed by default.
 - Full Windows Civ6 `test 1` validation is required before claiming complete
   replacement proof.

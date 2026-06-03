@@ -103,32 +103,16 @@ def args_for(tmp_path: Path, *, runner_kind: str | None, turns: int = 20) -> arg
 
 
 def fake_runner(command: list[str], cwd: Path, env: dict[str, str] | None) -> orchestrator.CommandResult:
-    module = command[2]
-    started = orchestrator.now_iso()
-    if module == "codex_hl.live.driver":
-        episode_id = command[command.index("--episode-id") + 1]
-        stdout = json.dumps(
-            {
-                "episode_id": episode_id,
-                "runner_kind": "live",
-                "requires_mcp_runtime": False,
-            }
-        )
-    elif module == "codex_hl.review.failure_labeling":
-        episode_id = command[command.index("--episode-id") + 1]
-        stdout = json.dumps({"episode_id": episode_id, "candidates": 0})
-    else:
-        raise AssertionError(command)
-    return orchestrator.CommandResult(command, 0, stdout, "", started, orchestrator.now_iso())
+    raise AssertionError(command)
 
 
 def test_execute_without_runner_fails_clearly(tmp_path) -> None:
-    with pytest.raises(orchestrator.EvolutionError, match="--execute requires --runner"):
+    with pytest.raises(orchestrator.EvolutionError, match="--execute has been removed"):
         orchestrator.run_evolution(args_for(tmp_path, runner_kind=None), runner=fake_runner)
 
 
 def test_execute_t3_without_runner_reaches_runner_gate(tmp_path) -> None:
-    with pytest.raises(orchestrator.EvolutionError, match="--execute requires --runner"):
+    with pytest.raises(orchestrator.EvolutionError, match="--execute has been removed"):
         orchestrator.run_evolution(args_for(tmp_path, runner_kind=None, turns=3), runner=fake_runner)
 
 
@@ -139,7 +123,7 @@ def test_removed_runner_hard_fails_before_launch(tmp_path) -> None:
         calls.append(command)
         return fake_runner(command, cwd, env)
 
-    with pytest.raises(orchestrator.EvolutionError, match='runner "legacy-baseline".*removed.*--runner live'):
+    with pytest.raises(orchestrator.EvolutionError, match='runner "legacy-baseline".*removed'):
         orchestrator.run_evolution(
             args_for(tmp_path, runner_kind="legacy-baseline"),
             runner=runner,
@@ -148,17 +132,14 @@ def test_removed_runner_hard_fails_before_launch(tmp_path) -> None:
     assert calls == []
 
 
-def test_live_runner_uses_live_episode_path_not_old_rules_runner(tmp_path) -> None:
+def test_live_runner_hard_fails_before_launch(tmp_path) -> None:
     calls: list[list[str]] = []
 
     def runner(command: list[str], cwd: Path, env: dict[str, str] | None) -> orchestrator.CommandResult:
         calls.append(command)
         return fake_runner(command, cwd, env)
 
-    result = orchestrator.run_evolution(args_for(tmp_path, runner_kind="live", turns=3), runner=runner)
+    with pytest.raises(orchestrator.EvolutionError, match='runner "live".*removed'):
+        orchestrator.run_evolution(args_for(tmp_path, runner_kind="live", turns=3), runner=runner)
 
-    assert result["status"] == "completed"
-    assert calls[0][2] == "codex_hl.live.driver"
-    assert "--turn-budget" in calls[0]
-    assert calls[0][calls[0].index("--turn-budget") + 1] == "3"
-    assert "codex_hl.live.driver" in [command[2] for command in calls]
+    assert calls == []

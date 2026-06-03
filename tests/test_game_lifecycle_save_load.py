@@ -41,6 +41,15 @@ class InGameConn:
         return ["RESULT|FOUND"]
 
 
+class InGameNotFoundConn(InGameConn):
+    async def execute_write(self, lua_code: str, timeout: float = 5.0) -> list[str]:
+        self.write_calls.append(lua_code)
+        if "UI.QuerySaveGameList" in lua_code:
+            return ["QUERY_SENT"]
+        self._checks += 1
+        return ["RESULT|NOT_FOUND"]
+
+
 ROOT = Path(__file__).resolve().parents[1]
 SERVER_PATH = ROOT / "plugin" / "src" / "civ6_connector" / "server.py"
 
@@ -66,6 +75,16 @@ def test_load_game_save_uses_public_ingame_lua_query() -> None:
     assert len(conn.write_calls) == 2
     assert 'local target = "quote \\" save";' in conn.write_calls[0]
     assert "UI.QuerySaveGameList" in conn.write_calls[0]
+
+
+def test_load_game_save_can_disable_ocr_menu_fallback() -> None:
+    from civ6_connector.game_lifecycle import load_game_save
+
+    conn = InGameNotFoundConn()
+    result = asyncio.run(load_game_save(conn, "missing", allow_ocr_fallback=False))
+
+    assert "OCR/menu fallback is disabled" in result
+    assert len(conn.write_calls) >= 2
 
 
 def test_server_recovery_routes_save_loads_through_common_helper() -> None:

@@ -1,0 +1,18 @@
+# religion
+
+- [Buddhism](buddhism.md)
+- [Catholicism](catholicism.md)
+- [Confucianism](confucianism.md)
+- [Eastern Orthodoxy](eastern-orthodoxy.md)
+- [Harald Hardrada (Konge)](harald-hardrada-konge.md)
+- [Harald Hardrada (Varangian)](harald-hardrada-varangian.md)
+- [Hinduism](hinduism.md)
+- [Islam](islam.md)
+- [Judaism](judaism.md)
+- [Pantheon](pantheon.md)
+- [Protestantism](protestantism.md)
+- [Religion](religion.md)
+- [Shinto](shinto.md)
+- [Sikhism](sikhism.md)
+- [Taoism](taoism.md)
+- [Zoroastrianism](zoroastrianism.md)

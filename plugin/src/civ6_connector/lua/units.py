@@ -1125,6 +1125,40 @@ print("{SENTINEL}")
 """
 
 
+def build_harvest_resource(unit_index: int) -> str:
+    """Harvest a bonus resource from the tile the builder is standing on."""
+    return f"""
+{_lua_get_unit(unit_index)}
+if unit:GetMovesRemaining() <= 0 then
+    {_bail("ERR:NO_MOVES|Builder has no moves remaining this turn")}
+end
+local plot = Map.GetPlot(unit:GetX(), unit:GetY())
+local rType = plot:GetResourceType()
+if rType < 0 then
+    {_bail_lua('"ERR:NO_RESOURCE|No resource on tile (" .. unit:GetX() .. "," .. unit:GetY() .. ") to harvest"')}
+end
+local rInfo = GameInfo.Resources[rType]
+local rName = rInfo and rInfo.ResourceType or "UNKNOWN"
+if rInfo and rInfo.ResourceClassType ~= "RESOURCECLASS_BONUS" then
+    {_bail_lua('"ERR:NOT_BONUS_RESOURCE|Cannot harvest non-bonus resource " .. rName .. " at (" .. unit:GetX() .. "," .. unit:GetY() .. ")"')}
+end
+local opRow = GameInfo.UnitOperations["UNITOPERATION_HARVEST_RESOURCE"]
+if not opRow then
+    {_bail("ERR:OP_NOT_FOUND|UNITOPERATION_HARVEST_RESOURCE not available")}
+end
+local params = {{}}
+params[UnitOperationTypes.PARAM_X] = unit:GetX()
+params[UnitOperationTypes.PARAM_Y] = unit:GetY()
+local canStart = UnitManager.CanStartOperation(unit, opRow.Hash, nil, params, true)
+if not canStart then
+    {_bail_lua('"ERR:CANNOT_HARVEST|Cannot harvest " .. rName .. " at (" .. unit:GetX() .. "," .. unit:GetY() .. ")"')}
+end
+UnitManager.RequestOperation(unit, opRow.Hash, params)
+print("OK:HARVESTING_RESOURCE|" .. rName .. " at " .. unit:GetX() .. "," .. unit:GetY())
+print("{SENTINEL}")
+"""
+
+
 def build_repair_improvement(unit_index: int) -> str:
     """Repair a pillaged improvement at the builder's current tile (InGame context).
 

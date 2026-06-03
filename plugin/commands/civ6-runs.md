@@ -2,9 +2,12 @@
 
 ## Purpose
 
-Orchestrate multi-run T3/T20/T50 live strict episodes, offline Review
-candidates, optional auto-confirmation, Strategy Candidate artifacts, validation
-reports, and guarded governance.
+Orchestrate offline Review candidates, Strategy Candidate artifacts,
+validation reports, checkpoint reports, and guarded governance.
+
+`/civ6-runs` is offline-only. The real-game execution route has been removed:
+`--execute`, `--runner live`, and any runner-backed live mutation fail before
+connector startup. Use `/civ6-observe-live` for real Civ6 gameplay.
 
 ## Inputs
 
@@ -12,8 +15,8 @@ reports, and guarded governance.
 - `--cycles <n>`
 - `--episodes-per-cycle <n>`
 - `--save-name "test 1"`
-- `--execute`: launch real Civ6 runs.
-- `--runner live`: required with `--execute`.
+- `--execute`: removed; hard error.
+- `--runner live`: removed; hard error.
 - `--allow-auto-confirmation`: enable restricted auto-confirmation.
 - `--auto-iterate-strategy`: allow runtime strategy profile changes between
   episodes.
@@ -25,10 +28,10 @@ reports, and guarded governance.
 
 ## Runtime Routing
 
-- Without `--execute`, `/civ6-runs` writes a plan manifest only.
-- With `--execute`, `/civ6-runs --runner live` shells into
-  `codex_hl.live.driver`.
-- Removed runner values fail explicitly and do not launch any game mutation.
+- `/civ6-runs` writes plan manifests and reads existing evidence.
+- `--execute` has been removed and does not launch Civ6.
+- `--runner live` has been removed and does not launch Civ6.
+- Removed runner values fail explicitly before any connector or game mutation.
 - Candidate packages are read-only runtime inputs; they do not directly mutate
   strategy assets.
 - Governance merge remains gated and requires explicit `--allow-merge`.
@@ -41,14 +44,8 @@ Plan only:
 $env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-runs --turns 20 --cycles 1 --episodes-per-cycle 3
 ```
 
-Execute T3 live strict:
+Checkpoint from existing episodes:
 
 ```powershell
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-runs --execute --runner live --turns 3 --save-name "test 1" --cycles 1 --episodes-per-cycle 1
-```
-
-Execute T50 live strict with a candidate runtime package:
-
-```powershell
-$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-runs --execute --runner live --turns 50 --save-name "test 1" --cycles 1 --episodes-per-cycle 5 --candidate-package <candidate.json> --candidate-runtime-applied
+$env:PYTHONIOENCODING='utf-8'; & 'O:\civ6\.tools\uv\uv.exe' run codex-hl-civ6-runs --checkpoint-only --checkpoint-episodes <episode_id> --turns 50
 ```

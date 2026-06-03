@@ -465,6 +465,14 @@ class PostconditionVerifier:
                 reason="turn advanced exactly one",
             )
         if result_delta == 1:
+            result_pair = _turn_pair_from_result(result)
+            if result_pair is not None and result_pair[1] <= int(pre_turn):
+                objective_delta["stale_tool_result"] = True
+                return VerificationResult(
+                    status=VerifierStatus.FAIL,
+                    objective_delta=objective_delta,
+                    reason="tool result reports an older turn advance; state did not advance",
+                )
             objective_delta["turn_delta"] = 1
             objective_delta["state_snapshot_unstable"] = True
             return VerificationResult(
@@ -615,6 +623,7 @@ def _result_indicates_blocked(result: Any) -> bool:
             "no path",
             "not enough",
             "error",
+            "silent_failure",
         ]
     )
 
@@ -694,6 +703,13 @@ def _expected_cost(args: dict[str, Any], result: Any) -> float | None:
 
 
 def _turn_delta_from_result(result: Any) -> int | None:
+    pair = _turn_pair_from_result(result)
+    if pair is None:
+        return None
+    return pair[1] - pair[0]
+
+
+def _turn_pair_from_result(result: Any) -> tuple[int, int] | None:
     text = str(result)
     patterns = [
         r"\bturn\s+(\d+)\s*(?:->|to)\s*(\d+)\b",
@@ -702,7 +718,7 @@ def _turn_delta_from_result(result: Any) -> int | None:
     for pattern in patterns:
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
-            return int(match.group(2)) - int(match.group(1))
+            return int(match.group(1)), int(match.group(2))
     return None
 
 

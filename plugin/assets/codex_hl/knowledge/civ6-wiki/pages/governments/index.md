@@ -1,0 +1,15 @@
+# governments
+
+- [Autocracy](autocracy.md)
+- [Chiefdom](chiefdom.md)
+- [Classical Republic](classical-republic.md)
+- [Communism](communism.md)
+- [Corporate Libertarianism](corporate-libertarianism.md)
+- [Democracy](democracy.md)
+- [Digital Democracy](digital-democracy.md)
+- [Fascism](fascism.md)
+- [Merchant Republic](merchant-republic.md)
+- [Monarchy](monarchy.md)
+- [Oligarchy](oligarchy.md)
+- [Synthetic Technocracy](synthetic-technocracy.md)
+- [Theocracy](theocracy.md)

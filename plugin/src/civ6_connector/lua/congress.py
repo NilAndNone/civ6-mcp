@@ -245,7 +245,15 @@ __civmcp_wc_votes = {prefs_lua}
 local function handler()
     local me = Game.GetLocalPlayer()
     local wc = Game.GetWorldCongress()
-    if not wc or not wc:IsInSession() then return end
+    if not wc then return end
+    if not wc:IsInSession() then
+        UI.RequestPlayerOperation(me, PlayerOperations.WORLD_CONGRESS_SUBMIT_TURN, {{}})
+        UI.RequestAction(ActionTypes.ACTION_ENDTURN)
+        __civmcp_wc_votes = nil
+        pcall(function() Events.WorldCongressStage1.Remove(__civmcp_wc_handler) end)
+        __civmcp_wc_handler = nil
+        return
+    end
 
     local favor = Players[me]:GetFavor()
     local costs = wc:GetVotesandFavorCost()
@@ -253,6 +261,7 @@ local function handler()
     local ress = wc:GetResolutions()
     if not ress or #ress == 0 then
         UI.RequestPlayerOperation(me, PlayerOperations.WORLD_CONGRESS_SUBMIT_TURN, {{}})
+        UI.RequestAction(ActionTypes.ACTION_ENDTURN)
         __civmcp_wc_votes = nil
         pcall(function() Events.WorldCongressStage1.Remove(__civmcp_wc_handler) end)
         __civmcp_wc_handler = nil
@@ -318,6 +327,7 @@ local function handler()
     end
 
     UI.RequestPlayerOperation(me, PlayerOperations.WORLD_CONGRESS_SUBMIT_TURN, {{}})
+    UI.RequestAction(ActionTypes.ACTION_ENDTURN)
 
     __civmcp_wc_votes = nil
     pcall(function() Events.WorldCongressStage1.Remove(__civmcp_wc_handler) end)

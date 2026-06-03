@@ -7,7 +7,7 @@ from codex_hl.runs import orchestrator
 
 def test_removed_runner_hard_fails_with_live_hint() -> None:
     args = orchestrator.parse_args(["--execute", "--runner", "legacy-baseline"])
-    with pytest.raises(orchestrator.EvolutionError, match='runner "legacy-baseline".*removed.*--runner live'):
+    with pytest.raises(orchestrator.EvolutionError, match='runner "legacy-baseline".*removed.*observe-live'):
         orchestrator.validate_args(args)
 
 

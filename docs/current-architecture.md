@@ -17,42 +17,52 @@ Historical/reference docs cannot define runtime entrypoints.
 
 ## Runtime Mainline
 
-Live strict is the only supported executable path:
+Model-in-loop live strict is the supported executable path for gameplay:
 
-- `/civ6-observe-live`: interactive MCP-driven JSON-plan operation.
-- `/civ6-live-driver`: automated T3/T20/T50 live strict driver.
-- `/civ6-runs --runner live`: orchestration wrapper around
-  `codex_hl.live.driver`.
+- `/civ6-observe-live`: interactive MCP-driven JSON-plan operation. Each turn
+  starts from a fresh context snapshot; the model authors the JSON plan; one
+  step is armed; the matching MCP action is executed and verified.
+- `/civ6-human-demo-record`: read-only Human Demo capture into SQLite.
+- `/civ6-human-demo-contract`: read-only Human Demo reproduction scoring.
 
-The legacy executable path has been removed. `codex_hl.evidence.store` remains
-the episode database layer for evidence persistence.
+Removed runtime surfaces:
+
+- The automated live driver has been removed as a public command, console
+  script, and runtime module.
+- `/civ6-runs --execute` and `/civ6-runs --runner live` hard fail before any
+  connector or game mutation.
+- New driver, auto-run, or live-execute commands that bypass
+  `/civ6-observe-live` are not allowed.
+
+`codex_hl.evidence.store` remains the episode database layer for evidence
+persistence.
 
 ## Live Module Boundaries
 
-- `codex_hl.live.driver`: CLI parsing, objective resolution, episode lifecycle,
-  turn loop, plan submission, armed-step execution, and evidence summary.
-- `codex_hl.live.objective`: objective and turn semantics for T3/T20/T50.
-- `codex_hl.live.planner`: plan-choice helpers that map context rows to
-  intended actions.
-- `codex_hl.live.policy_profiles`: strategy profile constants and priority
-  lists.
 - `codex_hl.live.gateway`: live strict mutation gate.
 - `codex_hl.live.ledger`: append-only live evidence events.
 - `codex_hl.live.plan_store`: JSON-plan and live state persistence.
+- `codex_hl.live.context`: context helpers for model-in-loop operation.
+- `codex_hl.live.human_demo_contract`: read-only Human Demo reproduction
+  scoring.
 - `codex_hl.live.evaluation`: read-only evaluation of completed run evidence.
 
-The driver does not own strategy constants. Planner/profile modules own
-preference choices; gateway/verifier modules own mutation and postcondition
-safety.
+Gateway/verifier modules own mutation and postcondition safety. Strategy
+learning for Human Demo belongs in recorded demonstration evidence, review,
+candidate assets, and model-authored `/civ6-observe-live` plans; not in
+automated driver heuristics.
 
 ## Turn Semantics
 
-The public live driver interface uses:
+The public model-in-loop execution interface is `/civ6-observe-live`:
 
-- `--turn-budget 3|20|50`
-- `--objective t3|t20|t50`
+- call `get_live_turn_context` for the current turn;
+- author a JSON plan from that context;
+- submit the plan, arm exactly one mutating step, execute the matching MCP
+  action, and repeat until the turn boundary;
+- after `end_turn`, capture the next turn context before planning again.
 
-The driver captures `start_turn`, then records:
+Legacy turn-budget fields may still appear in older evidence:
 
 ```json
 {
@@ -63,13 +73,14 @@ The driver captures `start_turn`, then records:
 }
 ```
 
-`--target-turn` is reserved for recovery/debug and is mutually exclusive with
-`--turn-budget`.
+Those fields describe old automated harness runs only. They do not prove Human
+Demo strategy quality or model-in-loop correctness.
 
 ## Orchestration
 
-`/civ6-runs --runner live` calls `codex_hl.live.driver` with the selected
-turn budget. Removed runner values hard fail before any game mutation.
+`/civ6-runs` is offline-only. It may write plan manifests and read existing
+evidence, but `--execute` and `--runner live` hard fail before any connector or
+game mutation.
 
 Runs still respect the Strategy/Validation/Governance gates:
 
@@ -83,8 +94,17 @@ Runs still respect the Strategy/Validation/Governance gates:
 ## Human Demo Boundary
 
 Human-demo helpers may capture read-only snapshots, log input/capture events,
-write SQLite facts, and summarize factual snapshot counts. They must not carry
-rules runners, action-selection policy, or executable heuristic strategy.
+write SQLite facts, summarize factual snapshot counts, and support contract
+scoring. They must not carry rules runners, action-selection policy, or
+executable heuristic strategy.
+
+Human Demo strategy is learned through small-grained recorded evidence:
+
+- record human turns with `/civ6-human-demo-record`;
+- infer/correct action facts and preserve milestone evidence;
+- distill strategy into candidate assets through governed workflows;
+- reproduce with `/civ6-observe-live`, where every plan is model-authored from
+  the current live context.
 
 ## Strategy Assets
 

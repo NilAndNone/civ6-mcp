@@ -48,7 +48,7 @@ from codex_hl.live.ledger import to_jsonable
 from codex_hl.live.schemas import LivePlanValidationError, normalize_turn_plan
 from codex_hl.live.state_machine import LiveStateError
 from codex_hl.evidence.store import EpisodeStore
-from civ6_connector import game_launcher, heartbeat, lua as lq
+from civ6_connector import game_launcher, game_lifecycle, heartbeat, lua as lq
 from civ6_connector.game_over_watchdog import GameOverWatchdog
 from civ6_connector import narrate as nr
 from civ6_connector.connection import GameConnection, LuaError
@@ -1341,6 +1341,8 @@ async def _execute_fragment_unit_action(
                 return await gs.remove_improvement(unit_index)
             case "remove_feature":
                 return await gs.remove_feature(unit_index)
+            case "harvest_resource":
+                return await gs.harvest_resource(unit_index)
             case "build_route":
                 return await gs.build_route(unit_index)
             case "automate":
@@ -2329,6 +2331,22 @@ async def choose_dedication(ctx: Context, dedication_index: int) -> str:
     )
 
 
+@mcp.tool()
+async def save_game(ctx: Context, save_name: str) -> str:
+    """Create a named single-player save for recovery or rollback.
+
+    Args:
+        save_name: Save stem without the `.Civ6Save` extension.
+    """
+    gs = _get_game(ctx)
+    return await _logged_gateway(
+        ctx,
+        "save_game",
+        {"save_name": save_name},
+        lambda: game_lifecycle.save_game(gs.conn, save_name),
+    )
+
+
 @mcp.tool(annotations={"readOnlyHint": True})
 async def get_trade_options(ctx: Context, other_player_id: int) -> str:
     """See what both sides can trade — like opening the trade screen.
@@ -2368,6 +2386,80 @@ async def respond_to_trade(ctx: Context, other_player_id: int, accept: bool) -> 
         {"other_player_id": other_player_id, "accept": accept},
         lambda: gs.respond_to_deal(other_player_id, accept),
     )
+
+
+def _deal_resource_items(resource_spec: str) -> list[dict]:
+    """Parse comma-separated trade resources, aggregating repeated resources."""
+    amounts: dict[str, int] = {}
+    order: list[str] = []
+    for raw in (r.strip() for r in resource_spec.split(",") if r.strip()):
+        name = raw
+        amount = 1
+        for sep in (":", "*", "="):
+            if sep in raw:
+                name_part, amount_part = raw.rsplit(sep, 1)
+                name = name_part.strip()
+                amount_text = amount_part.strip()
+                if not amount_text.isdigit():
+                    raise ValueError(f"invalid resource amount in {raw!r}")
+                amount = int(amount_text)
+                break
+        if not name:
+            raise ValueError(f"invalid resource name in {raw!r}")
+        if amount <= 0:
+            raise ValueError(f"resource amount must be positive in {raw!r}")
+        if name not in amounts:
+            order.append(name)
+            amounts[name] = 0
+        amounts[name] += amount
+    return [
+        {"type": "RESOURCE", "name": name, "amount": amounts[name], "duration": 30}
+        for name in order
+    ]
+
+
+def _propose_trade_public_args(
+    *,
+    other_player_id: int,
+    offer_gold: int,
+    offer_gold_per_turn: int,
+    offer_resources: str,
+    offer_favor: int,
+    offer_open_borders: bool,
+    request_gold: int,
+    request_gold_per_turn: int,
+    request_resources: str,
+    request_favor: int,
+    request_open_borders: bool,
+    joint_war_target: int,
+    mode: str,
+) -> dict[str, Any]:
+    params: dict[str, Any] = {"other_player_id": other_player_id}
+    if offer_gold > 0:
+        params["offer_gold"] = offer_gold
+    if offer_gold_per_turn > 0:
+        params["offer_gold_per_turn"] = offer_gold_per_turn
+    if offer_resources:
+        params["offer_resources"] = offer_resources
+    if offer_favor > 0:
+        params["offer_favor"] = offer_favor
+    if offer_open_borders:
+        params["offer_open_borders"] = offer_open_borders
+    if request_gold > 0:
+        params["request_gold"] = request_gold
+    if request_gold_per_turn > 0:
+        params["request_gold_per_turn"] = request_gold_per_turn
+    if request_resources:
+        params["request_resources"] = request_resources
+    if request_favor > 0:
+        params["request_favor"] = request_favor
+    if request_open_borders:
+        params["request_open_borders"] = request_open_borders
+    if joint_war_target > 0:
+        params["joint_war_target"] = joint_war_target
+    if mode != "send":
+        params["mode"] = mode
+    return params
 
 
 @mcp.tool()
@@ -2418,10 +2510,10 @@ async def propose_trade(
         offer_items.append(
             {"type": "GOLD", "amount": offer_gold_per_turn, "duration": 30}
         )
-    for res in (r.strip() for r in offer_resources.split(",") if r.strip()):
-        offer_items.append(
-            {"type": "RESOURCE", "name": res, "amount": 1, "duration": 30}
-        )
+    try:
+        offer_items.extend(_deal_resource_items(offer_resources))
+    except ValueError as exc:
+        return f"Error: {exc}"
     if offer_favor > 0:
         offer_items.append({"type": "FAVOR", "amount": offer_favor})
     if offer_open_borders:
@@ -2432,10 +2524,10 @@ async def propose_trade(
         request_items.append(
             {"type": "GOLD", "amount": request_gold_per_turn, "duration": 30}
         )
-    for res in (r.strip() for r in request_resources.split(",") if r.strip()):
-        request_items.append(
-            {"type": "RESOURCE", "name": res, "amount": 1, "duration": 30}
-        )
+    try:
+        request_items.extend(_deal_resource_items(request_resources))
+    except ValueError as exc:
+        return f"Error: {exc}"
     if request_favor > 0:
         request_items.append({"type": "FAVOR", "amount": request_favor})
     if request_open_borders:
@@ -2460,14 +2552,25 @@ async def propose_trade(
             lambda: gs.test_trade(other_player_id, offer_items, request_items),
         )
 
+    gateway_params = _propose_trade_public_args(
+        other_player_id=other_player_id,
+        offer_gold=offer_gold,
+        offer_gold_per_turn=offer_gold_per_turn,
+        offer_resources=offer_resources,
+        offer_favor=offer_favor,
+        offer_open_borders=offer_open_borders,
+        request_gold=request_gold,
+        request_gold_per_turn=request_gold_per_turn,
+        request_resources=request_resources,
+        request_favor=request_favor,
+        request_open_borders=request_open_borders,
+        joint_war_target=joint_war_target,
+        mode=mode,
+    )
     return await _logged_gateway(
         ctx,
         "propose_trade",
-        {
-            "other_player_id": other_player_id,
-            "offer_items": offer_items,
-            "request_items": request_items,
-        },
+        gateway_params,
         lambda: gs.propose_trade(other_player_id, offer_items, request_items),
     )
 
@@ -2669,7 +2772,7 @@ async def unit_action(
 
     Args:
         unit_id: The unit's composite ID (from get_units output)
-        action: One of: move, attack, fortify, skip, found_city, improve, repair, remove_improvement, remove_feature, build_route, automate, heal, alert, sleep, delete, trade_route, activate, sacrifice_charges, teleport, spread_religion
+        action: One of: move, attack, fortify, skip, found_city, improve, repair, remove_improvement, remove_feature, harvest_resource, build_route, automate, heal, alert, sleep, delete, trade_route, activate, sacrifice_charges, teleport, spread_religion
         target_x: Target X coordinate (required for move/attack/trade_route/teleport)
         target_y: Target Y coordinate (required for move/attack/trade_route/teleport)
         improvement: Improvement type for builders (required for improve), e.g.
@@ -2683,6 +2786,7 @@ async def unit_action(
     For improve: provide improvement name. Builder must be on the tile.
     For repair: repairs a pillaged improvement on the builder's current tile. No improvement name needed.
     For remove_improvement: demolishes an intact improvement on the builder's current tile (e.g. to replace a farm with a mine). Costs one charge.
+    For harvest_resource: harvests a bonus resource on the builder's current tile when the game allows it.
     For activate: activates a Great Person on their matching district.
     For sacrifice_charges: Royal Society builder sacrifice — spends ALL builder charges to boost a district project (2% of cost per charge). Builder must be on the district tile.
     For spread_religion: spreads religion at current tile. Missionaries/Apostles only.
@@ -2728,6 +2832,8 @@ async def unit_action(
                 return await gs.remove_improvement(unit_index)
             case "remove_feature":
                 return await gs.remove_feature(unit_index)
+            case "harvest_resource":
+                return await gs.harvest_resource(unit_index)
             case "build_route":
                 return await gs.build_route(unit_index)
             case "automate":
@@ -2755,7 +2861,7 @@ async def unit_action(
                     return "Error: teleport requires target_x and target_y of the destination city"
                 return await gs.teleport_to_city(unit_index, target_x, target_y)
             case _:
-                return f"Error: Unknown action '{action}'. Valid: move, attack, fortify, skip, found_city, improve, repair, remove_improvement, remove_feature, build_route, automate, heal, alert, sleep, delete, trade_route, activate, sacrifice_charges, teleport, spread_religion"
+                return f"Error: Unknown action '{action}'. Valid: move, attack, fortify, skip, found_city, improve, repair, remove_improvement, remove_feature, harvest_resource, build_route, automate, heal, alert, sleep, delete, trade_route, activate, sacrifice_charges, teleport, spread_religion"
 
     result = await _logged(
         ctx,
@@ -3711,7 +3817,7 @@ async def recruit_great_person(ctx: Context, individual_id: int) -> str:
     return await _logged_gateway(
         ctx,
         "recruit_great_person",
-        {"id": individual_id},
+        {"individual_id": individual_id},
         lambda: gs.recruit_great_person(individual_id),
     )
 
@@ -3733,7 +3839,7 @@ async def patronize_great_person(
     return await _logged_gateway(
         ctx,
         "patronize_great_person",
-        {"id": individual_id, "yield": yield_type},
+        {"individual_id": individual_id, "yield_type": yield_type},
         lambda: gs.patronize_great_person(individual_id, yield_type),
     )
 
@@ -3752,7 +3858,7 @@ async def reject_great_person(ctx: Context, individual_id: int) -> str:
     return await _logged_gateway(
         ctx,
         "reject_great_person",
-        {"id": individual_id},
+        {"individual_id": individual_id},
         lambda: gs.reject_great_person(individual_id),
     )
 
@@ -3807,7 +3913,7 @@ async def queue_wc_votes(ctx: Context, votes: str) -> str:
     async def _run():
         return await gs.queue_wc_votes(vote_list)
 
-    return await _logged_gateway(ctx, "queue_wc_votes", {"votes": vote_list}, _run)
+    return await _logged_gateway(ctx, "queue_wc_votes", {"votes": votes}, _run)
 
 
 # ---------------------------------------------------------------------------

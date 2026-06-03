@@ -533,7 +533,12 @@ async def load_save(conn: GameConnection, save_index: int) -> str:
     return "Load command sent. Wait for game to reload."
 
 
-async def _load_game_save_legacy_fallback(conn: GameConnection, save_name: str) -> str:
+async def _load_game_save_legacy_fallback(
+    conn: GameConnection,
+    save_name: str,
+    *,
+    allow_ocr_fallback: bool = True,
+) -> str:
     """Load a save by name — no list_saves() prerequisite.
 
     Two-tier approach:
@@ -606,6 +611,12 @@ async def _load_game_save_legacy_fallback(conn: GameConnection, save_name: str) 
             save_name,
         )
 
+    if not allow_ocr_fallback:
+        return (
+            f"Error: Save '{save_name}' was not loaded by FireTuner Lua and OCR/menu "
+            "fallback is disabled."
+        )
+
     # Tier 2: Filesystem verify + OCR menu load
     import os
 
@@ -633,7 +644,12 @@ async def _load_game_save_legacy_fallback(conn: GameConnection, save_name: str) 
         return await game_launcher.restart_and_load(save_name)
 
 
-async def load_game_save(conn: GameConnection, save_name: str) -> str:
+async def load_game_save(
+    conn: GameConnection,
+    save_name: str,
+    *,
+    allow_ocr_fallback: bool = True,
+) -> str:
     """Load a save by name, preferring FireTuner Lua over GUI/OCR."""
     import sys
 
@@ -710,7 +726,11 @@ async def load_game_save(conn: GameConnection, save_name: str) -> str:
             target,
         )
 
-    return await _load_game_save_legacy_fallback(conn, target)
+    return await _load_game_save_legacy_fallback(
+        conn,
+        target,
+        allow_ocr_fallback=allow_ocr_fallback,
+    )
 
 
 async def execute_lua(
